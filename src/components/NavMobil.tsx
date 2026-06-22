@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 
 const LINKLER = [
   { href: '/', label: 'Fonlar' },
+  { href: '/analiz', label: 'Analiz' },
 ]
 
 export function NavMobil() {
