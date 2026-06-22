@@ -21,9 +21,9 @@ function fmt(n: number | null) {
 }
 
 const TIP_RENK: Record<string, string> = {
-  YAT: 'bg-blue-500/20 text-blue-300',
-  EMK: 'bg-emerald-500/20 text-emerald-300',
-  BYF: 'bg-purple-500/20 text-purple-300',
+  YAT: 'bg-indigo-50 text-indigo-600',
+  EMK: 'bg-emerald-50 text-emerald-600',
+  BYF: 'bg-purple-50 text-purple-600',
 }
 
 export default function FonListesi({ fonlar }: { fonlar: Fon[] }) {
@@ -40,13 +40,13 @@ export default function FonListesi({ fonlar }: { fonlar: Fon[] }) {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <input
           type="text"
           placeholder="Fon kodu veya unvan ara..."
           value={arama}
           onChange={e => setArama(e.target.value)}
-          className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500"
+          className="flex-1 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
         />
         <div className="flex gap-2">
           {(['HEPSI', 'YAT', 'EMK', 'BYF'] as const).map(t => (
@@ -55,8 +55,8 @@ export default function FonListesi({ fonlar }: { fonlar: Fon[] }) {
               onClick={() => setTip(t)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 tip === t
-                  ? 'bg-white text-black'
-                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
               }`}
             >
               {t}
@@ -65,35 +65,35 @@ export default function FonListesi({ fonlar }: { fonlar: Fon[] }) {
         </div>
       </div>
 
-      <p className="text-zinc-500 text-sm mb-3">{filtrelenmis.length} fon</p>
+      <p className="text-slate-400 text-sm mb-3">{filtrelenmis.length} fon</p>
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-800">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-800 text-zinc-400 text-left">
+            <tr className="border-b border-slate-100 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium">Kod</th>
               <th className="px-4 py-3 font-medium">Fon Unvanı</th>
               <th className="px-4 py-3 font-medium">Tip</th>
               <th className="px-4 py-3 font-medium text-right">Fiyat</th>
               <th className="px-4 py-3 font-medium text-right">Portföy</th>
-              <th className="px-4 py-3 font-medium text-right">Kişi</th>
+              <th className="px-4 py-3 font-medium text-right">Yatırımcı</th>
             </tr>
           </thead>
           <tbody>
             {filtrelenmis.map(f => (
               <tr
                 key={`${f.fonKodu}-${f.fonTipi}`}
-                className="border-b border-zinc-800/50 hover:bg-zinc-900 transition-colors"
+                className="border-b border-slate-50 hover:bg-indigo-50/40 transition-colors"
               >
                 <td className="px-4 py-3">
                   <Link
                     href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
-                    className="font-mono font-semibold text-white hover:text-blue-400 transition-colors"
+                    className="font-mono font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
                   >
                     {f.fonKodu}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-zinc-300 max-w-xs truncate">
+                <td className="px-4 py-3 text-slate-700 max-w-xs truncate">
                   {f.fonUnvan ?? '-'}
                 </td>
                 <td className="px-4 py-3">
@@ -101,13 +101,13 @@ export default function FonListesi({ fonlar }: { fonlar: Fon[] }) {
                     {f.fonTipi}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-zinc-200">
+                <td className="px-4 py-3 text-right font-mono text-slate-700">
                   {f.fiyat != null ? f.fiyat.toFixed(6) : '-'}
                 </td>
-                <td className="px-4 py-3 text-right text-zinc-300">
+                <td className="px-4 py-3 text-right text-slate-600">
                   {fmt(f.portfoyBuyukluk)}
                 </td>
-                <td className="px-4 py-3 text-right text-zinc-300">
+                <td className="px-4 py-3 text-right text-slate-600">
                   {f.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}
                 </td>
               </tr>

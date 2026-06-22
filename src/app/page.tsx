@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
 import FonListesi from '@/components/FonListesi'
 
 export const revalidate = 3600
@@ -23,14 +22,14 @@ export default async function Home() {
     .order('portfoyBuyukluk', { ascending: false })
 
   return (
-    <main className="max-w-7xl mx-auto w-full px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Fonendeks</h1>
-        <p className="text-zinc-400 text-sm mt-1">
+    <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Yatırım Fonları</h1>
+        <p className="text-slate-400 text-sm mt-1">
           Son güncelleme: {sonTarih ?? '-'}
         </p>
       </div>
       <FonListesi fonlar={fonlar ?? []} />
-    </main>
+    </div>
   )
 }

@@ -42,52 +42,58 @@ export default async function FonDetay({
     ? (((son.fiyat - ilk.fiyat) / ilk.fiyat) * 100).toFixed(2)
     : null
 
+  const TIP_RENK: Record<string, string> = {
+    YAT: 'bg-indigo-50 text-indigo-600',
+    EMK: 'bg-emerald-50 text-emerald-600',
+    BYF: 'bg-purple-50 text-purple-600',
+  }
+
   return (
-    <main className="max-w-5xl mx-auto w-full px-4 py-8">
-      <Link href="/" className="text-zinc-500 hover:text-zinc-300 text-sm mb-6 inline-block">
+    <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
+      <Link href="/" className="text-slate-400 hover:text-indigo-600 text-sm mb-6 inline-block transition-colors">
         ← Tüm fonlar
       </Link>
 
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-white font-mono">{fonKodu}</h1>
-          <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-300">
+          <h1 className="text-2xl font-bold text-slate-900 font-mono">{fonKodu}</h1>
+          <span className={`px-2 py-0.5 rounded text-xs font-medium ${TIP_RENK[info?.fonTipi ?? ''] ?? ''}`}>
             {info?.fonTipi}
           </span>
         </div>
-        <p className="text-zinc-400 mt-1">{info?.fonUnvan}</p>
+        <p className="text-slate-500 mt-1">{info?.fonUnvan}</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-          <p className="text-zinc-500 text-xs mb-1">Son Fiyat</p>
-          <p className="text-white font-mono font-semibold">{son.fiyat?.toFixed(6) ?? '-'}</p>
-          <p className="text-zinc-500 text-xs mt-1">{son.tarih}</p>
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+          <p className="text-slate-400 text-xs mb-1">Son Fiyat</p>
+          <p className="text-slate-900 font-mono font-semibold">{son.fiyat?.toFixed(6) ?? '-'}</p>
+          <p className="text-slate-400 text-xs mt-1">{son.tarih}</p>
         </div>
-        <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-          <p className="text-zinc-500 text-xs mb-1">Toplam Getiri</p>
-          <p className={`font-semibold text-lg ${toplamGetiri && +toplamGetiri >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+          <p className="text-slate-400 text-xs mb-1">Toplam Getiri</p>
+          <p className={`font-semibold text-lg ${toplamGetiri && +toplamGetiri >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
             {toplamGetiri ? `%${toplamGetiri}` : '-'}
           </p>
-          <p className="text-zinc-500 text-xs mt-1">{ilk.tarih} → {son.tarih}</p>
+          <p className="text-slate-400 text-xs mt-1">{ilk.tarih} → {son.tarih}</p>
         </div>
-        <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-          <p className="text-zinc-500 text-xs mb-1">Portföy Büyüklüğü</p>
-          <p className="text-white font-semibold">
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+          <p className="text-slate-400 text-xs mb-1">Portföy Büyüklüğü</p>
+          <p className="text-slate-900 font-semibold">
             {son.portfoyBuyukluk
               ? (son.portfoyBuyukluk / 1_000_000).toFixed(1) + ' Mn ₺'
               : '-'}
           </p>
         </div>
-        <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-          <p className="text-zinc-500 text-xs mb-1">Yatırımcı Sayısı</p>
-          <p className="text-white font-semibold">
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+          <p className="text-slate-400 text-xs mb-1">Yatırımcı Sayısı</p>
+          <p className="text-slate-900 font-semibold">
             {son.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}
           </p>
         </div>
       </div>
 
       <FonGrafik data={gecmis} />
-    </main>
+    </div>
   )
 }
