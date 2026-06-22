@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import FonListesi from '@/components/FonListesi'
 
 export const dynamic = 'force-dynamic'
@@ -29,7 +29,7 @@ function enYakinTarih(tarihler: string[], hedef: string): string | null {
 }
 
 export default async function Home() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   // Son tarihi bul
   const { data: sonTarihRow } = await supabase

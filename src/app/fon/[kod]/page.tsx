@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import FonGrafik from '@/components/FonGrafik'
@@ -16,7 +16,7 @@ export default async function FonDetay({
   const { tip = 'YAT' } = await searchParams
   const fonKodu = kod.toUpperCase()
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: gecmis } = await supabase
     .from('tefas_fon_verileri')
