@@ -25,11 +25,14 @@ function hedefTarih(sonTarih: string, gun: number, ay: number): string {
 }
 
 function enYakinTarih(tarihler: string[], hedef: string): string | null {
-  // hedef ve öncesi arasındaki en yakın tarihi bul
+  // Hedef tarih yoksa sonraki en yakın tarihi bul (TEFAS davranışı)
+  // tarihler desc sıralı, sondan başa giderek >= hedef ilkini bul
+  let result: string | null = null
   for (const t of tarihler) {
-    if (t <= hedef) return t
+    if (t >= hedef) result = t
+    else break
   }
-  return null
+  return result ?? tarihler[tarihler.length - 1] ?? null
 }
 
 export default async function Home() {
