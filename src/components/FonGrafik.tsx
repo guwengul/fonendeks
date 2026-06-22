@@ -21,13 +21,19 @@ type Veri = {
 }
 
 const ARALIKLAR = [
-  { label: '1A', gun: 30 },
-  { label: '3A', gun: 90 },
-  { label: '6A', gun: 180 },
-  { label: '1Y', gun: 365 },
-  { label: '3Y', gun: 1095 },
-  { label: 'Tümü', gun: 0 },
+  { label: '1A', ay: 1 },
+  { label: '3A', ay: 3 },
+  { label: '6A', ay: 6 },
+  { label: '1Y', ay: 12 },
+  { label: '3Y', ay: 36 },
+  { label: 'Tümü', ay: 0 },
 ]
+
+function hedefTarihHesapla(sonTarih: string, ay: number): string {
+  const d = new Date(sonTarih)
+  d.setMonth(d.getMonth() - ay)
+  return d.toISOString().slice(0, 10)
+}
 
 function formatTarih(t: string) { return t.slice(5) }
 function formatMn(v: number) { return (v / 1_000_000).toFixed(1) + ' Mn' }
@@ -38,9 +44,14 @@ const TOOLTIP_STYLE = {
 }
 
 export default function FonGrafik({ data }: { data: Veri[] }) {
-  const [aralik, setAralik] = useState(365)
+  const [aralik, setAralik] = useState(12)
 
-  const filtrelenmis = aralik === 0 ? data : data.slice(-aralik)
+  const filtrelenmis = (() => {
+    if (aralik === 0 || data.length === 0) return data
+    const sonTarih = data[data.length - 1].tarih
+    const baslangic = hedefTarihHesapla(sonTarih, aralik)
+    return data.filter(d => d.tarih >= baslangic)
+  })()
 
   return (
     <div className="space-y-6">
@@ -48,9 +59,9 @@ export default function FonGrafik({ data }: { data: Veri[] }) {
         {ARALIKLAR.map(a => (
           <button
             key={a.label}
-            onClick={() => setAralik(a.gun)}
+            onClick={() => setAralik(a.ay)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              aralik === a.gun
+              aralik === a.ay
                 ? 'bg-indigo-600 text-white'
                 : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
             }`}
