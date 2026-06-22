@@ -131,6 +131,13 @@ export default async function AnalizPage() {
     const yillikPozitif = yillik.filter(p => p !== null && p > 0).length
     const yillikToplam = yillik.filter(p => p !== null).length
 
+    // 5 yıllık toplam getiri: bugün vs -60ay checkpoint
+    const fiyatBugün = fiyatlar[0]
+    const fiyat5y = fiyatlar[fiyatlar.length - 1]
+    const toplamGetiri5y = fiyatBugün != null && fiyat5y != null && fiyat5y !== 0
+      ? ((fiyatBugün - fiyat5y) / fiyat5y) * 100
+      : null
+
     return {
       fonKodu: r.fonKodu,
       fonTipi: r.fonTipi,
@@ -141,6 +148,7 @@ export default async function AnalizPage() {
       altiAyToplam,
       yillikPozitif,
       yillikToplam,
+      toplamGetiri5y,
     }
   }).filter(f => f.altiAyToplam >= 2)
 
