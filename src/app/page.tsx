@@ -4,19 +4,23 @@ import FonListesi from '@/components/FonListesi'
 export const dynamic = 'force-dynamic'
 
 const DONEMLER = [
-  { key: '1g',  gun: 1    },
-  { key: '1h',  gun: 7    },
-  { key: '1a',  gun: 30   },
-  { key: '3a',  gun: 90   },
-  { key: '6a',  gun: 180  },
-  { key: '1y',  gun: 365  },
-  { key: '3y',  gun: 1095 },
-  { key: '5y',  gun: 1825 },
+  { key: '1g',  gun: 1,  ay: 0  },
+  { key: '1h',  gun: 7,  ay: 0  },
+  { key: '1a',  gun: 0,  ay: 1  },
+  { key: '3a',  gun: 0,  ay: 3  },
+  { key: '6a',  gun: 0,  ay: 6  },
+  { key: '1y',  gun: 0,  ay: 12 },
+  { key: '3y',  gun: 0,  ay: 36 },
+  { key: '5y',  gun: 0,  ay: 60 },
 ]
 
-function hedefTarih(sonTarih: string, gun: number): string {
+function hedefTarih(sonTarih: string, gun: number, ay: number): string {
   const d = new Date(sonTarih)
-  d.setDate(d.getDate() - gun)
+  if (ay > 0) {
+    d.setMonth(d.getMonth() - ay)
+  } else {
+    d.setDate(d.getDate() - gun)
+  }
   return d.toISOString().slice(0, 10)
 }
 
@@ -57,7 +61,7 @@ export default async function Home() {
   // Her dönem için hedef tarihi bul
   const donemTarihler = DONEMLER.map(d => ({
     ...d,
-    tarih: enYakinTarih(tarihler, hedefTarih(sonTarih, d.gun)),
+    tarih: enYakinTarih(tarihler, hedefTarih(sonTarih, d.gun, d.ay)),
   }))
 
   // Benzersiz tarihler (tekrar eden dönem tarihleri olabilir)
