@@ -108,7 +108,11 @@ export default async function AnalizPage() {
 
     // 6 aylık periyotlar: cp[i] → cp[i+1] arası getiri
     const altiAylik: (number | null)[] = []
-    for (let i = 0; i < fiyatlar.length - 1; i++) {
+    for (let i = 0; i < cpTarihler.length - 1; i++) {
+      const t0 = cpTarihler[i]
+      const t1 = cpTarihler[i + 1]
+      // Aynı tarihe düşmüşse veri yok demektir
+      if (!t0 || !t1 || t0 === t1) { altiAylik.push(null); continue }
       const yeni = fiyatlar[i]
       const eski = fiyatlar[i + 1]
       altiAylik.push(yeni != null && eski != null && eski !== 0
@@ -118,7 +122,10 @@ export default async function AnalizPage() {
 
     // Yıllık periyotlar: cp[0]→cp[2], cp[2]→cp[4], ...
     const yillik: (number | null)[] = []
-    for (let i = 0; i < fiyatlar.length - 2; i += 2) {
+    for (let i = 0; i < cpTarihler.length - 2; i += 2) {
+      const t0 = cpTarihler[i]
+      const t2 = cpTarihler[i + 2]
+      if (!t0 || !t2 || t0 === t2) { yillik.push(null); continue }
       const yeni = fiyatlar[i]
       const eski = fiyatlar[i + 2]
       yillik.push(yeni != null && eski != null && eski !== 0
