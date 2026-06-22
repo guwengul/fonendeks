@@ -4,14 +4,14 @@ import FonListesi from '@/components/FonListesi'
 export const dynamic = 'force-dynamic'
 
 const DONEMLER = [
-  { key: '1g',  gun: 1,  ay: 0  },
-  { key: '1h',  gun: 7,  ay: 0  },
-  { key: '1a',  gun: 0,  ay: 1  },
-  { key: '3a',  gun: 0,  ay: 3  },
-  { key: '6a',  gun: 0,  ay: 6  },
-  { key: '1y',  gun: 0,  ay: 12 },
-  { key: '3y',  gun: 0,  ay: 36 },
-  { key: '5y',  gun: 0,  ay: 60 },
+  { key: '1g',  gun: 1,  ay: 0,  sonraki: false },
+  { key: '1h',  gun: 7,  ay: 0,  sonraki: false },
+  { key: '1a',  gun: 0,  ay: 1,  sonraki: true  },
+  { key: '3a',  gun: 0,  ay: 3,  sonraki: true  },
+  { key: '6a',  gun: 0,  ay: 6,  sonraki: true  },
+  { key: '1y',  gun: 0,  ay: 12, sonraki: true  },
+  { key: '3y',  gun: 0,  ay: 36, sonraki: true  },
+  { key: '5y',  gun: 0,  ay: 60, sonraki: true  },
 ]
 
 function hedefTarih(sonTarih: string, gun: number, ay: number): string {
@@ -24,15 +24,22 @@ function hedefTarih(sonTarih: string, gun: number, ay: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-function enYakinTarih(tarihler: string[], hedef: string): string | null {
-  // Hedef tarih yoksa sonraki en yakın tarihi bul (TEFAS davranışı)
-  // tarihler desc sıralı, sondan başa giderek >= hedef ilkini bul
-  let result: string | null = null
-  for (const t of tarihler) {
-    if (t >= hedef) result = t
-    else break
+function enYakinTarih(tarihler: string[], hedef: string, sonraki: boolean): string | null {
+  if (sonraki) {
+    // Aylık+: hedef tarihte veya sonrasındaki ilk işlem günü (TEFAS davranışı)
+    let result: string | null = null
+    for (const t of tarihler) {
+      if (t >= hedef) result = t
+      else break
+    }
+    return result ?? tarihler[tarihler.length - 1] ?? null
+  } else {
+    // Günlük/haftalık: hedef tarihte veya öncesindeki son işlem günü
+    for (const t of tarihler) {
+      if (t <= hedef) return t
+    }
+    return null
   }
-  return result ?? tarihler[tarihler.length - 1] ?? null
 }
 
 export default async function Home() {
@@ -64,7 +71,7 @@ export default async function Home() {
   // Her dönem için hedef tarihi bul
   const donemTarihler = DONEMLER.map(d => ({
     ...d,
-    tarih: enYakinTarih(tarihler, hedefTarih(sonTarih, d.gun, d.ay)),
+    tarih: enYakinTarih(tarihler, hedefTarih(sonTarih, d.gun, d.ay), d.sonraki),
   }))
 
   // Benzersiz tarihler (tekrar eden dönem tarihleri olabilir)
