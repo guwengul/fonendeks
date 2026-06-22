@@ -16,6 +16,8 @@ type FonAnaliz = {
   toplamGetiri5y: number | null
 }
 
+type SiralamaKey = 'tutarlilik' | '5y' | `donem_${number}`
+
 const TIP_RENK: Record<string, string> = {
   YAT: 'bg-indigo-50 text-indigo-600',
   EMK: 'bg-emerald-50 text-emerald-600',
@@ -46,6 +48,17 @@ function skorCubugu(pozitif: number, toplam: number) {
   )
 }
 
+function ThSort({ label, aktif, onClick }: { label: string; aktif: boolean; onClick: () => void }) {
+  return (
+    <th
+      onClick={onClick}
+      className={`px-2 py-3 text-center min-w-24 text-xs font-semibold cursor-pointer select-none transition-colors ${aktif ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:text-indigo-500 hover:bg-slate-100'}`}
+    >
+      {label} {aktif ? '↓' : ''}
+    </th>
+  )
+}
+
 export default function AnalizListesi({
   fonlar,
   altiAyEtiketler,
@@ -58,9 +71,10 @@ export default function AnalizListesi({
   const [mod, setMod] = useState<'6ay' | 'yil'>('yil')
   const [minPozitif, setMinPozitif] = useState(0)
   const [tipFiltre, setTipFiltre] = useState<'HEPSI' | 'YAT' | 'EMK' | 'BYF'>('YAT')
-  const [siralama, setSiralama] = useState<'tutarlilik' | '5y'>('tutarlilik')
+  const [siralama, setSiralama] = useState<SiralamaKey>('tutarlilik')
 
   const etiketler = mod === '6ay' ? altiAyEtiketler : yillikEtiketler
+  const maxDonem = etiketler.length
 
   const filtreli = useMemo(() => {
     return fonlar
@@ -74,6 +88,13 @@ export default function AnalizListesi({
         if (siralama === '5y') {
           return (b.toplamGetiri5y ?? -Infinity) - (a.toplamGetiri5y ?? -Infinity)
         }
+        if (siralama.startsWith('donem_')) {
+          const idx = parseInt(siralama.replace('donem_', ''))
+          const aVal = (mod === '6ay' ? a.altiAylik : a.yillik)[idx] ?? -Infinity
+          const bVal = (mod === '6ay' ? b.altiAylik : b.yillik)[idx] ?? -Infinity
+          return bVal - aVal
+        }
+        // tutarlilik
         const aPoz = mod === '6ay' ? a.altiAyPozitif : a.yillikPozitif
         const bPoz = mod === '6ay' ? b.altiAyPozitif : b.yillikPozitif
         const aTop = mod === '6ay' ? a.altiAyToplam : a.yillikToplam
@@ -83,9 +104,7 @@ export default function AnalizListesi({
         if (bOran !== aOran) return bOran - aOran
         return bPoz - aPoz
       })
-  }, [fonlar, mod, minPozitif, tipFiltre])
-
-  const maxDonem = mod === '6ay' ? altiAyEtiketler.length : yillikEtiketler.length
+  }, [fonlar, mod, minPozitif, tipFiltre, siralama])
 
   return (
     <div>
@@ -95,7 +114,7 @@ export default function AnalizListesi({
           {(['yil', '6ay'] as const).map(m => (
             <button
               key={m}
-              onClick={() => { setMod(m); setMinPozitif(0) }}
+              onClick={() => { setMod(m); setMinPozitif(0); setSiralama('tutarlilik') }}
               className={`px-4 py-2 font-medium transition-colors ${mod === m ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
             >
               {m === 'yil' ? 'Yıllık' : '6 Aylık'}
@@ -130,21 +149,6 @@ export default function AnalizListesi({
           </div>
         </div>
 
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white text-sm">
-          <button
-            onClick={() => setSiralama('tutarlilik')}
-            className={`px-3 py-2 font-medium transition-colors ${siralama === 'tutarlilik' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
-          >
-            Tutarlılık ↓
-          </button>
-          <button
-            onClick={() => setSiralama('5y')}
-            className={`px-3 py-2 font-medium transition-colors ${siralama === '5y' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
-          >
-            5Y Getiri ↓
-          </button>
-        </div>
-
         <span className="text-sm text-slate-400 ml-auto">{filtreli.length} fon</span>
       </div>
 
@@ -157,10 +161,24 @@ export default function AnalizListesi({
               <th className="px-4 py-3 font-semibold text-slate-600 min-w-48">Fon Adı</th>
               <th className="px-3 py-3 font-semibold text-slate-600 text-center">Tip</th>
               {etiketler.map((e, i) => (
-                <th key={i} className="px-2 py-3 font-semibold text-slate-500 text-center min-w-24 text-xs">{e}</th>
+                <ThSort
+                  key={i}
+                  label={e}
+                  aktif={siralama === `donem_${i}`}
+                  onClick={() => setSiralama(`donem_${i}`)}
+                />
               ))}
-              <th className="px-3 py-3 font-semibold text-slate-600 text-center min-w-24 text-xs cursor-pointer hover:text-indigo-600" onClick={() => setSiralama('5y')}>5Y Toplam</th>
-              <th className="px-4 py-3 font-semibold text-slate-600 min-w-36 cursor-pointer hover:text-indigo-600" onClick={() => setSiralama('tutarlilik')}>Tutarlılık</th>
+              <ThSort
+                label="5Y Toplam"
+                aktif={siralama === '5y'}
+                onClick={() => setSiralama('5y')}
+              />
+              <th
+                onClick={() => setSiralama('tutarlilik')}
+                className={`px-4 py-3 font-semibold min-w-36 cursor-pointer select-none transition-colors ${siralama === 'tutarlilik' ? 'text-indigo-600 bg-indigo-50' : 'text-slate-600 hover:text-indigo-500 hover:bg-slate-100'}`}
+              >
+                Tutarlılık {siralama === 'tutarlilik' ? '↓' : ''}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -188,13 +206,13 @@ export default function AnalizListesi({
                     </span>
                   </td>
                   {periyotlar.map((p, i) => (
-                    <td key={i} className="px-2 py-2.5 text-center">
+                    <td key={i} className={`px-2 py-2.5 text-center ${siralama === `donem_${i}` ? 'bg-indigo-50/50' : ''}`}>
                       <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-medium ${hucreRenk(p)}`}>
                         {p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(1)}%` : '—'}
                       </span>
                     </td>
                   ))}
-                  <td className="px-3 py-2.5 text-center">
+                  <td className={`px-3 py-2.5 text-center ${siralama === '5y' ? 'bg-indigo-50/50' : ''}`}>
                     <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-medium ${hucreRenk(f.toplamGetiri5y)}`}>
                       {f.toplamGetiri5y !== null ? `${f.toplamGetiri5y >= 0 ? '+' : ''}${f.toplamGetiri5y.toFixed(0)}%` : '—'}
                     </span>
