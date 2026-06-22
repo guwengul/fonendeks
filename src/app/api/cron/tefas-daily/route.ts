@@ -70,15 +70,6 @@ export async function GET(req: Request) {
   let toplamEklenen = 0
 
   try {
-    // Son 7 günü sil
-    const { error: deleteError } = await supabase
-      .from('tefas_fon_verileri')
-      .delete()
-      .in('tarih', tarihler)
-
-    if (deleteError) throw new Error(`Silme hatası: ${deleteError.message}`)
-    log.push(`Silindi: ${tarihler.join(', ')}`)
-
     // 3 fon tipi paralel çek
     const sonuclar = await Promise.all(
       FON_TIPLERI.map(tip => fetchTefas(tip, basTarih, bitTarih))
@@ -106,14 +97,14 @@ export async function GET(req: Request) {
         borsaBultenFiyat: r.borsaBultenFiyat ?? null,
       }))
 
-      const { error: insertError } = await supabase
+      const { error: upsertError } = await supabase
         .from('tefas_fon_verileri')
-        .insert(rows)
+        .upsert(rows, { onConflict: 'tarih,fonTipi,fonKodu' })
 
-      if (insertError) throw new Error(`${fonTipi} insert hatası: ${insertError.message}`)
+      if (upsertError) throw new Error(`${fonTipi} upsert hatası: ${upsertError.message}`)
 
       toplamEklenen += rows.length
-      log.push(`${fonTipi}: ${rows.length} kayıt eklendi`)
+      log.push(`${fonTipi}: ${rows.length} kayıt upsert edildi`)
     }
 
     return NextResponse.json({ ok: true, toplamEklenen, log })
