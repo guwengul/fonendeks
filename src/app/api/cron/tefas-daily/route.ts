@@ -87,7 +87,7 @@ export async function GET(req: Request) {
     for (let i = 0; i < FON_TIPLERI.length; i++) {
       const fonTipi = FON_TIPLERI[i]
       const data = sonuclar[i]
-      const kayitlar = Array.isArray(data) ? data : (data?.data ?? [])
+      const kayitlar = Array.isArray(data) ? data : (data?.resultList ?? data?.data ?? [])
 
       if (kayitlar.length === 0) {
         log.push(`${fonTipi}: kayıt yok`)
