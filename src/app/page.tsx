@@ -63,36 +63,67 @@ export default async function Home() {
   // Benzersiz tarihler (tekrar eden dönem tarihleri olabilir)
   const benzersizTarihler = [...new Set(donemTarihler.map(d => d.tarih).filter(Boolean) as string[])]
 
-  // Son tarih + tüm dönem tarihleri için paralel sorgu
-  const [sonVeriler, ...gecmisFiyatlar] = await Promise.all([
-    supabase
-      .from('tefas_fon_verileri')
-      .select('fonKodu, fonUnvan, fonTipi, fiyat, portfoyBuyukluk, kisiSayisi')
-      .eq('tarih', sonTarih)
-      .order('portfoyBuyukluk', { ascending: false })
-      .limit(5000)
-      .then(r => r.data ?? []),
-    ...benzersizTarihler.map(tarih =>
-      supabase
+  // Supabase max 1000 satır döndürüyor, paginate ediyoruz
+  async function fetchAllForDate(tarih: string) {
+    const rows: { fonKodu: string; fonTipi: string; fiyat: number }[] = []
+    let from = 0
+    while (true) {
+      const { data } = await supabase
         .from('tefas_fon_verileri')
         .select('fonKodu, fonTipi, fiyat')
         .eq('tarih', tarih)
-        .limit(5000)
-        .then(r => ({ tarih, data: r.data ?? [] }))
-    ),
-  ])
+        .range(from, from + 999)
+      if (!data || data.length === 0) break
+      rows.push(...data)
+      if (data.length < 1000) break
+      from += 1000
+    }
+    return rows
+  }
 
-  // tarih -> {fonKodu-fonTipi -> fiyat} map'i
-  const tarihFiyatMap: Record<string, Record<string, number>> = {}
-  for (const gf of gecmisFiyatlar) {
-    tarihFiyatMap[gf.tarih] = {}
-    for (const row of gf.data) {
-      tarihFiyatMap[gf.tarih][`${row.fonKodu}-${row.fonTipi}`] = row.fiyat
+  // Son tarih için ana liste (paginated)
+  const sonVerilerRows: { fonKodu: string; fonUnvan: string; fonTipi: string; fiyat: number; portfoyBuyukluk: number; kisiSayisi: number; created_at: string }[] = []
+  {
+    let from = 0
+    while (true) {
+      const { data } = await supabase
+        .from('tefas_fon_verileri')
+        .select('fonKodu, fonUnvan, fonTipi, fiyat, portfoyBuyukluk, kisiSayisi, created_at')
+        .eq('tarih', sonTarih)
+        .order('portfoyBuyukluk', { ascending: false })
+        .range(from, from + 999)
+      if (!data || data.length === 0) break
+      sonVerilerRows.push(...data)
+      if (data.length < 1000) break
+      from += 1000
     }
   }
 
+  // tarih -> {fonKodu-fonTipi -> fiyat} map'i
+  const tarihFiyatMap: Record<string, Record<string, number>> = {}
+  await Promise.all(
+    benzersizTarihler.map(async tarih => {
+      const rows = await fetchAllForDate(tarih)
+      tarihFiyatMap[tarih] = {}
+      for (const row of rows) {
+        tarihFiyatMap[tarih][`${row.fonKodu}-${row.fonTipi}`] = row.fiyat
+      }
+    })
+  )
+
+  const tumFonlar = sonVerilerRows
+
+  // Son güncelleme saati
+  const sonGuncelleme = tumFonlar[0]?.created_at
+    ? new Date(tumFonlar[0].created_at).toLocaleString('tr-TR', {
+        timeZone: 'Europe/Istanbul',
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      })
+    : sonTarih
+
   // Getiri hesapla
-  const fonlar = sonVeriler.map(f => {
+  const fonlar = tumFonlar.map(f => {
     const getiriler: Record<string, number | null> = {}
     for (const d of donemTarihler) {
       if (!d.tarih) { getiriler[d.key] = null; continue }
@@ -108,7 +139,7 @@ export default async function Home() {
     <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Yatırım Fonları</h1>
-        <p className="text-slate-400 text-sm mt-1">Son güncelleme: {sonTarih}</p>
+        <p className="text-slate-400 text-sm mt-1">Son güncelleme: {sonGuncelleme}</p>
       </div>
       <FonListesi fonlar={fonlar} />
     </div>
