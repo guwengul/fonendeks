@@ -55,6 +55,7 @@ export default async function Home() {
       .select('fonKodu, fonUnvan, fonTipi, fiyat, portfoyBuyukluk, kisiSayisi')
       .eq('tarih', sonTarih)
       .order('portfoyBuyukluk', { ascending: false })
+      .limit(5000)
       .then(r => r.data ?? []),
     ...donemTarihler.map(d =>
       d.tarih
@@ -62,6 +63,7 @@ export default async function Home() {
             .from('tefas_fon_verileri')
             .select('fonKodu, fonTipi, fiyat')
             .eq('tarih', d.tarih)
+            .limit(5000)
             .then(r => ({ key: d.key, data: r.data ?? [] }))
         : Promise.resolve({ key: d.key, data: [] })
     ),
