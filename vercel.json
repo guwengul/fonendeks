@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/tefas-daily",
+      "schedule": "0 5 * * *"
+    }
+  ]
+}
