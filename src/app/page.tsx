@@ -33,26 +33,20 @@ export default async function Home() {
   const sonTarih = sonTarihRow?.tarih
   if (!sonTarih) return null
 
-  // Tüm mevcut tarihleri al (dönem tarihlerini bulmak için)
-  const { data: tarihler } = await supabase
-    .from('tefas_fon_verileri')
-    .select('tarih')
-    .order('tarih', { ascending: false })
-    .limit(2000)
-
-  const mevcutTarihler = [...new Set((tarihler ?? []).map(t => t.tarih))].sort()
-
-  // Her dönem için en yakın mevcut tarihi bul
-  function enYakinTarih(hedef: string): string | null {
-    // hedef tarihten önceki en yakın mevcut tarihi döndür
-    const oncekiler = mevcutTarihler.filter(t => t <= hedef)
-    return oncekiler.length > 0 ? oncekiler[oncekiler.length - 1] : null
-  }
-
-  const donemTarihler = DONEMLER.map(d => ({
-    ...d,
-    tarih: enYakinTarih(hedefTarih(sonTarih, d.gun)),
-  }))
+  // Her dönem için en yakın mevcut tarihi ayrı sorguyla bul
+  const donemTarihler = await Promise.all(
+    DONEMLER.map(async d => {
+      const hedef = hedefTarih(sonTarih, d.gun)
+      const { data } = await supabase
+        .from('tefas_fon_verileri')
+        .select('tarih')
+        .lte('tarih', hedef)
+        .order('tarih', { ascending: false })
+        .limit(1)
+        .single()
+      return { ...d, tarih: data?.tarih ?? null }
+    })
+  )
 
   // Son tarih + tüm dönem tarihleri için paralel sorgu
   const [sonVeriler, ...donemVerileri] = await Promise.all([
