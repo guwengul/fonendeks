@@ -74,6 +74,17 @@ export default async function FonDetay({
     .eq('fonKodu', fonKodu)
     .maybeSingle()
 
+  // Varlık dağılımı kendi DB tablomuzdan
+  const { data: dagilimRow } = await supabase
+    .from('tefas_fon_dagilim')
+    .select('dagilim, tarih')
+    .eq('fonKodu', fonKodu)
+    .maybeSingle()
+
+  const dagilim: [string, number][] = dagilimRow?.dagilim
+    ? Object.entries(dagilimRow.dagilim as Record<string, number>).sort((a, b) => b[1] - a[1])
+    : []
+
   const sonFiyat = son.fiyat ?? null
 
   const toplamGetiri = son.fiyat && ilk.fiyat
@@ -221,6 +232,29 @@ export default async function FonDetay({
                 <p className={`font-mono font-semibold text-sm ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                   {val != null ? `%${val.toFixed(2)}` : '-'}
                 </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Varlık dağılımı - kendi DB tablomuzdan */}
+      {dagilim.length > 0 && (
+        <div className="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-baseline justify-between">
+            <h2 className="font-semibold text-slate-800">Varlık Dağılımı</h2>
+            {dagilimRow?.tarih && <span className="text-xs text-slate-400">{dagilimRow.tarih}</span>}
+          </div>
+          <div className="p-5 space-y-2.5">
+            {dagilim.map(([isim, oran]) => (
+              <div key={isim}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-slate-600">{isim}</span>
+                  <span className="font-mono font-medium text-slate-900">%{oran.toFixed(2)}</span>
+                </div>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(oran, 100)}%` }} />
+                </div>
               </div>
             ))}
           </div>
