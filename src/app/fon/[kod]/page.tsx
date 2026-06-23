@@ -5,6 +5,30 @@ import FonGrafik from '@/components/FonGrafik'
 
 export const revalidate = 3600
 
+const TEFAS_TOKEN = 'ST-tefaswebwse3irfmSBj4iRAzGPbAlS94Se'
+
+async function fetchTefasInfo(fonKodu: string) {
+  try {
+    const [bilgi, profil] = await Promise.all([
+      fetch('https://www.tefas.gov.tr/api/funds/fonBilgiGetir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TEFAS_TOKEN}` },
+        body: JSON.stringify({ dil: 'TR', fonKodu }),
+        cache: 'no-store',
+      }).then(r => r.json()).catch(() => null),
+      fetch('https://www.tefas.gov.tr/api/funds/fonProfilDtyGetir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TEFAS_TOKEN}` },
+        body: JSON.stringify({ dil: 'TR', fonKodu, periyod: '12' }),
+        cache: 'no-store',
+      }).then(r => r.json()).catch(() => null),
+    ])
+    return { bilgi, profil }
+  } catch {
+    return { bilgi: null, profil: null }
+  }
+}
+
 export default async function FonDetay({
   params,
   searchParams,
@@ -38,6 +62,8 @@ export default async function FonDetay({
     .limit(1)
     .single()
 
+  const { bilgi, profil } = await fetchTefasInfo(fonKodu)
+
   const toplamGetiri = son.fiyat && ilk.fiyat
     ? (((son.fiyat - ilk.fiyat) / ilk.fiyat) * 100).toFixed(2)
     : null
@@ -47,6 +73,11 @@ export default async function FonDetay({
     EMK: 'bg-emerald-50 text-emerald-600',
     BYF: 'bg-purple-50 text-purple-600',
   }
+
+  const profilList: { ad: string; fonGetiri: number; kiyasGetiri: number }[] =
+    Array.isArray(profil) ? profil :
+    Array.isArray(profil?.resultList) ? profil.resultList :
+    []
 
   return (
     <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
@@ -60,11 +91,17 @@ export default async function FonDetay({
           <span className={`px-2 py-0.5 rounded text-xs font-medium ${TIP_RENK[info?.fonTipi ?? ''] ?? ''}`}>
             {info?.fonTipi}
           </span>
+          {bilgi?.fonKategori && (
+            <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+              {bilgi.fonKategori}
+            </span>
+          )}
         </div>
         <p className="text-slate-500 mt-1">{info?.fonUnvan}</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      {/* Metrik kartlar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
           <p className="text-slate-400 text-xs mb-1">Son Fiyat</p>
           <p className="text-slate-900 font-mono font-semibold">{son.fiyat?.toFixed(6) ?? '-'}</p>
@@ -93,7 +130,80 @@ export default async function FonDetay({
         </div>
       </div>
 
+      {/* TEFAS ek bilgiler */}
+      {bilgi && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+            <p className="text-slate-400 text-xs mb-1">Günlük Getiri</p>
+            <p className={`font-semibold ${(bilgi.gunlukGetiri ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              {bilgi.gunlukGetiri != null ? `%${bilgi.gunlukGetiri.toFixed(4)}` : '-'}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+            <p className="text-slate-400 text-xs mb-1">Kategori Sırası</p>
+            <p className="text-slate-900 font-semibold">
+              {bilgi.kategoriDerece != null && bilgi.kategoriFonSay != null
+                ? `${bilgi.kategoriDerece} / ${bilgi.kategoriFonSay}`
+                : '-'}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+            <p className="text-slate-400 text-xs mb-1">Pazar Payı</p>
+            <p className="text-slate-900 font-semibold">
+              {bilgi.pazarPayi != null ? `%${bilgi.pazarPayi.toFixed(2)}` : '-'}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+            <p className="text-slate-400 text-xs mb-1">Pay Adedi</p>
+            <p className="text-slate-900 font-semibold text-sm">
+              {bilgi.payAdet != null ? bilgi.payAdet.toLocaleString('tr-TR') : '-'}
+            </p>
+          </div>
+        </div>
+      )}
+
       <FonGrafik data={gecmis} />
+
+      {/* Benchmark karşılaştırma */}
+      {profilList.length > 0 && (
+        <div className="mt-8 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h2 className="font-semibold text-slate-800">Kıyaslama (1 Yıllık)</h2>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50 text-slate-500 text-xs">
+                <th className="px-5 py-2 text-left font-medium">Kıyas</th>
+                <th className="px-5 py-2 text-right font-medium">{fonKodu}</th>
+                <th className="px-5 py-2 text-right font-medium">Kıyas Getirisi</th>
+                <th className="px-5 py-2 text-right font-medium">Fark</th>
+              </tr>
+            </thead>
+            <tbody>
+              {profilList.map((row: any, i: number) => {
+                const ad = row.kiyasAdi ?? row.ad ?? row.benchmark ?? Object.values(row)[0]
+                const fonG = row.fonGetiri ?? row.fonGetirisi ?? null
+                const kiyasG = row.kiyasGetiri ?? row.kiyasGetirisi ?? null
+                const fark = fonG != null && kiyasG != null ? fonG - kiyasG : null
+                return (
+                  <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
+                    <td className="px-5 py-3 text-slate-700 font-medium">{String(ad)}</td>
+                    <td className={`px-5 py-3 text-right font-mono ${fonG != null && fonG >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {fonG != null ? `%${Number(fonG).toFixed(2)}` : '-'}
+                    </td>
+                    <td className={`px-5 py-3 text-right font-mono ${kiyasG != null && kiyasG >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {kiyasG != null ? `%${Number(kiyasG).toFixed(2)}` : '-'}
+                    </td>
+                    <td className={`px-5 py-3 text-right font-mono font-semibold ${fark != null && fark >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {fark != null ? `${fark >= 0 ? '+' : ''}%${fark.toFixed(2)}` : '-'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
