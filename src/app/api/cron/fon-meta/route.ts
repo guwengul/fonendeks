@@ -15,6 +15,16 @@ function post(endpoint: string, body: object) {
   }).then(r => r.json()).catch(() => null)
 }
 
+// resultList dolu gelene kadar yeniden dene (rate-limit düşüşlerine karşı)
+async function postRetry(endpoint: string, body: object, tries = 3) {
+  for (let i = 0; i < tries; i++) {
+    const d = await post(endpoint, body)
+    if (d?.resultList?.length) return d
+    if (i < tries - 1) await new Promise(r => setTimeout(r, 700 * (i + 1)))
+  }
+  return null
+}
+
 function hesaplaStopaj(faizIcerigi: string | null, fonUnvan: string): number {
   if (faizIcerigi === 'Faiz içerir') return 10
   const unvan = (fonUnvan ?? '').toUpperCase()
@@ -28,16 +38,34 @@ function hesaplaDovizli(fonUnvan: string): boolean {
     unvan.includes('USD') || unvan.includes('EUR') || unvan.includes('ALTIN') || unvan.includes('DOLAR')
 }
 
-async function fetchFonMeta(fonKodu: string, fonTipi: string, fonUnvan: string) {
-  const [profilBilgi, bilgi, yonetim] = await Promise.all([
-    post('fonProfilBilgiGetir', { dil: 'TR', fonKodu }),
-    post('fonBilgiGetir', { dil: 'TR', fonKodu }),
-    post('fonYonetimBazliBilgiGetir', { fonTipi, dil: 'TR' }),
+// Yönetim listelerini (YAT/EMK/BYF) bir kez topluca çek → fonKodu bazlı map
+async function fetchYonetimMap() {
+  const map = new Map<string, any>()
+  for (const tip of FON_TIPLERI) {
+    const d = await postRetry('fonYonetimBazliBilgiGetir', { fonTipi: tip, dil: 'TR' })
+    for (const x of (d?.resultList as any[] ?? [])) {
+      if (!map.has(x.fonKodu)) map.set(x.fonKodu, x)
+    }
+  }
+  return map
+}
+
+async function fetchFonMeta(fonKodu: string, fonTipi: string, fonUnvan: string, yonetimMap: Map<string, any>) {
+  const [profilBilgi, bilgi] = await Promise.all([
+    postRetry('fonProfilBilgiGetir', { dil: 'TR', fonKodu }),
+    postRetry('fonBilgiGetir', { dil: 'TR', fonKodu }),
   ])
 
   const p = profilBilgi?.resultList?.[0] ?? null
   const b = bilgi?.resultList?.[0] ?? null
-  const y = (yonetim?.resultList as any[] ?? []).find((r: any) => r.fonKodu === fonKodu) ?? null
+  const y = yonetimMap.get(fonKodu) ?? null
+
+  // fonTurAciklama: önce yönetim listesi, yoksa fonProfilDtyGetir.fonTuru fallback (kalkmış fonlar için)
+  let fonTurAciklama = y?.fonTurAciklama ?? null
+  if (!fonTurAciklama) {
+    const dty = await postRetry('fonProfilDtyGetir', { dil: 'TR', fonKodu, periyod: '1' })
+    fonTurAciklama = dty?.resultList?.[0]?.fonTuru ?? null
+  }
 
   const unvan = p?.fonUnvan ?? b?.fonUnvan ?? fonUnvan
 
@@ -45,7 +73,7 @@ async function fetchFonMeta(fonKodu: string, fonTipi: string, fonUnvan: string) 
     fonKodu,
     fonUnvan: unvan,
     fonTipi,
-    fonTurAciklama: y?.fonTurAciklama ?? null,
+    fonTurAciklama,
     fonTurKod: y?.fonTurKod ?? null,
     isinKodu: p?.isinKodu ?? null,
     riskDegeri: p?.riskDegeri ?? null,
@@ -125,6 +153,9 @@ export async function GET(req: Request) {
   const limit = limitParam ? parseInt(limitParam) : 50
   liste = liste.slice(offset, offset + limit)
 
+  // Yönetim verisini topluca al (per-fon çağrı yok → rate-limit'e takılmaz)
+  const yonetimMap = await fetchYonetimMap()
+
   const log: string[] = []
   let basarili = 0
   let hatali = 0
@@ -133,7 +164,7 @@ export async function GET(req: Request) {
   for (let i = 0; i < liste.length; i += 5) {
     const batch = liste.slice(i, i + 5)
     const results = await Promise.allSettled(
-      batch.map(f => fetchFonMeta(f.fonKodu, f.fonTipi, f.fonUnvan))
+      batch.map(f => fetchFonMeta(f.fonKodu, f.fonTipi, f.fonUnvan, yonetimMap))
     )
 
     const rows: any[] = []
