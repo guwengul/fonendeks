@@ -4,10 +4,13 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
+  Legend,
   BarChart,
   Bar,
 } from 'recharts'
@@ -19,6 +22,17 @@ type Veri = {
   portfoyBuyukluk: number | null
   kisiSayisi: number | null
 }
+
+type BenchNokta = { tarih: string; fiyat: number | null } & Record<string, number | null>
+
+const BENCHMARKLAR = [
+  { key: 'fiyat', label: 'Fon', renk: '#4f46e5' },
+  { key: 'USD', label: 'USD', renk: '#059669' },
+  { key: 'EUR', label: 'EUR', renk: '#0891b2' },
+  { key: 'BIST100', label: 'BIST 100', renk: '#dc2626' },
+  { key: 'BIST30', label: 'BIST 30', renk: '#ea580c' },
+  { key: 'GRAM_ALTIN', label: 'Gram Altın', renk: '#ca8a04' },
+] as const
 
 const ARALIKLAR = [
   { label: '1A', ay: 1 },
@@ -43,15 +57,35 @@ const TOOLTIP_STYLE = {
   labelStyle: { color: '#64748b', fontSize: 12 },
 }
 
-export default function FonGrafik({ data }: { data: Veri[] }) {
+export default function FonGrafik({ data, benchmark = [] }: { data: Veri[]; benchmark?: BenchNokta[] }) {
   const [aralik, setAralik] = useState(12)
+  // Varsayılan açık karşılaştırmalar
+  const [secili, setSecili] = useState<Record<string, boolean>>({
+    fiyat: true, USD: true, BIST100: true, GRAM_ALTIN: true, EUR: false, BIST30: false,
+  })
 
-  const filtrelenmis = (() => {
-    if (aralik === 0 || data.length === 0) return data
-    const sonTarih = data[data.length - 1].tarih
-    const baslangic = hedefTarihHesapla(sonTarih, aralik)
-    return data.filter(d => d.tarih >= baslangic)
+  const baslangicTarih = (() => {
+    if (aralik === 0 || data.length === 0) return ''
+    return hedefTarihHesapla(data[data.length - 1].tarih, aralik)
   })()
+
+  const filtrelenmis = aralik === 0 ? data : data.filter(d => d.tarih >= baslangicTarih)
+
+  // Karşılaştırma: seçili aralıkta her seriyi başlangıçta 100'e endeksle (% getiri)
+  const benchFiltreli = aralik === 0 ? benchmark : benchmark.filter(d => d.tarih >= baslangicTarih)
+  const baz: Record<string, number> = {}
+  for (const { key } of BENCHMARKLAR) {
+    const ilkGecerli = benchFiltreli.find(d => d[key] != null)?.[key]
+    if (ilkGecerli) baz[key] = ilkGecerli
+  }
+  const karsilastirma = benchFiltreli.map(d => {
+    const nokta: Record<string, any> = { tarih: d.tarih }
+    for (const { key } of BENCHMARKLAR) {
+      const v = d[key]
+      nokta[key] = v != null && baz[key] ? ((v / baz[key]) - 1) * 100 : null
+    }
+    return nokta
+  })
 
   return (
     <div className="space-y-6">
@@ -89,6 +123,41 @@ export default function FonGrafik({ data }: { data: Veri[] }) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Karşılaştırmalı getiri */}
+      {benchmark.length > 0 && (
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <p className="text-slate-500 text-sm font-medium">Karşılaştırmalı Getiri (%)</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {BENCHMARKLAR.map(b => (
+                <button
+                  key={b.key}
+                  onClick={() => setSecili(s => ({ ...s, [b.key]: !s[b.key] }))}
+                  className={`px-2 py-1 rounded-md text-xs font-medium border transition-colors ${
+                    secili[b.key] ? 'text-white border-transparent' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                  }`}
+                  style={secili[b.key] ? { backgroundColor: b.renk } : undefined}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={karsilastirma}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="tarih" tickFormatter={formatTarih} tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} axisLine={false} width={50} tickFormatter={v => `%${v.toFixed(0)}`} />
+              <Tooltip {...TOOLTIP_STYLE} formatter={(v: any, name: any) => [v == null ? '-' : `%${Number(v).toFixed(2)}`, name]} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              {BENCHMARKLAR.filter(b => secili[b.key]).map(b => (
+                <Line key={b.key} type="monotone" dataKey={b.key} name={b.label} stroke={b.renk} strokeWidth={2} dot={false} connectNulls />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
         <p className="text-slate-500 text-sm font-medium mb-4">Portföy Büyüklüğü (₺)</p>

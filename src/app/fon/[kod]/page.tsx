@@ -85,6 +85,34 @@ export default async function FonDetay({
     ? Object.entries(dagilimRow.dagilim as Record<string, number>).sort((a, b) => b[1] - a[1])
     : []
 
+  // Benchmark serileri (fon başlangıcından itibaren) — grafikte karşılaştırma için
+  const GOSTERGELER = ['USD', 'EUR', 'BIST100', 'BIST30', 'GRAM_ALTIN'] as const
+  const { data: benchRows } = await supabase
+    .from('tefas_benchmark_fiyatlari')
+    .select('tarih, gosterge, deger')
+    .gte('tarih', ilk.tarih)
+    .order('tarih', { ascending: true })
+
+  // gosterge → sıralı [tarih, deger] dizisi
+  const benchSerileri = new Map<string, { tarih: string; deger: number }[]>()
+  for (const g of GOSTERGELER) benchSerileri.set(g, [])
+  for (const r of benchRows ?? []) {
+    benchSerileri.get(r.gosterge)?.push({ tarih: r.tarih, deger: r.deger })
+  }
+
+  // Fon tarihlerine forward-fill ile hizala
+  const benchPtr: Record<string, number> = {}
+  for (const g of GOSTERGELER) benchPtr[g] = 0
+  const benchmarkData = gecmis.map(row => {
+    const nokta: Record<string, number | null> = { }
+    for (const g of GOSTERGELER) {
+      const seri = benchSerileri.get(g)!
+      while (benchPtr[g] < seri.length && seri[benchPtr[g]].tarih <= row.tarih) benchPtr[g]++
+      nokta[g] = benchPtr[g] > 0 ? seri[benchPtr[g] - 1].deger : null
+    }
+    return { tarih: row.tarih, fiyat: row.fiyat, ...nokta }
+  })
+
   const sonFiyat = son.fiyat ?? null
 
   const toplamGetiri = son.fiyat && ilk.fiyat
@@ -217,7 +245,7 @@ export default async function FonDetay({
         </div>
       </div>
 
-      <FonGrafik data={gecmis} />
+      <FonGrafik data={gecmis} benchmark={benchmarkData} />
 
       {/* Dönemsel getiriler - ham fiyat verisinden hesaplanır */}
       {donemler.length > 0 && (
