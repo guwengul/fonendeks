@@ -158,7 +158,6 @@ export default function AnalizListesi({
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-left">
               <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-semibold text-slate-600 w-24">Kod</th>
-              <th className="px-4 py-3 font-semibold text-slate-600 min-w-48">Fon Adı</th>
               <th className="px-3 py-3 font-semibold text-slate-600 text-center">Tip</th>
               {etiketler.map((e, i) => (
                 <ThSort
@@ -195,11 +194,11 @@ export default function AnalizListesi({
                     <Link
                       href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
                       className="font-mono font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                      title={f.fonUnvan}
                     >
                       {f.fonKodu}
                     </Link>
                   </td>
-                  <td className="px-4 py-2.5 text-slate-700 text-xs max-w-xs truncate">{f.fonUnvan}</td>
                   <td className="px-3 py-2.5 text-center">
                     <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${TIP_RENK[f.fonTipi] ?? ''}`}>
                       {f.fonTipi}
