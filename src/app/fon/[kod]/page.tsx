@@ -7,34 +7,33 @@ export const revalidate = 3600
 
 const TEFAS_TOKEN = 'ST-tefaswebwse3irfmSBj4iRAzGPbAlS94Se'
 
-async function fetchTefasInfo(fonKodu: string) {
+async function fetchTefasInfo(fonKodu: string, fonTipi: string) {
+  const post = (endpoint: string, body: object) =>
+    fetch(`https://www.tefas.gov.tr/api/funds/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TEFAS_TOKEN}` },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    }).then(r => r.json()).catch(() => null)
+
   try {
-    const [bilgiRes, profilRes, profilBilgiRes] = await Promise.all([
-      fetch('https://www.tefas.gov.tr/api/funds/fonBilgiGetir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TEFAS_TOKEN}` },
-        body: JSON.stringify({ dil: 'TR', fonKodu }),
-        cache: 'no-store',
-      }).then(r => r.json()).catch(() => null),
-      fetch('https://www.tefas.gov.tr/api/funds/fonProfilDtyGetir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TEFAS_TOKEN}` },
-        body: JSON.stringify({ dil: 'TR', fonKodu, periyod: '12' }),
-        cache: 'no-store',
-      }).then(r => r.json()).catch(() => null),
-      fetch('https://www.tefas.gov.tr/api/funds/fonProfilBilgiGetir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TEFAS_TOKEN}` },
-        body: JSON.stringify({ dil: 'TR', fonKodu }),
-        cache: 'no-store',
-      }).then(r => r.json()).catch(() => null),
+    const [bilgiRes, profilRes, profilBilgiRes, getiriRes] = await Promise.all([
+      post('fonBilgiGetir', { dil: 'TR', fonKodu }),
+      post('fonProfilDtyGetir', { dil: 'TR', fonKodu, periyod: '12' }),
+      post('fonProfilBilgiGetir', { dil: 'TR', fonKodu }),
+      post('fonGetiriBazliBilgiGetir', {
+        fonTipi, dil: 'TR', calismaTipi: 2,
+        donemGetiri1a: '1', donemGetiri3a: '1', donemGetiri6a: '1',
+        donemGetiriyb: '1', donemGetiri1y: '1', donemGetiri3y: '1', donemGetiri5y: '1',
+      }),
     ])
     const bilgi = bilgiRes?.resultList?.[0] ?? null
     const profilList: any[] = profilRes?.resultList ?? []
     const profilBilgi = profilBilgiRes?.resultList?.[0] ?? null
-    return { bilgi, profilList, profilBilgi }
+    const getiriBilgi = (getiriRes?.resultList as any[] ?? []).find((r: any) => r.fonKodu === fonKodu) ?? null
+    return { bilgi, profilList, profilBilgi, getiriBilgi }
   } catch {
-    return { bilgi: null, profilList: [], profilBilgi: null }
+    return { bilgi: null, profilList: [], profilBilgi: null, getiriBilgi: null }
   }
 }
 
@@ -71,7 +70,7 @@ export default async function FonDetay({
     .limit(1)
     .single()
 
-  const { bilgi, profilList, profilBilgi } = await fetchTefasInfo(fonKodu)
+  const { bilgi, profilList, profilBilgi, getiriBilgi } = await fetchTefasInfo(fonKodu, info?.fonTipi ?? tip)
 
   const toplamGetiri = son.fiyat && ilk.fiyat
     ? (((son.fiyat - ilk.fiyat) / ilk.fiyat) * 100).toFixed(2)
@@ -100,9 +99,9 @@ export default async function FonDetay({
           <span className={`px-2 py-0.5 rounded text-xs font-medium ${TIP_RENK[info?.fonTipi ?? ''] ?? ''}`}>
             {info?.fonTipi}
           </span>
-          {bilgi?.fonKategori && (
+          {(getiriBilgi?.fonTurAciklama ?? bilgi?.fonKategori) && (
             <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
-              {bilgi.fonKategori}
+              {getiriBilgi?.fonTurAciklama ?? bilgi?.fonKategori}
             </span>
           )}
           {profilBilgi?.riskDegeri && (
@@ -188,6 +187,33 @@ export default async function FonDetay({
       </div>
 
       <FonGrafik data={gecmis} />
+
+      {/* Dönemsel getiriler */}
+      {getiriBilgi && (
+        <div className="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h2 className="font-semibold text-slate-800">Dönemsel Getiriler</h2>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-7 divide-x divide-slate-100">
+            {[
+              { label: '1 Ay', val: getiriBilgi.getiri1a },
+              { label: '3 Ay', val: getiriBilgi.getiri3a },
+              { label: '6 Ay', val: getiriBilgi.getiri6a },
+              { label: 'YBB', val: getiriBilgi.getiriyb },
+              { label: '1 Yıl', val: getiriBilgi.getiri1y },
+              { label: '3 Yıl', val: getiriBilgi.getiri3y },
+              { label: '5 Yıl', val: getiriBilgi.getiri5y },
+            ].map(({ label, val }) => (
+              <div key={label} className="px-4 py-4 text-center">
+                <p className="text-slate-400 text-xs mb-1">{label}</p>
+                <p className={`font-mono font-semibold text-sm ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {val != null ? `%${val.toFixed(2)}` : '-'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Benchmark karşılaştırma */}
       {kiyaslar.length > 0 && (
