@@ -94,17 +94,19 @@ export async function GET(req: Request) {
         continue
       }
 
-      const rows = kayitlar.map((r: any) => ({
-        tarih: r.tarih,
-        fonTipi,
-        fonKodu: r.fonKodu,
-        fonUnvan: r.fonUnvan ?? null,
-        fiyat: r.fiyat ?? null,
-        tedPaySayisi: r.tedPaySayisi ?? null,
-        kisiSayisi: r.kisiSayisi ?? null,
-        portfoyBuyukluk: r.portfoyBuyukluk ?? null,
-        borsaBultenFiyat: r.borsaBultenFiyat ?? null,
-      }))
+      const rows = kayitlar
+        .filter((r: any) => r.fiyat > 0)
+        .map((r: any) => ({
+          tarih: r.tarih,
+          fonTipi,
+          fonKodu: r.fonKodu,
+          fonUnvan: r.fonUnvan ?? null,
+          fiyat: r.fiyat ?? null,
+          tedPaySayisi: r.tedPaySayisi ?? null,
+          kisiSayisi: r.kisiSayisi ?? null,
+          portfoyBuyukluk: r.portfoyBuyukluk ?? null,
+          borsaBultenFiyat: r.borsaBultenFiyat ?? null,
+        }))
 
       const { error: insertError } = await supabase
         .from('tefas_fon_verileri')
