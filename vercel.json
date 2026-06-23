@@ -6,6 +6,15 @@
     { "path": "/api/cron/tefas-daily", "schedule": "30 6 * * *" },
     { "path": "/api/cron/tefas-daily", "schedule": "0 7 * * *" },
     { "path": "/api/cron/tefas-daily", "schedule": "30 7 * * *" },
-    { "path": "/api/cron/tefas-daily", "schedule": "0 8 * * *" }
+    { "path": "/api/cron/tefas-daily", "schedule": "0 8 * * *" },
+
+    { "path": "/api/cron/fon-dagilim", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/fon-dagilim", "schedule": "0 13 * * *" },
+
+    { "path": "/api/cron/fon-meta?offset=0&limit=600", "schedule": "15 9 * * *" },
+    { "path": "/api/cron/fon-meta?offset=600&limit=600", "schedule": "30 9 * * *" },
+    { "path": "/api/cron/fon-meta?offset=1200&limit=600", "schedule": "45 9 * * *" },
+    { "path": "/api/cron/fon-meta?offset=1800&limit=600", "schedule": "0 10 * * *" },
+    { "path": "/api/cron/fon-meta?offset=2400&limit=600", "schedule": "15 10 * * *" }
   ]
 }
