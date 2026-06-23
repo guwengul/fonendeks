@@ -170,18 +170,6 @@ export default async function FonDetay({
 
       <FonGrafik data={gecmis} />
 
-      {/* Fon detay bilgileri */}
-      {fiyatBilgi && (
-        <div className="mt-8 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100">
-            <h2 className="font-semibold text-slate-800">Fon Bilgileri</h2>
-          </div>
-          <div className="p-5">
-            <pre className="text-xs text-slate-600 overflow-auto">{JSON.stringify(fiyatBilgi, null, 2)}</pre>
-          </div>
-        </div>
-      )}
-
       {/* Benchmark karşılaştırma */}
       {profilList.length > 0 && (
         <div className="mt-8 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
