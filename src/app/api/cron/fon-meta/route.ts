@@ -30,11 +30,15 @@ async function postRetry(endpoint: string, body: object, tries = 3) {
   return null
 }
 
-function hesaplaStopaj(faizIcerigi: string | null, fonUnvan: string): number {
-  if (faizIcerigi === 'Faiz içerir') return 10
+// GVK Geçici 67 / 27.03.2026 tarihli 11107 sayılı Cumhurbaşkanı Kararı
+// Hisse senedi yoğun fon (>1 yıl) ve >2 yıl tutulan GSYF/GYF → %0; diğer tüm fonlar → %17.5
+function hesaplaStopaj(fonTurAciklama: string | null, fonUnvan: string): number {
   const unvan = (fonUnvan ?? '').toUpperCase()
+  const tur = (fonTurAciklama ?? '').toUpperCase()
   if (unvan.includes('HİSSE SENEDİ YOĞUN') || unvan.includes('HISSE SENEDI YOGUN')) return 0
-  return 10
+  if (tur.includes('GİRİŞİM SERMAYES') || tur.includes('GIRISIM SERMAYES') ||
+      tur.includes('GAYRİMENKUL') || tur.includes('GAYRIMENKUL')) return 0
+  return 17.5
 }
 
 function hesaplaDovizli(fonUnvan: string): boolean {
@@ -100,7 +104,7 @@ async function fetchFonMeta(fonKodu: string, fonTipi: string, fonUnvan: string, 
     kategoriDerece: b?.kategoriDerece ?? null,
     kategoriFonSay: b?.kategoriFonSay ?? null,
     pazarPayi: b?.pazarPayi ?? null,
-    stopaj: hesaplaStopaj(p?.faizIcerigi ?? null, unvan),
+    stopaj: hesaplaStopaj(fonTurAciklama, unvan),
     dovizli: hesaplaDovizli(unvan),
     guncellenmeTarihi: new Date().toISOString(),
   }
