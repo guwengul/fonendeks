@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 
 const TOKEN = 'ST-tefaswebwse3irfmSBj4iRAzGPbAlS94Se'
+const BASE = 'https://www.tefas.gov.tr/api/funds'
+const BASE_STATS = 'https://www.tefas.gov.tr/api/statistics/tefas'
 
-async function post(url: string, body: object) {
+async function tryPost(name: string, url: string, body: object) {
   try {
     const r = await fetch(url, {
       method: 'POST',
@@ -10,85 +12,62 @@ async function post(url: string, body: object) {
       body: JSON.stringify(body),
       cache: 'no-store',
     })
-    const status = r.status
     const text = await r.text()
-    if (!r.ok) return { _status: status, _skip: true }
+    if (!r.ok) return { _skip: true, _status: r.status }
     try {
       const data = JSON.parse(text)
-      const list = data?.resultList ?? data
-      const hasData = Array.isArray(list) ? list.length > 0 : (data && Object.keys(data).length > 0 && !data.errorCode)
-      return { _status: status, _hasData: hasData, data }
+      const list = data?.resultList
+      if (Array.isArray(list) && list.length > 0) return { _hit: true, data }
+      if (!Array.isArray(list) && data && !data.errorCode && Object.keys(data).some(k => !k.startsWith('error'))) return { _hit: true, data }
+      return { _skip: true, _empty: true }
     } catch {
-      return { _status: status, _skip: true, _parseError: true }
+      return { _skip: true, _parseError: true }
     }
   } catch (e: any) {
     return { _skip: true, _error: e.message }
   }
 }
 
-async function scrapeEndpoints() {
-  // TEFAS ana sayfasından JS bundle URL'lerini çek
-  const pageRes = await fetch('https://www.tefas.gov.tr/tr/fon-detayli-analiz/ABG', {
-    headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' },
-    cache: 'no-store',
-  })
-  const html = await pageRes.text()
-
-  // JS bundle'larındaki endpoint isimlerini ara
-  const scriptUrls = [...html.matchAll(/src="([^"]*\/_next\/static[^"]*\.js)"/g)].map(m => m[1])
-
-  const endpoints: string[] = []
-  for (const src of scriptUrls.slice(0, 5)) {
-    try {
-      const url = src.startsWith('http') ? src : `https://www.tefas.gov.tr${src}`
-      const jsRes = await fetch(url, { cache: 'no-store' })
-      const js = await jsRes.text()
-      // api/funds/ veya api/statistics/ geçen yerleri bul
-      const found = [...js.matchAll(/api\/funds\/(\w+)/g)].map(m => m[1])
-      const found2 = [...js.matchAll(/api\/statistics\/tefas\/(\w+)/g)].map(m => m[1])
-      endpoints.push(...found, ...found2)
-    } catch {}
-  }
-
-  return [...new Set(endpoints)]
-}
-
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const kod = searchParams.get('kod') ?? 'ABG'
 
-  const [discovered, htmlLen] = await Promise.all([
-    scrapeEndpoints(),
-    fetch('https://www.tefas.gov.tr/tr/fon-detayli-analiz/ABG', {
-      headers: { 'User-Agent': 'Mozilla/5.0' }, cache: 'no-store'
-    }).then(r => r.text()).then(t => t.length),
-  ])
+  const tests: { name: string; url: string; body: object }[] = [
+    // Farklı parametre kombinasyonları - varlık dağılımı
+    { name: 'fonVarlikDagilimGetir_v1', url: `${BASE}/fonVarlikDagilimGetir`, body: { fonKodu: kod } },
+    { name: 'fonVarlikDagilimGetir_v2', url: `${BASE}/fonVarlikDagilimGetir`, body: { dil: 'TR', fonKodu: kod, tarih: '' } },
+    { name: 'fonVarlikDagilimi_v1',     url: `${BASE}/fonVarlikDagilimi`,     body: { fonKodu: kod } },
+    { name: 'fonPortfoyDagilimi',        url: `${BASE}/fonPortfoyDagilimi`,    body: { dil: 'TR', fonKodu: kod } },
+    { name: 'fonPortfoyGetir_v1',        url: `${BASE}/fonPortfoyGetir`,       body: { fonKodu: kod } },
+    { name: 'fonPortfoyGetir_v2',        url: `${BASE}/fonPortfoyGetir`,       body: { dil: 'TR', fonKodu: kod, tarih: '' } },
+    { name: 'fonYatirimAraci',           url: `${BASE}/fonYatirimAraci`,       body: { dil: 'TR', fonKodu: kod } },
+    { name: 'fonYatirimAraclari',        url: `${BASE}/fonYatirimAraclari`,    body: { dil: 'TR', fonKodu: kod } },
+    { name: 'fonHolding',                url: `${BASE}/fonHolding`,            body: { dil: 'TR', fonKodu: kod } },
+    // ISIN / detay
+    { name: 'fonKart',                   url: `${BASE}/fonKart`,               body: { dil: 'TR', fonKodu: kod } },
+    { name: 'fonDetay',                  url: `${BASE}/fonDetay`,              body: { dil: 'TR', fonKodu: kod } },
+    { name: 'fonBilgi',                  url: `${BASE}/fonBilgi`,              body: { dil: 'TR', fonKodu: kod } },
+    { name: 'fonIslemSaatleri',          url: `${BASE}/fonIslemSaatleri`,      body: { dil: 'TR', fonKodu: kod } },
+    { name: 'fonKomisyon',               url: `${BASE}/fonKomisyon`,           body: { dil: 'TR', fonKodu: kod } },
+    { name: 'fonRisk',                   url: `${BASE}/fonRisk`,               body: { dil: 'TR', fonKodu: kod } },
+    { name: 'fonIsin',                   url: `${BASE}/fonIsin`,               body: { dil: 'TR', fonKodu: kod } },
+    // statistics altı
+    { name: 'stats_varlik',              url: `${BASE_STATS}/fonVarlik`,       body: { fonKodu: kod } },
+    { name: 'stats_portfoy',             url: `${BASE_STATS}/fonPortfoy`,      body: { fonKodu: kod } },
+    { name: 'stats_getFonVarlik',        url: `${BASE_STATS}/getFonVarlik`,    body: { fonKodu: kod, dil: 'TR' } },
+    { name: 'stats_getFonDetay',         url: `${BASE_STATS}/getFonDetay`,     body: { fonKodu: kod, dil: 'TR' } },
+    { name: 'stats_getFonDagilim',       url: `${BASE_STATS}/getFonDagilim`,   body: { fonKodu: kod, dil: 'TR' } },
+    // fonGnlBlgSiraliGetirDosya - kron ile kullanilan, farklı param
+    { name: 'fonGnlBilgi',               url: `${BASE}/fonGnlBilgi`,           body: { dil: 'TR', fonKodu: kod } },
+    { name: 'fonGnlBlgGetir',            url: `${BASE}/fonGnlBlgGetir`,        body: { dil: 'TR', fonKodu: kod } },
+    // GET denemeleri
+    { name: 'GET_fonDetay',              url: `${BASE}/fonDetay?fonKodu=${kod}&dil=TR`, body: {} },
+  ]
 
-  // Bulunan endpoint'leri dene
-  const BASE = 'https://www.tefas.gov.tr/api/funds'
-  const toTest = [...new Set([
-    ...discovered,
-    'fonDetayGetir', 'fonDetayBilgiGetir', 'fonIslemBilgiGetir',
-    'fonRiskGetir', 'fonIsinGetir', 'fonVarlikDagilimi',
-    'fonVarlikDagilimGetir', 'fonPortfoyGetir', 'fonPortfoyBilgiGetir',
-    'fonDagilimGetir', 'fonKartGetir', 'fonKartBilgiGetir',
-    'fonGenel', 'fonGenelBilgi', 'fonOzetGetir',
-  ])]
+  const results = await Promise.all(tests.map(t => tryPost(t.name, t.url, t.body).then(r => ({ name: t.name, ...r }))))
 
-  const results = await Promise.all(
-    toTest.map(async name => ({
-      name,
-      result: await post(`${BASE}/${name}`, { dil: 'TR', fonKodu: kod })
-    }))
-  )
+  const hits = results.filter(r => r._hit)
+  const misses = results.filter(r => !r._hit).map(r => r.name)
 
-  const found = results.filter(r => !r.result._skip && r.result._hasData)
-  const notFound = results.filter(r => r.result._skip || !r.result._hasData).map(r => r.name)
-
-  return NextResponse.json({
-    htmlLength: htmlLen,
-    discoveredFromJs: discovered,
-    foundEndpoints: found.map(r => ({ name: r.name, data: r.result.data })),
-    notFound,
-  })
+  return NextResponse.json({ hits, misses })
 }
