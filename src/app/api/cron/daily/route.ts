@@ -21,6 +21,7 @@ export async function GET(req: Request) {
   // Fiyat önce (dağılım fiyata bağlı değil ama sıralı tutuyoruz)
   const fiyat = await cagir('/api/cron/tefas-daily')
   const dagilim = await cagir('/api/cron/fon-dagilim')
+  const benchmark = await cagir('/api/cron/benchmark')
 
-  return NextResponse.json({ ok: true, fiyat, dagilim })
+  return NextResponse.json({ ok: true, fiyat, dagilim, benchmark })
 }
