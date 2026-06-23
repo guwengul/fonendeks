@@ -189,7 +189,7 @@ export default async function AnalizPage() {
   })
 
   return (
-    <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
+    <div className="w-full px-4 sm:px-6 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Tutarlı Büyüme Analizi</h1>
         <p className="text-slate-400 text-sm mt-1">
