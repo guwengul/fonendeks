@@ -15,7 +15,7 @@ function isoDate(d: Date) {
 
 function getLast7Days(): Date[] {
   const days: Date[] = []
-  for (let i = 1; i <= 7; i++) {
+  for (let i = 0; i <= 7; i++) {
     const d = new Date()
     d.setUTCDate(d.getUTCDate() - i)
     days.push(d)
