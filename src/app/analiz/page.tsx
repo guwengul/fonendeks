@@ -40,15 +40,25 @@ export default async function AnalizPage() {
   const sonTarih = sonTarihRow?.tarih
   if (!sonTarih) return null
 
-  const { data: tarihRows } = await supabase
-    .from('tefas_fon_verileri')
-    .select('tarih')
-    .eq('fonKodu', 'AAL')
-    .eq('fonTipi', 'YAT')
-    .order('tarih', { ascending: false })
-    .limit(2000)
-
-  const tarihler = (tarihRows ?? []).map(r => r.tarih)
+  // AAL tarihleri paginated (1250+ kayıt, 1000 limit aşıyor)
+  const tarihlerRaw: string[] = []
+  {
+    let from = 0
+    while (true) {
+      const { data } = await supabase
+        .from('tefas_fon_verileri')
+        .select('tarih')
+        .eq('fonKodu', 'AAL')
+        .eq('fonTipi', 'YAT')
+        .order('tarih', { ascending: false })
+        .range(from, from + 999)
+      if (!data || data.length === 0) break
+      tarihlerRaw.push(...data.map(r => r.tarih))
+      if (data.length < 1000) break
+      from += 1000
+    }
+  }
+  const tarihler = tarihlerRaw
 
   // 6 aylık checkpoint'ler: 0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60
   const AYLAR = [0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60]

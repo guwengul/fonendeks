@@ -56,17 +56,24 @@ export default async function Home() {
   const sonTarih = sonTarihRow?.tarih
   if (!sonTarih) return null
 
-  // Tüm mevcut tarihleri tek bir YAT fonu üzerinden çek (AAL hep var)
-  const { data: tarihRows } = await supabase
-    .from('tefas_fon_verileri')
-    .select('tarih')
-    .eq('fonKodu', 'AAL')
-    .eq('fonTipi', 'YAT')
-    .order('tarih', { ascending: false })
-    .limit(2000)
-
-  // desc sıralı tarih listesi
-  const tarihler = (tarihRows ?? []).map(r => r.tarih)
+  // Tüm mevcut tarihleri paginated çek (1250+ kayıt, 1000 limit aşıyor)
+  const tarihler: string[] = []
+  {
+    let from = 0
+    while (true) {
+      const { data } = await supabase
+        .from('tefas_fon_verileri')
+        .select('tarih')
+        .eq('fonKodu', 'AAL')
+        .eq('fonTipi', 'YAT')
+        .order('tarih', { ascending: false })
+        .range(from, from + 999)
+      if (!data || data.length === 0) break
+      tarihler.push(...data.map(r => r.tarih))
+      if (data.length < 1000) break
+      from += 1000
+    }
+  }
 
   // Her dönem için hedef tarihi bul
   const donemTarihler = DONEMLER.map(d => ({
