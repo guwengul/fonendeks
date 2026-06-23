@@ -9,7 +9,7 @@ const TEFAS_TOKEN = 'ST-tefaswebwse3irfmSBj4iRAzGPbAlS94Se'
 
 async function fetchTefasInfo(fonKodu: string) {
   try {
-    const [bilgi, profil] = await Promise.all([
+    const [bilgi, profil, fiyatBilgi] = await Promise.all([
       fetch('https://www.tefas.gov.tr/api/funds/fonBilgiGetir', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TEFAS_TOKEN}` },
@@ -22,10 +22,16 @@ async function fetchTefasInfo(fonKodu: string) {
         body: JSON.stringify({ dil: 'TR', fonKodu, periyod: '12' }),
         cache: 'no-store',
       }).then(r => r.json()).catch(() => null),
+      fetch('https://www.tefas.gov.tr/api/funds/fonFiyatBilgiGetir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TEFAS_TOKEN}` },
+        body: JSON.stringify({ fonKodu, dil: 'TR', periyod: 12 }),
+        cache: 'no-store',
+      }).then(r => r.json()).catch(() => null),
     ])
-    return { bilgi, profil }
+    return { bilgi, profil, fiyatBilgi }
   } catch {
-    return { bilgi: null, profil: null }
+    return { bilgi: null, profil: null, fiyatBilgi: null }
   }
 }
 
@@ -62,7 +68,7 @@ export default async function FonDetay({
     .limit(1)
     .single()
 
-  const { bilgi, profil } = await fetchTefasInfo(fonKodu)
+  const { bilgi, profil, fiyatBilgi } = await fetchTefasInfo(fonKodu)
 
   const toplamGetiri = son.fiyat && ilk.fiyat
     ? (((son.fiyat - ilk.fiyat) / ilk.fiyat) * 100).toFixed(2)
@@ -163,6 +169,18 @@ export default async function FonDetay({
       )}
 
       <FonGrafik data={gecmis} />
+
+      {/* Fon detay bilgileri */}
+      {fiyatBilgi && (
+        <div className="mt-8 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h2 className="font-semibold text-slate-800">Fon Bilgileri</h2>
+          </div>
+          <div className="p-5">
+            <pre className="text-xs text-slate-600 overflow-auto">{JSON.stringify(fiyatBilgi, null, 2)}</pre>
+          </div>
+        </div>
+      )}
 
       {/* Benchmark karşılaştırma */}
       {profilList.length > 0 && (
