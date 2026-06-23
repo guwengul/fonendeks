@@ -95,17 +95,25 @@ export async function GET(req: Request) {
 
   if (tarihErr) return NextResponse.json({ error: tarihErr.message }, { status: 500 })
 
-  // O tarihteki tüm fonları çek — her fonKodu bir kez geliyor
-  const { data: fonlar, error } = await supabase
-    .from('tefas_fon_verileri')
-    .select('fonKodu, fonTipi, fonUnvan')
-    .eq('tarih', sonTarihRow.tarih)
-    .order('fonKodu')
+  // O tarihteki tüm fonları çek — Supabase 1000 satır limitini aşmak için sayfalı
+  const fonlar: { fonKodu: string; fonTipi: string; fonUnvan: string }[] = []
+  const PAGE = 1000
+  for (let sayfa = 0; ; sayfa++) {
+    const { data, error } = await supabase
+      .from('tefas_fon_verileri')
+      .select('fonKodu, fonTipi, fonUnvan')
+      .eq('tarih', sonTarihRow.tarih)
+      .order('fonKodu')
+      .range(sayfa * PAGE, sayfa * PAGE + PAGE - 1)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!data || data.length === 0) break
+    fonlar.push(...data)
+    if (data.length < PAGE) break
+  }
 
   const unique = new Map<string, { fonKodu: string; fonTipi: string; fonUnvan: string }>()
-  for (const f of fonlar ?? []) {
+  for (const f of fonlar) {
     if (!unique.has(f.fonKodu)) {
       unique.set(f.fonKodu, { fonKodu: f.fonKodu, fonTipi: f.fonTipi, fonUnvan: f.fonUnvan ?? '' })
     }
