@@ -85,15 +85,25 @@ export async function GET(req: Request) {
 
   const supabase = createAdminClient()
 
-  // Tüm unique fonKodu + fonTipi çek
+  // En son tarihi bul
+  const { data: sonTarihRow, error: tarihErr } = await supabase
+    .from('tefas_fon_verileri')
+    .select('tarih')
+    .order('tarih', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (tarihErr) return NextResponse.json({ error: tarihErr.message }, { status: 500 })
+
+  // O tarihteki tüm fonları çek — her fonKodu bir kez geliyor
   const { data: fonlar, error } = await supabase
     .from('tefas_fon_verileri')
     .select('fonKodu, fonTipi, fonUnvan')
+    .eq('tarih', sonTarihRow.tarih)
     .order('fonKodu')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Unique fonKodu (her fon bir kez)
   const unique = new Map<string, { fonKodu: string; fonTipi: string; fonUnvan: string }>()
   for (const f of fonlar ?? []) {
     if (!unique.has(f.fonKodu)) {
