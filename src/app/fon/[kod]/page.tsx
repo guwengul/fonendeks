@@ -9,7 +9,7 @@ const TEFAS_TOKEN = 'ST-tefaswebwse3irfmSBj4iRAzGPbAlS94Se'
 
 async function fetchTefasInfo(fonKodu: string) {
   try {
-    const [bilgiRes, profilRes] = await Promise.all([
+    const [bilgiRes, profilRes, profilBilgiRes] = await Promise.all([
       fetch('https://www.tefas.gov.tr/api/funds/fonBilgiGetir', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TEFAS_TOKEN}` },
@@ -22,12 +22,19 @@ async function fetchTefasInfo(fonKodu: string) {
         body: JSON.stringify({ dil: 'TR', fonKodu, periyod: '12' }),
         cache: 'no-store',
       }).then(r => r.json()).catch(() => null),
+      fetch('https://www.tefas.gov.tr/api/funds/fonProfilBilgiGetir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TEFAS_TOKEN}` },
+        body: JSON.stringify({ dil: 'TR', fonKodu }),
+        cache: 'no-store',
+      }).then(r => r.json()).catch(() => null),
     ])
     const bilgi = bilgiRes?.resultList?.[0] ?? null
     const profilList: any[] = profilRes?.resultList ?? []
-    return { bilgi, profilList }
+    const profilBilgi = profilBilgiRes?.resultList?.[0] ?? null
+    return { bilgi, profilList, profilBilgi }
   } catch {
-    return { bilgi: null, profilList: [] }
+    return { bilgi: null, profilList: [], profilBilgi: null }
   }
 }
 
@@ -64,7 +71,7 @@ export default async function FonDetay({
     .limit(1)
     .single()
 
-  const { bilgi, profilList } = await fetchTefasInfo(fonKodu)
+  const { bilgi, profilList, profilBilgi } = await fetchTefasInfo(fonKodu)
 
   const toplamGetiri = son.fiyat && ilk.fiyat
     ? (((son.fiyat - ilk.fiyat) / ilk.fiyat) * 100).toFixed(2)
@@ -98,8 +105,28 @@ export default async function FonDetay({
               {bilgi.fonKategori}
             </span>
           )}
+          {profilBilgi?.riskDegeri && (
+            <span className="px-2 py-0.5 rounded text-xs font-medium bg-orange-50 text-orange-600">
+              Risk {profilBilgi.riskDegeri}/7
+            </span>
+          )}
         </div>
         <p className="text-slate-500 mt-1">{info?.fonUnvan}</p>
+        {/* ISIN + detay bilgiler */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-400">
+          {profilBilgi?.isinKodu && <span>ISIN: <span className="font-mono text-slate-600">{profilBilgi.isinKodu}</span></span>}
+          {profilBilgi?.basIsSaat && profilBilgi?.sonIsSaat && (
+            <span>İşlem: {profilBilgi.basIsSaat}–{profilBilgi.sonIsSaat}</span>
+          )}
+          {profilBilgi?.fonSatisValor != null && <span>Alış valörü: {profilBilgi.fonSatisValor} gün</span>}
+          {profilBilgi?.fonGeriAlisValor != null && <span>Satış valörü: {profilBilgi.fonGeriAlisValor} gün</span>}
+          {profilBilgi?.tefasDurum && <span>{profilBilgi.tefasDurum}</span>}
+          {profilBilgi?.kapLink && (
+            <a href={profilBilgi.kapLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600 transition-colors">
+              KAP →
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Metrik kartlar - satır 1 */}
