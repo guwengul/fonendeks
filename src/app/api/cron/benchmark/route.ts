@@ -64,7 +64,7 @@ export async function GET(req: Request) {
     let yazilan = 0
     for (let i = 0; i < rows.length; i += 1000) {
       const { error } = await supabase
-        .from('benchmark_fiyatlari')
+        .from('tefas_benchmark_fiyatlari')
         .upsert(rows.slice(i, i + 1000), { onConflict: 'tarih,gosterge' })
       if (error) return NextResponse.json({ ok: false, error: error.message, yazilan }, { status: 500 })
       yazilan += Math.min(1000, rows.length - i)
