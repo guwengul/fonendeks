@@ -1,7 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
-export const maxDuration = 300
+export const maxDuration = 60
+
+// Hobby planı: tek invocation 60s'e sığmalı → her gün dönen dilim işlenir
+const SLICE = 200
 
 const TEFAS_TOKEN = process.env.TEFAS_BEARER_TOKEN!
 const BASE = 'https://www.tefas.gov.tr/api/funds'
@@ -149,11 +152,14 @@ export async function GET(req: Request) {
     }
   }
 
-  let liste = [...unique.values()]
+  const tumListe = [...unique.values()]
 
-  const offset = offsetParam ? parseInt(offsetParam) : 0
-  const limit = limitParam ? parseInt(limitParam) : 50
-  liste = liste.slice(offset, offset + limit)
+  // offset verilmezse gün bazlı dönen pencere (Hobby: her gün farklı dilim, ~13 günde tam tur)
+  const limit = limitParam ? parseInt(limitParam) : SLICE
+  const gunIndex = Math.floor(Date.now() / 86_400_000)
+  const dilimSayisi = Math.max(1, Math.ceil(tumListe.length / limit))
+  const offset = offsetParam ? parseInt(offsetParam) : (gunIndex % dilimSayisi) * limit
+  const liste = tumListe.slice(offset, offset + limit)
 
   // Yönetim verisini topluca al (per-fon çağrı yok → rate-limit'e takılmaz)
   const yonetimMap = await fetchYonetimMap()
@@ -189,7 +195,7 @@ export async function GET(req: Request) {
     }
 
     // Rate limit için kısa bekleme
-    if (i + 5 < liste.length) await new Promise(r => setTimeout(r, 300))
+    if (i + 5 < liste.length) await new Promise(r => setTimeout(r, 200))
   }
 
   return NextResponse.json({

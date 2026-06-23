@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
-export const maxDuration = 120
+export const maxDuration = 60
 
 const TEFAS_URL = 'https://www.tefas.gov.tr/api/funds/dagilimSiraliGetirDosya'
 const TEFAS_TOKEN = process.env.TEFAS_BEARER_TOKEN!
