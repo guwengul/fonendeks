@@ -127,7 +127,6 @@ export default function FonListesi({ fonlar }: { fonlar: Fon[] }) {
           <thead>
             <tr className="border-b border-slate-100 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium sticky left-0 bg-white z-10">Kod</th>
-              <th className="px-4 py-3 font-medium">Fon Unvanı</th>
               <th className="px-4 py-3 font-medium">Tip</th>
               <ThBtn col="fiyat" label="Fiyat" />
               <ThBtn col="portfoyBuyukluk" label="Portföy" />
@@ -147,11 +146,11 @@ export default function FonListesi({ fonlar }: { fonlar: Fon[] }) {
                   <Link
                     href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
                     className="font-mono font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                    title={f.fonUnvan ?? ''}
                   >
                     {f.fonKodu}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-slate-700 max-w-xs truncate">{f.fonUnvan ?? '-'}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${TIP_RENK[f.fonTipi] ?? ''}`}>
                     {f.fonTipi}
