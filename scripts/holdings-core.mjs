@@ -55,7 +55,7 @@ async function geminiParse(buf, tries = 3) {
 }
 
 // PDF URL → parse → doğrula → DB. Döner: {ok, hisse, toplam, kaynak} veya {ok:false, neden}
-export async function processFund(fonKodu, url, hisseDagilim) {
+export async function processFund(fonKodu, url, hisseDagilim, ekstra = {}) {
   let buf = Buffer.from(await (await fetch(url, { headers: UA, redirect: 'follow' })).arrayBuffer())
   // KAP file download'u Java-serialized wrapper içinde döner → %PDF'ten kes
   if (buf.slice(0, 5).toString() !== '%PDF-') {
@@ -74,7 +74,7 @@ export async function processFund(fonKodu, url, hisseDagilim) {
   if (r.gercekToplam <= 0 || r.gercekToplam > 105) return { fonKodu, ok: false, neden: `imkansız toplam %${r.gercekToplam} [${kaynak}]` }
   const res = await fetch(`${SBURL}/tefas_fon_holdings`, {
     method: 'POST', headers: { ...sbH, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-    body: JSON.stringify({ fonKodu, tarih: new Date().toISOString().slice(0, 10), hisseler: r.holdings, kaynak, gercekToplam: r.gercekToplam, beklenenToplam: r.beklenenToplam ?? null, guncellenmeTarihi: new Date().toISOString() }),
+    body: JSON.stringify({ fonKodu, tarih: new Date().toISOString().slice(0, 10), hisseler: r.holdings, kaynak, gercekToplam: r.gercekToplam, beklenenToplam: r.beklenenToplam ?? null, ...ekstra, guncellenmeTarihi: new Date().toISOString() }),
   })
   return { fonKodu, ok: res.ok, hisse: r.holdings.length, toplam: r.gercekToplam, kaynak }
 }

@@ -8,20 +8,26 @@ const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZi
 const sbH = { apikey: KEY, Authorization: `Bearer ${KEY}` }
 const TYPE = '8aca490d502e34b801502e380044002b' // Portföy Dağılım Raporu
 
-// kapLink slug → en güncel portföy raporu PDF download URL'i
-async function kapDownloadUrl(slug) {
+// kapLink slug → { pdfUrl, kapBildirimLink, pdfLink, yayinTarihi }
+async function kapKaynak(slug) {
   const g = await (await fetch(`https://www.kap.org.tr/tr/fon-bilgileri/genel/${slug}`, { headers: UA })).text()
   const fid = g.match(/objId[\\"':]+([A-F0-9]{32})/)?.[1]
   if (!fid) return null
   const list = await (await fetch(`https://kap.org.tr/tr/api/disclosure/filter/FILTERYFBF/${fid}/${TYPE}/365`, { headers: UA })).json()
   if (!Array.isArray(list) || !list.length) return null
-  const idx = list[0].disclosureIndex ?? list[0].disclosureBasic?.disclosureIndex
+  const d = list[0]
+  const idx = d.disclosureIndex ?? d.disclosureBasic?.disclosureIndex
   if (!idx) return null
-  // Bildirim sayfası → file_id (kararsız olabilir → retry)
+  const yayinTarihi = (d.disclosureBasic?.publishDate || '').slice(0, 10) // "08.06.2026"
+  const kapBildirimLink = `https://www.kap.org.tr/tr/Bildirim/${idx}`
+  // Bildirim sayfası → file_id (kararsız → retry)
   for (let i = 0; i < 3; i++) {
-    const bil = await (await fetch(`https://kap.org.tr/tr/Bildirim/${idx}`, { headers: UA })).text()
+    const bil = await (await fetch(kapBildirimLink, { headers: UA })).text()
     const file = bil.match(/file\/download\/([a-f0-9]{32})/)?.[1]
-    if (file) return `https://kap.org.tr/tr/api/file/download/${file}`
+    if (file) {
+      const pdfLink = `https://www.kap.org.tr/tr/api/file/download/${file}`
+      return { pdfUrl: pdfLink, kapBildirimLink, pdfLink, yayinTarihi }
+    }
     await new Promise(s => setTimeout(s, 1200 * (i + 1)))
   }
   return null
@@ -43,9 +49,11 @@ async function main() {
     const slug = m.kapLink.match(/genel\/([a-z0-9-]+)/)?.[1]
     if (!slug) { nourl++; continue }
     try {
-      const url = await kapDownloadUrl(slug)
-      if (!url) { nourl++; console.log(`  ? ${m.fonKodu}: rapor/file bulunamadı`); continue }
-      const r = await processFund(m.fonKodu, url, hisse[m.fonKodu])
+      const k = await kapKaynak(slug)
+      if (!k) { nourl++; console.log(`  ? ${m.fonKodu}: rapor/file bulunamadı`); continue }
+      const r = await processFund(m.fonKodu, k.pdfUrl, hisse[m.fonKodu], {
+        kapBildirimLink: k.kapBildirimLink, pdfLink: k.pdfLink, yayinTarihi: k.yayinTarihi,
+      })
       if (r.ok) { ok++; console.log(`  ✓ ${m.fonKodu}: ${r.hisse} hisse (%${r.toplam}) [${r.kaynak}]`) }
       else { fail++; console.log(`  ✗ ${m.fonKodu}: ${r.neden}`) }
     } catch (e) { fail++; console.log(`  ✗ ${m.fonKodu}: ${e.message}`) }

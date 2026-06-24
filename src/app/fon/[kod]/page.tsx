@@ -88,7 +88,7 @@ export default async function FonDetay({
   // Portföydeki hisseler (menkul-kıymet seviyesi, KAP raporundan)
   const { data: holdingsRow } = await supabase
     .from('tefas_fon_holdings')
-    .select('hisseler, tarih')
+    .select('hisseler, tarih, kapBildirimLink, pdfLink, yayinTarihi')
     .eq('fonKodu', fonKodu)
     .maybeSingle()
   const hisseler: { ticker: string; isin: string; agirlik: number }[] = holdingsRow?.hisseler ?? []
@@ -300,9 +300,21 @@ export default async function FonDetay({
       {/* Portföydeki hisseler */}
       {hisseler.length > 0 && (
         <div className="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-baseline justify-between">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-baseline justify-between gap-2 flex-wrap">
             <h2 className="font-semibold text-slate-800">Portföydeki Hisseler</h2>
-            <span className="text-xs text-slate-400">{holdingsRow?.tarih} · {hisseler.length} hisse</span>
+            <div className="flex items-center gap-3 text-xs text-slate-400">
+              <span>{hisseler.length} hisse{holdingsRow?.yayinTarihi ? ` · rapor ${holdingsRow.yayinTarihi}` : ''}</span>
+              {holdingsRow?.pdfLink && (
+                <a href={holdingsRow.pdfLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600 transition-colors">
+                  PDF →
+                </a>
+              )}
+              {holdingsRow?.kapBildirimLink && (
+                <a href={holdingsRow.kapBildirimLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600 transition-colors">
+                  KAP →
+                </a>
+              )}
+            </div>
           </div>
           <div className="p-5 space-y-2.5">
             {hisseler.filter(h => h.agirlik > 0).map(h => (
