@@ -8,12 +8,25 @@ const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZi
 const sbH = { apikey: KEY, Authorization: `Bearer ${KEY}` }
 const TYPE = '8aca490d502e34b801502e380044002b' // Portföy Dağılım Raporu
 
+// Aralıklı bağlantı resetlerine karşı retry'lı fetch
+async function fetchR(url, kind = 'text', tries = 4) {
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(url, { headers: UA })
+      if (r.status === 200) return kind === 'json' ? await r.json() : (kind === 'buf' ? Buffer.from(await r.arrayBuffer()) : await r.text())
+    } catch { /* fetch failed → retry */ }
+    if (i < tries - 1) await new Promise(s => setTimeout(s, 800 * (i + 1)))
+  }
+  return null
+}
+
 // kapLink slug → { pdfUrl, kapBildirimLink, pdfLink, yayinTarihi }
 async function kapKaynak(slug) {
-  const g = await (await fetch(`https://www.kap.org.tr/tr/fon-bilgileri/genel/${slug}`, { headers: UA })).text()
+  const g = await fetchR(`https://www.kap.org.tr/tr/fon-bilgileri/genel/${slug}`)
+  if (!g) return null
   const fid = g.match(/objId[\\"':]+([A-F0-9]{32})/)?.[1]
   if (!fid) return null
-  const list = await (await fetch(`https://kap.org.tr/tr/api/disclosure/filter/FILTERYFBF/${fid}/${TYPE}/365`, { headers: UA })).json()
+  const list = await fetchR(`https://kap.org.tr/tr/api/disclosure/filter/FILTERYFBF/${fid}/${TYPE}/365`, 'json')
   if (!Array.isArray(list) || !list.length) return null
   const d = list[0]
   const idx = d.disclosureIndex ?? d.disclosureBasic?.disclosureIndex
@@ -21,14 +34,14 @@ async function kapKaynak(slug) {
   const yayinTarihi = (d.disclosureBasic?.publishDate || '').slice(0, 10) // "08.06.2026"
   const kapBildirimLink = `https://www.kap.org.tr/tr/Bildirim/${idx}`
   // Bildirim sayfası → file_id (kararsız → retry)
-  for (let i = 0; i < 3; i++) {
-    const bil = await (await fetch(kapBildirimLink, { headers: UA })).text()
-    const file = bil.match(/file\/download\/([a-f0-9]{32})/)?.[1]
+  for (let i = 0; i < 4; i++) {
+    const bil = await fetchR(kapBildirimLink)
+    const file = bil?.match(/file\/download\/([a-f0-9]{32})/)?.[1]
     if (file) {
       const pdfLink = `https://www.kap.org.tr/tr/api/file/download/${file}`
       return { pdfUrl: pdfLink, kapBildirimLink, pdfLink, yayinTarihi }
     }
-    await new Promise(s => setTimeout(s, 1200 * (i + 1)))
+    await new Promise(s => setTimeout(s, 1000 * (i + 1)))
   }
   return null
 }

@@ -55,8 +55,17 @@ async function geminiParse(buf, tries = 3) {
 }
 
 // PDF URL → parse → doğrula → DB. Döner: {ok, hisse, toplam, kaynak} veya {ok:false, neden}
+async function fetchBufR(url, tries = 4) {
+  for (let i = 0; i < tries; i++) {
+    try { const r = await fetch(url, { headers: UA, redirect: 'follow' }); if (r.ok) return Buffer.from(await r.arrayBuffer()) } catch { /* retry */ }
+    if (i < tries - 1) await new Promise(s => setTimeout(s, 800 * (i + 1)))
+  }
+  return null
+}
+
 export async function processFund(fonKodu, url, hisseDagilim, ekstra = {}) {
-  let buf = Buffer.from(await (await fetch(url, { headers: UA, redirect: 'follow' })).arrayBuffer())
+  let buf = await fetchBufR(url)
+  if (!buf) return { fonKodu, ok: false, neden: 'PDF indirilemedi (fetch failed)' }
   // KAP file download'u Java-serialized wrapper içinde döner → %PDF'ten kes
   if (buf.slice(0, 5).toString() !== '%PDF-') {
     const i = buf.indexOf('%PDF'), j = buf.lastIndexOf('%%EOF')
