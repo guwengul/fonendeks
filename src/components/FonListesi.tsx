@@ -87,7 +87,6 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const [riskler, setRiskler] = useState(new Set(RISK_OPTIONS))
   const [vergiler, setVergiler] = useState(new Set(VERGI_OPTIONS))
   const [ucretler, setUcretler] = useState(new Set(UCRET_OPTIONS))
-  const [turler, setTurler] = useState(() => new Set(fonTurleri))
   const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
   const [siraAsc, setSiraAsc] = useState(false)
 
@@ -106,7 +105,6 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const riskFiltre = riskler.size < RISK_OPTIONS.length
   const vergiFiltre = vergiler.size < VERGI_OPTIONS.length
   const ucretFiltre = ucretler.size < UCRET_OPTIONS.length
-  const turFiltre = turler.size < fonTurleri.length
 
   const filtrelenmis = fonlar.filter(f => {
     if (arama) {
@@ -118,9 +116,6 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
           !(f.fonTurAciklama ?? '').toLowerCase().includes(q)) return false
     }
     if (tipFiltre && !tipler.has(f.fonTipi)) return false
-    if (turFiltre) {
-      if (!f.fonTurAciklama || !turler.has(f.fonTurAciklama)) return false
-    }
     if (riskFiltre) {
       const r = f.riskDegeri
       const match = r != null && [...riskler].some(band => {
@@ -179,17 +174,6 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
             <Chip key={o.value} label={o.label} active={tipler.has(o.value)}
               onClick={() => setTipler(s => toggle(s, o.value))} />
           ))}
-        </div>
-
-        {/* TEFAS fon türü */}
-        <div className="flex flex-wrap gap-1.5 items-start">
-          <span className="text-xs text-slate-400 w-12 shrink-0 pt-1">Fon türü</span>
-          <div className="flex flex-wrap gap-1.5">
-            {fonTurleri.map(t => (
-              <Chip key={t} label={t} active={turler.has(t)}
-                onClick={() => setTurler(s => toggle(s, t))} />
-            ))}
-          </div>
         </div>
 
         {/* Risk, Stopaj, Ücret tek satırda */}
