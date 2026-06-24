@@ -34,21 +34,58 @@ async function raporUrl(slug) {
   return null
 }
 
-async function holdingsYaz(fonKodu, url) {
+// LLM fallback: PDF'i doğrudan Gemini'ye ver (multimodal, tabloyu görsel okur)
+async function geminiParse(buf) {
+  const KEYG = process.env.GEMINI_API_KEY
+  if (!KEYG) return null
+  const prompt = `Bu PDF bir Türk yatırım fonunun aylık portföy raporu. "III-FON PORTFÖY DEĞERİ TABLOSU" bölümündeki TÜM hisse senetlerini (yerli ve yabancı) çıkar. Her hisse için: ticker (sade kod, örn THYAO veya yabancıda INTC), ISIN, ve "TOPLAM (FTD GÖRE)" kolonundaki yüzde ağırlık. Negatif (açığa satış) değerleri koru. Sadece JSON: {"hisseler":[{"ticker":"X","isin":"...","agirlik":0.0}]}`
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${KEYG}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ inline_data: { mime_type: 'application/pdf', data: buf.toString('base64') } }, { text: prompt }] }],
+      generationConfig: { temperature: 0, responseMimeType: 'application/json' },
+    }),
+  })
+  const j = await res.json()
+  const txt = j?.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!txt) return null
+  const arr = JSON.parse(txt)?.hisseler ?? []
+  return arr.filter(h => h.ticker && h.isin).map(h => ({
+    ticker: String(h.ticker).toUpperCase().replace(/ (US|TI|GR|LN|FP) EQUITY$/, '').trim(),
+    isin: h.isin, agirlik: +Number(h.agirlik).toFixed(2),
+  })).sort((a, b) => b.agirlik - a.agirlik)
+}
+
+async function holdingsYaz(fonKodu, url, hisseDagilim) {
   const buf = Buffer.from(await (await fetch(url, { headers: UA })).arrayBuffer())
   const text = (await new PDFParse({ data: new Uint8Array(buf) }).getText()).text || ''
-  const r = parseHoldings(text)
-  if (!r.gecerli) return { fonKodu, ok: false, neden: `geçersiz (toplam ${r.gercekToplam}/${r.beklenenToplam}, ${r.holdings.length} hisse)` }
+  let r = parseHoldings(text)
+  let kaynak = 'regex'
+  if (!r.gecerli) {
+    const llm = await geminiParse(buf).catch(() => null)
+    if (llm && llm.length) {
+      const toplam = +llm.reduce((s, h) => s + h.agirlik, 0).toFixed(2)
+      r = { holdings: llm, gercekToplam: toplam, beklenenToplam: r.beklenenToplam, gecerli: true }
+      kaynak = 'llm'
+    } else {
+      return { fonKodu, ok: false, neden: `regex geçersiz + LLM yok/boş` }
+    }
+  }
+  // Sanity: hisse toplamı 0-105 arası olmalı (rapor tarihi ≠ dağılım tarihi olduğu için
+  // dağılıma karşı kıyas yapılmaz; regex zaten kendi GRUP TOPLAMI'na karşı doğrulanmış)
+  if (r.gercekToplam <= 0 || r.gercekToplam > 105) {
+    return { fonKodu, ok: false, neden: `imkansız toplam %${r.gercekToplam} [${kaynak}]` }
+  }
   const res = await fetch(`${SBURL}/tefas_fon_holdings`, {
     method: 'POST',
     headers: { ...sbH, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
     body: JSON.stringify({
       fonKodu, tarih: new Date().toISOString().slice(0, 10), hisseler: r.holdings,
-      kaynak: 'regex', gercekToplam: r.gercekToplam, beklenenToplam: r.beklenenToplam,
+      kaynak, gercekToplam: r.gercekToplam, beklenenToplam: r.beklenenToplam,
       guncellenmeTarihi: new Date().toISOString(),
     }),
   })
-  return { fonKodu, ok: res.ok, hisse: r.holdings.length, toplam: r.gercekToplam }
+  return { fonKodu, ok: res.ok, hisse: r.holdings.length, toplam: r.gercekToplam, kaynak }
 }
 
 async function main() {
@@ -56,8 +93,9 @@ async function main() {
   const meta = await (await fetch(`${SBURL}/tefas_fon_meta?kurucuKod=eq.ISP&select=fonKodu`, { headers: sbH })).json()
   const ispKodlar = new Set(meta.map(x => x.fonKodu))
   const dag = await (await fetch(`${SBURL}/tefas_fon_dagilim?select=fonKodu,dagilim&limit=3000`, { headers: sbH })).json()
-  const hisseliler = dag.filter(d => ispKodlar.has(d.fonKodu) &&
-    ((d.dagilim?.['Hisse Senedi'] || 0) + (d.dagilim?.['Yabancı Hisse Senedi'] || 0)) > 0).map(d => d.fonKodu)
+  const hissePct = {}
+  for (const d of dag) hissePct[d.fonKodu] = (d.dagilim?.['Hisse Senedi'] || 0) + (d.dagilim?.['Yabancı Hisse Senedi'] || 0)
+  const hisseliler = dag.filter(d => ispKodlar.has(d.fonKodu) && hissePct[d.fonKodu] > 0).map(d => d.fonKodu)
 
   const map = await slugMap()
   console.log(`İş Portföy hisseli fon: ${hisseliler.length} | slug haritası: ${Object.keys(map).length}`)
@@ -69,8 +107,8 @@ async function main() {
     try {
       const url = await raporUrl(slug)
       if (!url) { nourl++; console.log(`  ? ${kod}: rapor linki yok`); continue }
-      const r = await holdingsYaz(kod, url)
-      if (r.ok) { ok++; console.log(`  ✓ ${kod}: ${r.hisse} hisse (%${r.toplam})`) }
+      const r = await holdingsYaz(kod, url, hissePct[kod])
+      if (r.ok) { ok++; console.log(`  ✓ ${kod}: ${r.hisse} hisse (%${r.toplam}) [${r.kaynak}]`) }
       else { fail++; console.log(`  ✗ ${kod}: ${r.neden || 'db hata'}`) }
     } catch (e) { fail++; console.log(`  ✗ ${kod}: ${e.message}`) }
     await new Promise(s => setTimeout(s, 400))
