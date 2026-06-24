@@ -31,7 +31,7 @@ export default async function Home() {
     fiyat: f.fiyat, portfoyBuyukluk: f.portfoyBuyukluk, kisiSayisi: f.kisiSayisi, tarih: f.tarih,
     getiriler: {
       '1g': f.getiri1g, '1h': f.getiri1h, '1a': f.getiri1a, '3a': f.getiri3a,
-      '6a': f.getiri6a, '1y': f.getiri1y, '3y': f.getiri3y, '5y': f.getiri5y,
+      '6a': f.getiri6a, 'yb': f.getiriYb, '1y': f.getiri1y, '3y': f.getiri3y, '5y': f.getiri5y,
     },
   }))
 

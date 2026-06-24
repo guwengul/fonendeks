@@ -9,6 +9,7 @@ const DONEMLER = [
   { key: '1a', gun: 0, ay: 1, sonraki: true },
   { key: '3a', gun: 0, ay: 3, sonraki: true },
   { key: '6a', gun: 0, ay: 6, sonraki: true },
+  { key: 'yb', gun: 0, ay: 0, sonraki: true, ybasi: true }, // yılbaşından beri
   { key: '1y', gun: 0, ay: 12, sonraki: true },
   { key: '3y', gun: 0, ay: 36, sonraki: true },
   { key: '5y', gun: 0, ay: 60, sonraki: true },
@@ -54,7 +55,12 @@ export async function GET(req: Request) {
     if (data.length < 1000) break
   }
 
-  const donemTarihler = DONEMLER.map(d => ({ ...d, tarih: enYakinTarih(tarihler, hedefTarih(sonTarih, d.gun, d.ay), d.sonraki) }))
+  const donemTarihler = DONEMLER.map(d => ({
+    ...d,
+    tarih: (d as any).ybasi
+      ? enYakinTarih(tarihler, `${sonTarih.slice(0, 4)}-01-01`, true)
+      : enYakinTarih(tarihler, hedefTarih(sonTarih, d.gun, d.ay), d.sonraki),
+  }))
   const benzersizTarihler = [...new Set(donemTarihler.map(d => d.tarih).filter(Boolean) as string[])]
 
   async function fetchAllForDate(tarih: string) {
@@ -95,7 +101,7 @@ export async function GET(req: Request) {
       fonKodu: f.fonKodu, fonTipi: f.fonTipi, fonUnvan: f.fonUnvan,
       fiyat: f.fiyat, portfoyBuyukluk: f.portfoyBuyukluk, kisiSayisi: f.kisiSayisi,
       getiri1g: g['1g'], getiri1h: g['1h'], getiri1a: g['1a'], getiri3a: g['3a'],
-      getiri6a: g['6a'], getiri1y: g['1y'], getiri3y: g['3y'], getiri5y: g['5y'],
+      getiri6a: g['6a'], getiriYb: g['yb'], getiri1y: g['1y'], getiri3y: g['3y'], getiri5y: g['5y'],
       tarih: sonTarih, guncellenmeTarihi: new Date().toISOString(),
     }
   })

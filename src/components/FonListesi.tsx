@@ -20,6 +20,7 @@ const DONEMLER = [
   { key: '1a',  label: '1A'  },
   { key: '3a',  label: '3A'  },
   { key: '6a',  label: '6A'  },
+  { key: 'yb',  label: 'YBB' },
   { key: '1y',  label: '1Y'  },
   { key: '3y',  label: '3Y'  },
   { key: '5y',  label: '5Y'  },
