@@ -12,9 +12,9 @@ const TYPE = '8aca490d502e34b801502e380044002b' // Portföy Dağılım Raporu
 async function fetchR(url, kind = 'text', tries = 4) {
   for (let i = 0; i < tries; i++) {
     try {
-      const r = await fetch(url, { headers: UA })
+      const r = await fetch(url, { headers: UA, signal: AbortSignal.timeout(25000) })
       if (r.status === 200) return kind === 'json' ? await r.json() : (kind === 'buf' ? Buffer.from(await r.arrayBuffer()) : await r.text())
-    } catch { /* fetch failed → retry */ }
+    } catch { /* fetch failed / timeout → retry */ }
     if (i < tries - 1) await new Promise(s => setTimeout(s, 800 * (i + 1)))
   }
   return null
