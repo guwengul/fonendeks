@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 
 type Fon = {
@@ -23,11 +23,6 @@ const DONEMLER = [
   { key: '1g', label: '1G' }, { key: '1h', label: '1H' }, { key: '1a', label: '1A' },
   { key: '3a', label: '3A' }, { key: '6a', label: '6A' }, { key: 'yb', label: 'YBB' },
   { key: '1y', label: '1Y' }, { key: '3y', label: '3Y' }, { key: '5y', label: '5Y' },
-]
-
-const RISK_BAR: string[] = [
-  '', 'bg-green-400', 'bg-green-400', 'bg-yellow-300',
-  'bg-yellow-400', 'bg-orange-400', 'bg-red-400', 'bg-red-600',
 ]
 
 function sirketAdi(fonUnvan: string | null): string {
@@ -53,50 +48,6 @@ function GetiriCell({ val }: { val: number | null }) {
   return <span className={`font-medium ${renk}`}>{val >= 0 ? '+' : ''}{val.toFixed(2)}%</span>
 }
 
-function FonKart({ fon, mouseY }: { fon: Fon; mouseY: number }) {
-  const top = Math.min(mouseY - 10, (typeof window !== 'undefined' ? window.innerHeight : 800) - 300)
-  return (
-    <div className="fixed left-4 z-50 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 pointer-events-none" style={{ top }}>
-      <p className="text-sm font-semibold text-slate-800 leading-snug mb-1">{fon.fonUnvan ?? fon.fonKodu}</p>
-      <p className="text-xs text-indigo-400 mb-4">{fon.fonKodu}</p>
-      <div className="space-y-2.5 text-xs">
-        <div className="flex justify-between">
-          <span className="text-slate-400">Şirket</span>
-          <span className="font-medium text-slate-700">{sirketAdi(fon.fonUnvan)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-slate-400">Tür</span>
-          <span className="font-medium text-slate-700 text-right max-w-[160px]">
-            {fon.fonTurAciklama ?? fon.fonTipi}
-          </span>
-        </div>
-        {fon.riskDegeri != null && (
-          <div className="flex justify-between items-center">
-            <span className="text-slate-400">Risk</span>
-            <div className="flex items-center gap-0.5">
-              {[1,2,3,4,5,6,7].map(i => (
-                <div key={i} className={`w-4 h-2.5 rounded-sm ${i <= fon.riskDegeri! ? RISK_BAR[fon.riskDegeri!] : 'bg-slate-100'}`} />
-              ))}
-              <span className="ml-1.5 font-bold text-slate-600">{fon.riskDegeri}/7</span>
-            </div>
-          </div>
-        )}
-        <div className="flex justify-between">
-          <span className="text-slate-400">Stopaj</span>
-          <span className={`font-medium ${fon.stopaj === 0 ? 'text-emerald-600' : 'text-slate-700'}`}>
-            {fon.stopaj != null ? (fon.stopaj === 0 ? 'Yok (%0)' : `%${fon.stopaj}`) : '-'}
-          </span>
-        </div>
-        {fon.yonetimUcreti != null && (
-          <div className="flex justify-between">
-            <span className="text-slate-400">Yönetim ücreti</span>
-            <span className="font-medium text-slate-700">%{fon.yonetimUcreti}</span>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 function FilterGroup({ label, options, value, onChange }: {
   label: string
@@ -133,10 +84,6 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const [ucret, setUcret] = useState('HEPSI')
   const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
   const [siraAsc, setSiraAsc] = useState(false)
-  const [hoveredFon, setHoveredFon] = useState<Fon | null>(null)
-  const [mouseY, setMouseY] = useState(0)
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => setMouseY(e.clientY), [])
 
   function handleSira(key: SiraKey) {
     if (siraKey === key) setSiraAsc(v => !v)
@@ -226,8 +173,6 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
 
       <p className="text-slate-400 text-sm mb-3">{filtrelenmis.length} fon</p>
 
-      {hoveredFon && <FonKart fon={hoveredFon} mouseY={mouseY} />}
-
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-20 bg-white">
@@ -239,12 +184,10 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
               {DONEMLER.map(d => <ThBtn key={d.key} col={d.key} label={d.label} />)}
             </tr>
           </thead>
-          <tbody onMouseMove={handleMouseMove}>
+          <tbody>
             {filtrelenmis.map(f => (
               <tr key={`${f.fonKodu}-${f.fonTipi}`}
-                className="border-b border-slate-50 hover:bg-indigo-50/40 transition-colors"
-                onMouseEnter={() => setHoveredFon(f)}
-                onMouseLeave={() => setHoveredFon(null)}>
+                className="border-b border-slate-50 hover:bg-indigo-50/40 transition-colors">
                 <td className="px-4 py-3 sticky left-0 bg-white">
                   <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`} className="block group">
                     <span className="font-mono font-semibold text-indigo-600 group-hover:text-indigo-800 transition-colors">{f.fonKodu}</span>
