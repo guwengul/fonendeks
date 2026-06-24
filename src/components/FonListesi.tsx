@@ -25,6 +25,18 @@ const DONEMLER = [
   { key: '1y', label: '1Y' }, { key: '3y', label: '3Y' }, { key: '5y', label: '5Y' },
 ]
 
+const TIP_OPTIONS = [
+  { value: 'YAT', label: 'Yatırım Fonu' },
+  { value: 'EMK', label: 'Emeklilik Fonu' },
+  { value: 'BYF', label: 'Borsa Yatırım Fonu' },
+]
+const RISK_OPTIONS = ['1-2', '3-4', '5-6', '7-7']
+const RISK_LABELS: Record<string, string> = { '1-2': '1–2', '3-4': '3–4', '5-6': '5–6', '7-7': '7' }
+const VERGI_OPTIONS = ['YOK', 'VAR']
+const VERGI_LABELS: Record<string, string> = { YOK: 'Vergisiz', VAR: 'Vergili' }
+const UCRET_OPTIONS = ['DUSUK', 'ORTA', 'YUKSEK']
+const UCRET_LABELS: Record<string, string> = { DUSUK: '<%1', ORTA: '%1–2', YUKSEK: '>%2' }
+
 function sirketAdi(fonUnvan: string | null): string {
   if (!fonUnvan) return '-'
   const kelimeler = fonUnvan.trim().split(/\s+/)
@@ -51,7 +63,7 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
   return (
     <button onClick={onClick}
       className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
-        active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+        active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
       }`}>
       {label}
     </button>
@@ -70,10 +82,12 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   fonlar: Fon[]; kurucular: string[]; fonTurleri: string[]
 }) {
   const [arama, setArama] = useState('')
-  const [tipler, setTipler] = useState(new Set<string>())
-  const [riskler, setRiskler] = useState(new Set<string>())
-  const [vergiler, setVergiler] = useState(new Set<string>())
-  const [ucretler, setUcretler] = useState(new Set<string>())
+  // Yatırım Fonu default seçili; diğer gruplar hepsi seçili
+  const [tipler, setTipler] = useState(new Set(['YAT']))
+  const [riskler, setRiskler] = useState(new Set(RISK_OPTIONS))
+  const [vergiler, setVergiler] = useState(new Set(VERGI_OPTIONS))
+  const [ucretler, setUcretler] = useState(new Set(UCRET_OPTIONS))
+  const [turler, setTurler] = useState(() => new Set(fonTurleri))
   const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
   const [siraAsc, setSiraAsc] = useState(false)
 
@@ -87,6 +101,13 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
     else { setSiraKey(key); setSiraAsc(false) }
   }
 
+  // Hepsi seçiliyse = filtre yok (null dahil geç)
+  const tipFiltre = tipler.size < TIP_OPTIONS.length
+  const riskFiltre = riskler.size < RISK_OPTIONS.length
+  const vergiFiltre = vergiler.size < VERGI_OPTIONS.length
+  const ucretFiltre = ucretler.size < UCRET_OPTIONS.length
+  const turFiltre = turler.size < fonTurleri.length
+
   const filtrelenmis = fonlar.filter(f => {
     if (arama) {
       const q = arama.toLowerCase()
@@ -96,8 +117,11 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
           !sirket.includes(q) &&
           !(f.fonTurAciklama ?? '').toLowerCase().includes(q)) return false
     }
-    if (tipler.size > 0 && !tipler.has(f.fonTipi)) return false
-    if (riskler.size > 0) {
+    if (tipFiltre && !tipler.has(f.fonTipi)) return false
+    if (turFiltre) {
+      if (!f.fonTurAciklama || !turler.has(f.fonTurAciklama)) return false
+    }
+    if (riskFiltre) {
       const r = f.riskDegeri
       const match = r != null && [...riskler].some(band => {
         const [min, max] = band.split('-').map(Number)
@@ -105,17 +129,16 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
       })
       if (!match) return false
     }
-    if (vergiler.size > 0) {
+    if (vergiFiltre) {
       if (vergiler.has('YOK') && !vergiler.has('VAR') && f.stopaj !== 0) return false
       if (vergiler.has('VAR') && !vergiler.has('YOK') && (f.stopaj == null || f.stopaj === 0)) return false
     }
-    if (ucretler.size > 0) {
+    if (ucretFiltre) {
       const u = f.yonetimUcreti
       const match = u != null && [...ucretler].some(band => {
         if (band === 'DUSUK') return u < 1
         if (band === 'ORTA') return u >= 1 && u <= 2
-        if (band === 'YUKSEK') return u > 2
-        return false
+        return u > 2
       })
       if (!match) return false
     }
@@ -146,31 +169,53 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
     <div>
       <input type="text" placeholder="Fon kodu, şirket, tür veya unvan ara..."
         value={arama} onChange={e => setArama(e.target.value)}
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 mb-3" />
+        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 mb-4" />
 
-      <div className="flex flex-wrap gap-2 mb-5 items-center">
-        <span className="text-xs text-slate-400 mr-1">Tür</span>
-        <Chip label="Yatırım Fonu" active={tipler.has('YAT')} onClick={() => setTipler(s => toggle(s, 'YAT'))} />
-        <Chip label="Emeklilik Fonu" active={tipler.has('EMK')} onClick={() => setTipler(s => toggle(s, 'EMK'))} />
-        <Chip label="Borsa Yatırım Fonu" active={tipler.has('BYF')} onClick={() => setTipler(s => toggle(s, 'BYF'))} />
+      <div className="space-y-2 mb-5">
+        {/* Fon tipi */}
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <span className="text-xs text-slate-400 w-12 shrink-0">Tür</span>
+          {TIP_OPTIONS.map(o => (
+            <Chip key={o.value} label={o.label} active={tipler.has(o.value)}
+              onClick={() => setTipler(s => toggle(s, o.value))} />
+          ))}
+        </div>
 
-        <span className="text-xs text-slate-300 mx-1">|</span>
-        <span className="text-xs text-slate-400 mr-1">Risk</span>
-        <Chip label="1–2" active={riskler.has('1-2')} onClick={() => setRiskler(s => toggle(s, '1-2'))} />
-        <Chip label="3–4" active={riskler.has('3-4')} onClick={() => setRiskler(s => toggle(s, '3-4'))} />
-        <Chip label="5–6" active={riskler.has('5-6')} onClick={() => setRiskler(s => toggle(s, '5-6'))} />
-        <Chip label="7" active={riskler.has('7-7')} onClick={() => setRiskler(s => toggle(s, '7-7'))} />
+        {/* TEFAS fon türü */}
+        <div className="flex flex-wrap gap-1.5 items-start">
+          <span className="text-xs text-slate-400 w-12 shrink-0 pt-1">Fon türü</span>
+          <div className="flex flex-wrap gap-1.5">
+            {fonTurleri.map(t => (
+              <Chip key={t} label={t} active={turler.has(t)}
+                onClick={() => setTurler(s => toggle(s, t))} />
+            ))}
+          </div>
+        </div>
 
-        <span className="text-xs text-slate-300 mx-1">|</span>
-        <span className="text-xs text-slate-400 mr-1">Stopaj</span>
-        <Chip label="Vergisiz" active={vergiler.has('YOK')} onClick={() => setVergiler(s => toggle(s, 'YOK'))} />
-        <Chip label="Vergili" active={vergiler.has('VAR')} onClick={() => setVergiler(s => toggle(s, 'VAR'))} />
-
-        <span className="text-xs text-slate-300 mx-1">|</span>
-        <span className="text-xs text-slate-400 mr-1">Ücret</span>
-        <Chip label="<%1" active={ucretler.has('DUSUK')} onClick={() => setUcretler(s => toggle(s, 'DUSUK'))} />
-        <Chip label="%1–2" active={ucretler.has('ORTA')} onClick={() => setUcretler(s => toggle(s, 'ORTA'))} />
-        <Chip label=">%2" active={ucretler.has('YUKSEK')} onClick={() => setUcretler(s => toggle(s, 'YUKSEK'))} />
+        {/* Risk, Stopaj, Ücret tek satırda */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-400">Risk</span>
+            {RISK_OPTIONS.map(v => (
+              <Chip key={v} label={RISK_LABELS[v]} active={riskler.has(v)}
+                onClick={() => setRiskler(s => toggle(s, v))} />
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-400">Stopaj</span>
+            {VERGI_OPTIONS.map(v => (
+              <Chip key={v} label={VERGI_LABELS[v]} active={vergiler.has(v)}
+                onClick={() => setVergiler(s => toggle(s, v))} />
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-400">Ücret</span>
+            {UCRET_OPTIONS.map(v => (
+              <Chip key={v} label={UCRET_LABELS[v]} active={ucretler.has(v)}
+                onClick={() => setUcretler(s => toggle(s, v))} />
+            ))}
+          </div>
+        </div>
       </div>
 
       <p className="text-slate-400 text-sm mb-3">{filtrelenmis.length} fon</p>
