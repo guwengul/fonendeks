@@ -18,10 +18,11 @@ export async function GET(req: Request) {
       .then(r => r.json())
       .catch((e: any) => ({ ok: false, error: e.message }))
 
-  // Fiyat önce (dağılım fiyata bağlı değil ama sıralı tutuyoruz)
+  // Fiyat önce, sonra fiyata bağlı özet; dağılım/benchmark bağımsız
   const fiyat = await cagir('/api/cron/tefas-daily')
+  const ozet = await cagir('/api/cron/fon-ozet') // anasayfa precompute (fiyat sonrası)
   const dagilim = await cagir('/api/cron/fon-dagilim')
   const benchmark = await cagir('/api/cron/benchmark')
 
-  return NextResponse.json({ ok: true, fiyat, dagilim, benchmark })
+  return NextResponse.json({ ok: true, fiyat, ozet, dagilim, benchmark })
 }
