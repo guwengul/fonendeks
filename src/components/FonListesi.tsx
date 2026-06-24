@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 
 type Fon = {
@@ -28,26 +28,21 @@ const DONEMLER = [
   { key: '5y',  label: '5Y'  },
 ]
 
-const RISK_RENK = ['', 'bg-green-100 text-green-700', 'bg-green-100 text-green-700',
-  'bg-yellow-100 text-yellow-700', 'bg-yellow-100 text-yellow-700',
-  'bg-orange-100 text-orange-700', 'bg-red-100 text-red-600', 'bg-red-200 text-red-700']
+const RISK_BAR_RENK = [
+  '', 'bg-green-400', 'bg-green-400', 'bg-yellow-400',
+  'bg-yellow-400', 'bg-orange-400', 'bg-red-400', 'bg-red-600',
+]
 
-const KURUCU_AD: Record<string, string> = {
-  AKP: 'Ak Portföy', ALP: 'Albaraka Portföy', ALT: 'Alternatif Portföy',
-  AZI: 'Azimut PYŞ', DEN: 'Deniz Portföy', FIN: 'Finans Portföy',
-  GAR: 'Garanti Portföy', GEC: 'Gedik Portföy', HLB: 'Halley Portföy',
-  ING: 'ING Portföy', ISP: 'İş Portföy', KOC: 'Koç Portföy',
-  OBK: 'Osmanlı Portföy', PAR: 'Parus Portföy', QNB: 'QNB Finans Portföy',
-  STR: 'Strateji Portföy', TAT: 'Tacirler Portföy', TEB: 'TEB Portföy',
-  VKF: 'Vakıf Portföy', YAP: 'Yapı Kredi Portföy', ZIR: 'Ziraat Portföy',
-  FCB: 'Fiba Portföy', GLC: 'Goldstone Portföy', INF: 'Infina Portföy',
-  KAT: 'Katılım Emeklilik', MGP: 'Mgenius Portföy', PIL: 'Piramit Portföy',
-  RTE: 'Rota Portföy', TGP: 'Tüm Portföy', UNI: 'UniCredit Portföy',
-}
-
-function kurucuAd(kod: string | null) {
-  if (!kod) return '-'
-  return KURUCU_AD[kod] ?? kod
+// "AK PORTFÖY BİST 30..." → "Ak Portföy"
+function sirketAdi(fonUnvan: string | null): string {
+  if (!fonUnvan) return '-'
+  const kelimeler = fonUnvan.trim().split(/\s+/)
+  // İlk "PORTFÖY"/"EMEKLİLİK"/"HAYAT" ile biten kısmı al
+  const idx = kelimeler.findIndex(k =>
+    ['PORTFÖY', 'EMEKLİLİK', 'HAYAT', 'PORTFOY'].includes(k.toUpperCase())
+  )
+  const slice = idx >= 0 ? kelimeler.slice(0, idx + 1) : kelimeler.slice(0, 2)
+  return slice.map(k => k.charAt(0).toUpperCase() + k.slice(1).toLowerCase()).join(' ')
 }
 
 function fmt(n: number | null) {
@@ -64,28 +59,28 @@ function GetiriCell({ val }: { val: number | null }) {
   return <span className={`font-medium ${renk}`}>{isaret}{val.toFixed(2)}%</span>
 }
 
-function FonKart({ fon, visible }: { fon: Fon; visible: boolean }) {
-  if (!visible) return null
+function FonKart({ fon, mouseY }: { fon: Fon; mouseY: number }) {
+  const top = Math.min(mouseY - 10, window.innerHeight - 320)
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 pointer-events-none">
-      <p className="text-sm font-semibold text-slate-800 leading-snug mb-4">{fon.fonUnvan ?? fon.fonKodu}</p>
+    <div
+      className="fixed left-4 z-50 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 pointer-events-none"
+      style={{ top }}
+    >
+      <p className="text-sm font-semibold text-slate-800 leading-snug mb-1">{fon.fonUnvan ?? fon.fonKodu}</p>
+      <p className="text-xs text-slate-400 mb-4">{fon.fonKodu} · {fon.fonTipi}</p>
       <div className="space-y-2.5 text-xs">
         <div className="flex justify-between">
           <span className="text-slate-400">Şirket</span>
-          <span className="font-medium text-slate-700">{kurucuAd(fon.kurucuKod)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-slate-400">Tür</span>
-          <span className="font-medium text-slate-700">{fon.fonTipi}</span>
+          <span className="font-medium text-slate-700">{sirketAdi(fon.fonUnvan)}</span>
         </div>
         {fon.riskDegeri != null && (
           <div className="flex justify-between items-center">
-            <span className="text-slate-400">Risk Seviyesi</span>
-            <div className="flex items-center gap-1">
+            <span className="text-slate-400">Risk</span>
+            <div className="flex items-center gap-0.5">
               {[1,2,3,4,5,6,7].map(i => (
-                <div key={i} className={`w-3 h-3 rounded-sm ${i <= fon.riskDegeri! ? RISK_RENK[fon.riskDegeri!].replace('text-','bg-').split(' ')[0] : 'bg-slate-100'}`} />
+                <div key={i} className={`w-4 h-2.5 rounded-sm ${i <= fon.riskDegeri! ? RISK_BAR_RENK[fon.riskDegeri!] : 'bg-slate-100'}`} />
               ))}
-              <span className="ml-1 font-bold text-slate-600">{fon.riskDegeri}/7</span>
+              <span className="ml-1.5 font-bold text-slate-600">{fon.riskDegeri}/7</span>
             </div>
           </div>
         )}
@@ -97,7 +92,7 @@ function FonKart({ fon, visible }: { fon: Fon; visible: boolean }) {
           <span className="text-slate-400">Yatırımcı</span>
           <span className="font-medium text-slate-700">{fon.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}</span>
         </div>
-        <div className="border-t border-slate-100 pt-3 mt-1 grid grid-cols-4 gap-2">
+        <div className="border-t border-slate-100 pt-3 grid grid-cols-4 gap-2">
           {(['1g','1a','yb','1y'] as const).map(k => (
             <div key={k} className="text-center">
               <div className="text-slate-400 text-[10px] uppercase mb-1">{k === 'yb' ? 'YBB' : k}</div>
@@ -119,6 +114,11 @@ export default function FonListesi({ fonlar, kurucular }: { fonlar: Fon[]; kuruc
   const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
   const [siraAsc, setSiraAsc] = useState(false)
   const [hoveredFon, setHoveredFon] = useState<Fon | null>(null)
+  const [mouseY, setMouseY] = useState(0)
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    setMouseY(e.clientY)
+  }, [])
 
   function handleSira(key: SiraKey) {
     if (siraKey === key) setSiraAsc(v => !v)
@@ -149,6 +149,14 @@ export default function FonListesi({ fonlar, kurucular }: { fonlar: Fon[]; kuruc
       return siraAsc ? av - bv : bv - av
     })
 
+  // Kurucu dropdown için: kurucuKod → şirket adı (fonUnvan'dan türet)
+  const kurucuAdMap = new Map<string, string>()
+  for (const f of fonlar) {
+    if (f.kurucuKod && !kurucuAdMap.has(f.kurucuKod)) {
+      kurucuAdMap.set(f.kurucuKod, sirketAdi(f.fonUnvan))
+    }
+  }
+
   function ThBtn({ col, label }: { col: string; label: string }) {
     const aktif = siraKey === col
     return (
@@ -177,7 +185,9 @@ export default function FonListesi({ fonlar, kurucular }: { fonlar: Fon[]; kuruc
           className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:border-indigo-400"
         >
           <option value="HEPSI">Tüm şirketler</option>
-          {kurucular.map(k => <option key={k} value={k}>{kurucuAd(k)}</option>)}
+          {kurucular.map(k => (
+            <option key={k} value={k}>{kurucuAdMap.get(k) ?? k}</option>
+          ))}
         </select>
       </div>
 
@@ -199,7 +209,7 @@ export default function FonListesi({ fonlar, kurucular }: { fonlar: Fon[]; kuruc
 
       <p className="text-slate-400 text-sm mb-3">{filtrelenmis.length} fon</p>
 
-      {hoveredFon && <FonKart fon={hoveredFon} visible={true} />}
+      {hoveredFon && <FonKart fon={hoveredFon} mouseY={mouseY} />}
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
@@ -214,7 +224,7 @@ export default function FonListesi({ fonlar, kurucular }: { fonlar: Fon[]; kuruc
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody onMouseMove={handleMouseMove}>
             {filtrelenmis.map(f => (
               <tr
                 key={`${f.fonKodu}-${f.fonTipi}`}
