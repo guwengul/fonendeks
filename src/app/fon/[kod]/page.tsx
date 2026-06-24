@@ -85,6 +85,14 @@ export default async function FonDetay({
     ? Object.entries(dagilimRow.dagilim as Record<string, number>).sort((a, b) => b[1] - a[1])
     : []
 
+  // Portföydeki hisseler (menkul-kıymet seviyesi, KAP raporundan)
+  const { data: holdingsRow } = await supabase
+    .from('tefas_fon_holdings')
+    .select('hisseler, tarih')
+    .eq('fonKodu', fonKodu)
+    .maybeSingle()
+  const hisseler: { ticker: string; isin: string; agirlik: number }[] = holdingsRow?.hisseler ?? []
+
   // Benchmark serileri (fon başlangıcından itibaren) — grafikte karşılaştırma için
   const GOSTERGELER = ['USD', 'EUR', 'BIST100', 'BIST30', 'GRAM_ALTIN'] as const
   const { data: benchRows } = await supabase
@@ -282,6 +290,29 @@ export default async function FonDetay({
                 </div>
                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(oran, 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Portföydeki hisseler */}
+      {hisseler.length > 0 && (
+        <div className="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-baseline justify-between">
+            <h2 className="font-semibold text-slate-800">Portföydeki Hisseler</h2>
+            <span className="text-xs text-slate-400">{holdingsRow?.tarih} · {hisseler.length} hisse</span>
+          </div>
+          <div className="p-5 space-y-2.5">
+            {hisseler.filter(h => h.agirlik > 0).map(h => (
+              <div key={h.isin}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-slate-700 font-mono font-medium">{h.ticker}</span>
+                  <span className="font-mono text-slate-900">%{h.agirlik.toFixed(2)}</span>
+                </div>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-rose-500 rounded-full" style={{ width: `${Math.min(h.agirlik * 5, 100)}%` }} />
                 </div>
               </div>
             ))}
