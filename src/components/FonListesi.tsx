@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 
 type Fon = {
@@ -28,15 +28,27 @@ const DONEMLER = [
   { key: '5y',  label: '5Y'  },
 ]
 
-const TIP_RENK: Record<string, string> = {
-  YAT: 'bg-indigo-50 text-indigo-600',
-  EMK: 'bg-emerald-50 text-emerald-600',
-  BYF: 'bg-purple-50 text-purple-600',
-}
-
 const RISK_RENK = ['', 'bg-green-100 text-green-700', 'bg-green-100 text-green-700',
   'bg-yellow-100 text-yellow-700', 'bg-yellow-100 text-yellow-700',
   'bg-orange-100 text-orange-700', 'bg-red-100 text-red-600', 'bg-red-200 text-red-700']
+
+const KURUCU_AD: Record<string, string> = {
+  AKP: 'Ak Portföy', ALP: 'Albaraka Portföy', ALT: 'Alternatif Portföy',
+  AZI: 'Azimut PYŞ', DEN: 'Deniz Portföy', FIN: 'Finans Portföy',
+  GAR: 'Garanti Portföy', GEC: 'Gedik Portföy', HLB: 'Halley Portföy',
+  ING: 'ING Portföy', ISP: 'İş Portföy', KOC: 'Koç Portföy',
+  OBK: 'Osmanlı Portföy', PAR: 'Parus Portföy', QNB: 'QNB Finans Portföy',
+  STR: 'Strateji Portföy', TAT: 'Tacirler Portföy', TEB: 'TEB Portföy',
+  VKF: 'Vakıf Portföy', YAP: 'Yapı Kredi Portföy', ZIR: 'Ziraat Portföy',
+  FCB: 'Fiba Portföy', GLC: 'Goldstone Portföy', INF: 'Infina Portföy',
+  KAT: 'Katılım Emeklilik', MGP: 'Mgenius Portföy', PIL: 'Piramit Portföy',
+  RTE: 'Rota Portföy', TGP: 'Tüm Portföy', UNI: 'UniCredit Portföy',
+}
+
+function kurucuAd(kod: string | null) {
+  if (!kod) return '-'
+  return KURUCU_AD[kod] ?? kod
+}
 
 function fmt(n: number | null) {
   if (n == null) return '-'
@@ -52,39 +64,43 @@ function GetiriCell({ val }: { val: number | null }) {
   return <span className={`font-medium ${renk}`}>{isaret}{val.toFixed(2)}%</span>
 }
 
-function FonKart({ fon }: { fon: Fon }) {
+function FonKart({ fon, visible }: { fon: Fon; visible: boolean }) {
+  if (!visible) return null
   return (
-    <div className="absolute left-0 top-full mt-1 z-50 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-4 pointer-events-none">
-      <p className="text-sm font-semibold text-slate-800 leading-snug mb-3">{fon.fonUnvan ?? fon.fonKodu}</p>
-      <div className="space-y-2 text-xs">
+    <div className="fixed bottom-6 right-6 z-50 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 pointer-events-none">
+      <p className="text-sm font-semibold text-slate-800 leading-snug mb-4">{fon.fonUnvan ?? fon.fonKodu}</p>
+      <div className="space-y-2.5 text-xs">
         <div className="flex justify-between">
-          <span className="text-slate-500">Kurucu</span>
-          <span className="font-medium text-slate-700">{fon.kurucuKod ?? '-'}</span>
+          <span className="text-slate-400">Şirket</span>
+          <span className="font-medium text-slate-700">{kurucuAd(fon.kurucuKod)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-slate-500">Tür</span>
-          <span className={`px-2 py-0.5 rounded font-medium ${TIP_RENK[fon.fonTipi] ?? ''}`}>{fon.fonTipi}</span>
+          <span className="text-slate-400">Tür</span>
+          <span className="font-medium text-slate-700">{fon.fonTipi}</span>
         </div>
         {fon.riskDegeri != null && (
           <div className="flex justify-between items-center">
-            <span className="text-slate-500">Risk</span>
-            <span className={`px-2 py-0.5 rounded font-bold ${RISK_RENK[fon.riskDegeri] ?? ''}`}>
-              {fon.riskDegeri}/7
-            </span>
+            <span className="text-slate-400">Risk Seviyesi</span>
+            <div className="flex items-center gap-1">
+              {[1,2,3,4,5,6,7].map(i => (
+                <div key={i} className={`w-3 h-3 rounded-sm ${i <= fon.riskDegeri! ? RISK_RENK[fon.riskDegeri!].replace('text-','bg-').split(' ')[0] : 'bg-slate-100'}`} />
+              ))}
+              <span className="ml-1 font-bold text-slate-600">{fon.riskDegeri}/7</span>
+            </div>
           </div>
         )}
         <div className="flex justify-between">
-          <span className="text-slate-500">Portföy</span>
+          <span className="text-slate-400">Portföy</span>
           <span className="font-medium text-slate-700">{fmt(fon.portfoyBuyukluk)} ₺</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-slate-500">Yatırımcı</span>
+          <span className="text-slate-400">Yatırımcı</span>
           <span className="font-medium text-slate-700">{fon.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}</span>
         </div>
-        <div className="border-t border-slate-100 pt-2 mt-2 grid grid-cols-3 gap-1">
-          {(['1g','1a','1y'] as const).map(k => (
+        <div className="border-t border-slate-100 pt-3 mt-1 grid grid-cols-4 gap-2">
+          {(['1g','1a','yb','1y'] as const).map(k => (
             <div key={k} className="text-center">
-              <div className="text-slate-400 text-[10px] uppercase">{k}</div>
+              <div className="text-slate-400 text-[10px] uppercase mb-1">{k === 'yb' ? 'YBB' : k}</div>
               <GetiriCell val={fon.getiriler[k]} />
             </div>
           ))}
@@ -102,7 +118,7 @@ export default function FonListesi({ fonlar, kurucular }: { fonlar: Fon[]; kuruc
   const [kurucu, setKurucu] = useState<string>('HEPSI')
   const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
   const [siraAsc, setSiraAsc] = useState(false)
-  const [hoveredKod, setHoveredKod] = useState<string | null>(null)
+  const [hoveredFon, setHoveredFon] = useState<Fon | null>(null)
 
   function handleSira(key: SiraKey) {
     if (siraKey === key) setSiraAsc(v => !v)
@@ -161,7 +177,7 @@ export default function FonListesi({ fonlar, kurucular }: { fonlar: Fon[]; kuruc
           className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:border-indigo-400"
         >
           <option value="HEPSI">Tüm şirketler</option>
-          {kurucular.map(k => <option key={k} value={k}>{k}</option>)}
+          {kurucular.map(k => <option key={k} value={k}>{kurucuAd(k)}</option>)}
         </select>
       </div>
 
@@ -183,13 +199,13 @@ export default function FonListesi({ fonlar, kurucular }: { fonlar: Fon[]; kuruc
 
       <p className="text-slate-400 text-sm mb-3">{filtrelenmis.length} fon</p>
 
+      {hoveredFon && <FonKart fon={hoveredFon} visible={true} />}
+
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-20 bg-white">
             <tr className="border-b border-slate-100 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium sticky left-0 bg-white z-30">Kod</th>
-              <th className="px-4 py-3 font-medium">Tip</th>
-              <th className="px-3 py-3 font-medium text-center">Risk</th>
               <ThBtn col="fiyat" label="Fiyat" />
               <ThBtn col="portfoyBuyukluk" label="Portföy" />
               <ThBtn col="kisiSayisi" label="Yatırımcı" />
@@ -203,39 +219,20 @@ export default function FonListesi({ fonlar, kurucular }: { fonlar: Fon[]; kuruc
               <tr
                 key={`${f.fonKodu}-${f.fonTipi}`}
                 className="border-b border-slate-50 hover:bg-indigo-50/40 transition-colors"
+                onMouseEnter={() => setHoveredFon(f)}
+                onMouseLeave={() => setHoveredFon(null)}
               >
                 <td className="px-4 py-3 sticky left-0 bg-white">
-                  <div
-                    className="relative"
-                    onMouseEnter={() => setHoveredKod(`${f.fonKodu}-${f.fonTipi}`)}
-                    onMouseLeave={() => setHoveredKod(null)}
-                  >
-                    <Link
-                      href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
-                      className="block group"
-                    >
-                      <span className="font-mono font-semibold text-indigo-600 group-hover:text-indigo-800 transition-colors">
-                        {f.fonKodu}
+                  <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`} className="block group">
+                    <span className="font-mono font-semibold text-indigo-600 group-hover:text-indigo-800 transition-colors">
+                      {f.fonKodu}
+                    </span>
+                    {f.fonUnvan && (
+                      <span className="block text-xs text-slate-400 font-normal max-w-[220px] truncate">
+                        {f.fonUnvan}
                       </span>
-                      {f.fonUnvan && (
-                        <span className="block text-xs text-slate-400 font-normal max-w-[220px] truncate">
-                          {f.fonUnvan}
-                        </span>
-                      )}
-                    </Link>
-                    {hoveredKod === `${f.fonKodu}-${f.fonTipi}` && <FonKart fon={f} />}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${TIP_RENK[f.fonTipi] ?? ''}`}>
-                    {f.fonTipi}
-                  </span>
-                </td>
-                <td className="px-3 py-3 text-center">
-                  {f.riskDegeri != null
-                    ? <span className={`px-2 py-0.5 rounded text-xs font-bold ${RISK_RENK[f.riskDegeri] ?? ''}`}>{f.riskDegeri}</span>
-                    : <span className="text-slate-300">-</span>
-                  }
+                    )}
+                  </Link>
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-slate-700">
                   {f.fiyat != null ? f.fiyat.toFixed(4) : '-'}
