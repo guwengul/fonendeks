@@ -40,6 +40,7 @@ async function geminiParse(buf, tries = 3) {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${KEYG}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ inline_data: { mime_type: 'application/pdf', data: buf.toString('base64') } }, { text: prompt }] }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } }),
+        signal: AbortSignal.timeout(60000),
       })
       const txt = (await res.json())?.candidates?.[0]?.content?.parts?.[0]?.text
       if (txt) {
@@ -71,7 +72,10 @@ export async function processFund(fonKodu, url, hisseDagilim, ekstra = {}) {
     const i = buf.indexOf('%PDF'), j = buf.lastIndexOf('%%EOF')
     if (i >= 0) buf = buf.slice(i, j > i ? j + 5 : undefined)
   }
-  const text = (await new PDFParse({ data: new Uint8Array(buf) }).getText()).text || ''
+  const text = await Promise.race([
+    new PDFParse({ data: new Uint8Array(buf) }).getText().then(r => r.text || '').catch(() => ''),
+    new Promise(res => setTimeout(() => res(''), 25000)),
+  ])
   let r = parseHoldings(text)
   let kaynak = 'regex'
   if (!r.gecerli) {
