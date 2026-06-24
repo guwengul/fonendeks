@@ -20,22 +20,10 @@ type Fon = {
 }
 
 const DONEMLER = [
-  { key: '1g',  label: '1G'  },
-  { key: '1h',  label: '1H'  },
-  { key: '1a',  label: '1A'  },
-  { key: '3a',  label: '3A'  },
-  { key: '6a',  label: '6A'  },
-  { key: 'yb',  label: 'YBB' },
-  { key: '1y',  label: '1Y'  },
-  { key: '3y',  label: '3Y'  },
-  { key: '5y',  label: '5Y'  },
+  { key: '1g', label: '1G' }, { key: '1h', label: '1H' }, { key: '1a', label: '1A' },
+  { key: '3a', label: '3A' }, { key: '6a', label: '6A' }, { key: 'yb', label: 'YBB' },
+  { key: '1y', label: '1Y' }, { key: '3y', label: '3Y' }, { key: '5y', label: '5Y' },
 ]
-
-const TIP_AD: Record<string, string> = {
-  YAT: 'Yatırım Fonu',
-  EMK: 'Emeklilik Fonu',
-  BYF: 'Borsa Yatırım Fonu',
-}
 
 const RISK_BAR: string[] = [
   '', 'bg-green-400', 'bg-green-400', 'bg-yellow-300',
@@ -68,10 +56,7 @@ function GetiriCell({ val }: { val: number | null }) {
 function FonKart({ fon, mouseY }: { fon: Fon; mouseY: number }) {
   const top = Math.min(mouseY - 10, (typeof window !== 'undefined' ? window.innerHeight : 800) - 300)
   return (
-    <div
-      className="fixed left-4 z-50 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 pointer-events-none"
-      style={{ top }}
-    >
+    <div className="fixed left-4 z-50 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 pointer-events-none" style={{ top }}>
       <p className="text-sm font-semibold text-slate-800 leading-snug mb-1">{fon.fonUnvan ?? fon.fonKodu}</p>
       <p className="text-xs text-indigo-400 mb-4">{fon.fonKodu}</p>
       <div className="space-y-2.5 text-xs">
@@ -81,7 +66,9 @@ function FonKart({ fon, mouseY }: { fon: Fon; mouseY: number }) {
         </div>
         <div className="flex justify-between">
           <span className="text-slate-400">Tür</span>
-          <span className="font-medium text-slate-700 text-right max-w-[160px]">{fon.fonTurAciklama ?? (TIP_AD[fon.fonTipi] ?? fon.fonTipi)}</span>
+          <span className="font-medium text-slate-700 text-right max-w-[160px]">
+            {fon.fonTurAciklama ?? fon.fonTipi}
+          </span>
         </div>
         {fon.riskDegeri != null && (
           <div className="flex justify-between items-center">
@@ -111,19 +98,36 @@ function FonKart({ fon, mouseY }: { fon: Fon; mouseY: number }) {
   )
 }
 
+function FilterGroup({ label, options, value, onChange }: {
+  label: string
+  options: { value: string; label: string }[]
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span className="text-xs text-slate-400 whitespace-nowrap">{label}</span>
+      {options.map(o => (
+        <button key={o.value} onClick={() => onChange(o.value)}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+            value === o.value
+              ? 'bg-indigo-600 text-white'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 type SiraKey = 'portfoyBuyukluk' | 'kisiSayisi' | 'fiyat' | string
 
-export default function FonListesi({
-  fonlar, kurucular, fonTurleri,
-}: {
-  fonlar: Fon[]
-  kurucular: string[]
-  fonTurleri: string[]
+export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
+  fonlar: Fon[]; kurucular: string[]; fonTurleri: string[]
 }) {
   const [arama, setArama] = useState('')
-  const [tip, setTip] = useState<'HEPSI' | 'YAT' | 'EMK' | 'BYF'>('YAT')
-  const [kurucu, setKurucu] = useState('HEPSI')
-  const [fonTur, setFonTur] = useState('HEPSI')
+  const [tip, setTip] = useState('HEPSI')
   const [risk, setRisk] = useState('HEPSI')
   const [vergi, setVergi] = useState('HEPSI')
   const [ucret, setUcret] = useState('HEPSI')
@@ -139,41 +143,43 @@ export default function FonListesi({
     else { setSiraKey(key); setSiraAsc(false) }
   }
 
-  const filtrelenmis = fonlar
-    .filter(f => {
-      if (arama && !f.fonKodu.toLowerCase().includes(arama.toLowerCase()) &&
-          !(f.fonUnvan ?? '').toLowerCase().includes(arama.toLowerCase())) return false
-      if (tip !== 'HEPSI' && f.fonTipi !== tip) return false
-      if (kurucu !== 'HEPSI' && f.kurucuKod !== kurucu) return false
-      if (fonTur !== 'HEPSI' && f.fonTurAciklama !== fonTur) return false
-      if (risk !== 'HEPSI') {
-        const [min, max] = risk.split('-').map(Number)
-        if (f.riskDegeri == null || f.riskDegeri < min || f.riskDegeri > (max ?? min)) return false
-      }
-      if (vergi === 'YOK' && f.stopaj !== 0) return false
-      if (vergi === 'VAR' && (f.stopaj == null || f.stopaj === 0)) return false
-      if (ucret === 'DUSUK' && (f.yonetimUcreti == null || f.yonetimUcreti >= 1)) return false
-      if (ucret === 'ORTA' && (f.yonetimUcreti == null || f.yonetimUcreti < 1 || f.yonetimUcreti > 2)) return false
-      if (ucret === 'YUKSEK' && (f.yonetimUcreti == null || f.yonetimUcreti <= 2)) return false
-      return true
-    })
-    .sort((a, b) => {
-      let av: number | null, bv: number | null
-      if (DONEMLER.find(d => d.key === siraKey)) {
-        av = a.getiriler[siraKey] ?? null; bv = b.getiriler[siraKey] ?? null
-      } else {
-        av = (a as any)[siraKey] ?? null; bv = (b as any)[siraKey] ?? null
-      }
-      if (av == null && bv == null) return 0
-      if (av == null) return 1
-      if (bv == null) return -1
-      return siraAsc ? av - bv : bv - av
-    })
-
+  // Şirket adı map (kurucuKod → şirket adı)
   const kurucuAdMap = new Map<string, string>()
   for (const f of fonlar) {
     if (f.kurucuKod && !kurucuAdMap.has(f.kurucuKod)) kurucuAdMap.set(f.kurucuKod, sirketAdi(f.fonUnvan))
   }
+
+  const filtrelenmis = fonlar.filter(f => {
+    if (arama) {
+      const q = arama.toLowerCase()
+      const sirket = (kurucuAdMap.get(f.kurucuKod ?? '') ?? '').toLowerCase()
+      const tur = (f.fonTurAciklama ?? '').toLowerCase()
+      if (!f.fonKodu.toLowerCase().includes(q) &&
+          !(f.fonUnvan ?? '').toLowerCase().includes(q) &&
+          !sirket.includes(q) && !tur.includes(q)) return false
+    }
+    if (tip !== 'HEPSI' && f.fonTipi !== tip) return false
+    if (risk !== 'HEPSI') {
+      const [min, max] = risk.split('-').map(Number)
+      if (f.riskDegeri == null || f.riskDegeri < min || f.riskDegeri > (max ?? min)) return false
+    }
+    if (vergi === 'YOK' && f.stopaj !== 0) return false
+    if (vergi === 'VAR' && (f.stopaj == null || f.stopaj === 0)) return false
+    if (ucret === 'DUSUK' && (f.yonetimUcreti == null || f.yonetimUcreti >= 1)) return false
+    if (ucret === 'ORTA' && (f.yonetimUcreti == null || f.yonetimUcreti < 1 || f.yonetimUcreti > 2)) return false
+    if (ucret === 'YUKSEK' && (f.yonetimUcreti == null || f.yonetimUcreti <= 2)) return false
+    return true
+  }).sort((a, b) => {
+    let av: number | null, bv: number | null
+    if (DONEMLER.find(d => d.key === siraKey)) {
+      av = a.getiriler[siraKey] ?? null; bv = b.getiriler[siraKey] ?? null
+    } else {
+      av = (a as any)[siraKey] ?? null; bv = (b as any)[siraKey] ?? null
+    }
+    if (av == null && bv == null) return 0
+    if (av == null) return 1; if (bv == null) return -1
+    return siraAsc ? av - bv : bv - av
+  })
 
   function ThBtn({ col, label }: { col: string; label: string }) {
     const aktif = siraKey === col
@@ -185,59 +191,37 @@ export default function FonListesi({
     )
   }
 
-  const sel = 'border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:border-indigo-400'
-
   return (
     <div>
-      {/* Arama + şirket */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-3">
-        <input type="text" placeholder="Fon kodu veya unvan ara..." value={arama}
-          onChange={e => setArama(e.target.value)}
-          className="flex-1 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400" />
-        <select value={kurucu} onChange={e => setKurucu(e.target.value)} className={sel}>
-          <option value="HEPSI">Tüm şirketler</option>
-          {kurucular.map(k => <option key={k} value={k}>{kurucuAdMap.get(k) ?? k}</option>)}
-        </select>
-      </div>
+      <input type="text" placeholder="Fon kodu, şirket, tür veya unvan ara..."
+        value={arama} onChange={e => setArama(e.target.value)}
+        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 mb-4" />
 
-      {/* Filtre satırı */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        {/* Fon tipi */}
-        <div className="flex gap-1">
-          {(['HEPSI', 'YAT', 'EMK', 'BYF'] as const).map(t => (
-            <button key={t} onClick={() => setTip(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${tip === t ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300'}`}
-              title={TIP_AD[t]}>
-              {t === 'HEPSI' ? 'Tümü' : t}
-            </button>
-          ))}
-        </div>
-
-        <select value={fonTur} onChange={e => setFonTur(e.target.value)} className={sel}>
-          <option value="HEPSI">Tüm türler</option>
-          {fonTurleri.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-
-        <select value={risk} onChange={e => setRisk(e.target.value)} className={sel}>
-          <option value="HEPSI">Risk: Tümü</option>
-          <option value="1-2">Risk 1–2 (Düşük)</option>
-          <option value="3-4">Risk 3–4 (Orta)</option>
-          <option value="5-6">Risk 5–6 (Yüksek)</option>
-          <option value="7-7">Risk 7 (Çok Yüksek)</option>
-        </select>
-
-        <select value={vergi} onChange={e => setVergi(e.target.value)} className={sel}>
-          <option value="HEPSI">Stopaj: Tümü</option>
-          <option value="YOK">Stopaj yok (%0)</option>
-          <option value="VAR">Stopajlı</option>
-        </select>
-
-        <select value={ucret} onChange={e => setUcret(e.target.value)} className={sel}>
-          <option value="HEPSI">Ücret: Tümü</option>
-          <option value="DUSUK">Düşük (&lt;%1)</option>
-          <option value="ORTA">Orta (%1–2)</option>
-          <option value="YUKSEK">Yüksek (&gt;%2)</option>
-        </select>
+      <div className="flex flex-col gap-2.5 mb-5">
+        <FilterGroup label="Tür" value={tip} onChange={setTip} options={[
+          { value: 'HEPSI', label: 'Tümü' },
+          { value: 'YAT', label: 'Yatırım Fonu' },
+          { value: 'EMK', label: 'Emeklilik Fonu' },
+          { value: 'BYF', label: 'Borsa Yatırım Fonu' },
+        ]} />
+        <FilterGroup label="Risk" value={risk} onChange={setRisk} options={[
+          { value: 'HEPSI', label: 'Tümü' },
+          { value: '1-2', label: '1–2 Düşük' },
+          { value: '3-4', label: '3–4 Orta' },
+          { value: '5-6', label: '5–6 Yüksek' },
+          { value: '7-7', label: '7 Çok Yüksek' },
+        ]} />
+        <FilterGroup label="Stopaj" value={vergi} onChange={setVergi} options={[
+          { value: 'HEPSI', label: 'Tümü' },
+          { value: 'YOK', label: 'Vergisiz' },
+          { value: 'VAR', label: 'Vergili' },
+        ]} />
+        <FilterGroup label="Ücret" value={ucret} onChange={setUcret} options={[
+          { value: 'HEPSI', label: 'Tümü' },
+          { value: 'DUSUK', label: '<%1' },
+          { value: 'ORTA', label: '%1–2' },
+          { value: 'YUKSEK', label: '>%2' },
+        ]} />
       </div>
 
       <p className="text-slate-400 text-sm mb-3">{filtrelenmis.length} fon</p>
