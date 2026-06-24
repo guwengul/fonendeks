@@ -26,7 +26,7 @@ export default async function Home() {
       for (let from = 0; ; from += 1000) {
         const { data } = await supabase
           .from('tefas_fon_meta')
-          .select('fonKodu, riskDegeri, kurucuKod')
+          .select('fonKodu, riskDegeri, kurucuKod, fonTurAciklama, stopaj, yonetimUcreti')
           .range(from, from + 999)
         if (!data || !data.length) break
         rows.push(...data)
@@ -52,6 +52,9 @@ export default async function Home() {
       fiyat: f.fiyat, portfoyBuyukluk: f.portfoyBuyukluk, kisiSayisi: f.kisiSayisi, tarih: f.tarih,
       riskDegeri: meta?.riskDegeri ?? null,
       kurucuKod: meta?.kurucuKod ?? null,
+      fonTurAciklama: meta?.fonTurAciklama ?? null,
+      stopaj: meta?.stopaj ?? null,
+      yonetimUcreti: meta?.yonetimUcreti ?? null,
       getiriler: {
         '1g': f.getiri1g, '1h': f.getiri1h, '1a': f.getiri1a, '3a': f.getiri3a,
         '6a': f.getiri6a, 'yb': f.getiriYb, '1y': f.getiri1y, '3y': f.getiri3y, '5y': f.getiri5y,
@@ -60,6 +63,7 @@ export default async function Home() {
   })
 
   const kurucular = [...new Set(fonlar.map(f => f.kurucuKod).filter(Boolean))].sort() as string[]
+  const fonTurleri = [...new Set(fonlar.map(f => f.fonTurAciklama).filter(Boolean))].sort() as string[]
 
   return (
     <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
@@ -67,7 +71,7 @@ export default async function Home() {
         <h1 className="text-2xl font-bold text-slate-900">Yatırım Fonları</h1>
         <p className="text-slate-400 text-sm mt-1">Son güncelleme: {sonGuncelleme}</p>
       </div>
-      <FonListesi fonlar={fonlar} kurucular={kurucular} />
+      <FonListesi fonlar={fonlar} kurucular={kurucular} fonTurleri={fonTurleri} />
     </div>
   )
 }
