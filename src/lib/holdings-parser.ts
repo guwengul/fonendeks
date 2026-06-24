@@ -26,26 +26,27 @@ export function parseHoldings(text: string): ParseSonuc {
     if (m) beklenenToplam = trNum(m[1])
   }
 
-  let t = text.slice(start, grupIdx === -1 ? undefined : grupIdx).replace(/\s+/g, ' ')
-  // Gürültü temizliği: bölüm başlığı, sayfa numaraları, tekrarlı sayfa/kolon başlıkları
-  t = t.replace(/HİSSE SENETLERİ Hisse Türk/g, ' ')
-  t = t.replace(/HİSSE SENETLERİ/g, ' ')
-  t = t.replace(/-- \d+ of \d+ --/g, ' ')
-  t = t.replace(/[A-ZÇĞİÖŞÜ0-9-]+-İŞ PORTFÖY[^]*?FONU \([^)]*\)/g, ' ')
-  t = t.replace(/Mayıs-\d{4}|Ocak-\d{4}|Şubat-\d{4}|Mart-\d{4}|Nisan-\d{4}|Haziran-\d{4}|Temmuz-\d{4}|Ağustos-\d{4}|Eylül-\d{4}|Ekim-\d{4}|Kasım-\d{4}|Aralık-\d{4}/g, ' ')
-  t = t.replace(/TOPLAM \(FPD GÖRE\)[^]*?ISIN KODU/g, ' ')
+  const t = text.slice(start, grupIdx === -1 ? undefined : grupIdx).replace(/\s+/g, ' ')
 
   // ISIN ile satırlara böl (her kalem ticker ile başlar, ISIN ile biter)
   const isinRe = /TR[A-Z0-9]{10}/g
   const isinler = t.match(isinRe) || []
   const parts = t.split(isinRe)
 
+  const NOISE = new Set(['GRUP', 'TOPLAM', 'HISSE', 'ISIN', 'KODU', 'TL', 'FPD', 'FTD', 'REPO'])
   const map = new Map<string, Holding>()
   for (let i = 0; i < isinler.length; i++) {
-    const chunk = (parts[i] || '').trim()
+    let chunk = (parts[i] || '').trim()
     if (!chunk) continue
-    const ticker = chunk.split(' ')[0]
-    if (!/^[A-Z][A-Z0-9]{2,5}$/.test(ticker)) continue
+    // Tekrarlı sayfa/kolon başlığı stabil olarak "ISIN KODU" ile biter → sonrasını al
+    const k = chunk.lastIndexOf('ISIN KODU')
+    if (k !== -1) chunk = chunk.slice(k + 9)
+    // İlk kalemde bölüm başlığı "Hisse Türk" sonrası başlar
+    const h = chunk.lastIndexOf('Hisse Türk')
+    if (h !== -1) chunk = chunk.slice(h + 10)
+    // Gerçek ticker: ticker desenine uyan ve noise olmayan ilk token
+    const ticker = chunk.split(' ').find(tok => /^[A-Z][A-Z0-9]{2,5}$/.test(tok) && !NOISE.has(tok))
+    if (!ticker) continue
     const nums = chunk.match(/-?\d[\d.]*,\d+/g) || []
     if (!nums.length) continue
     const w = trNum(nums[nums.length - 1]) // ISIN'den önceki son sayı = FTD%
