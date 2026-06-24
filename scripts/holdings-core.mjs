@@ -31,24 +31,37 @@ export async function kurucuKodlari(kurucuKod) {
   return meta.map(x => x.fonKodu)
 }
 
-async function geminiParse(buf) {
+async function geminiParse(buf, tries = 3) {
   const KEYG = process.env.GEMINI_API_KEY
   if (!KEYG) return null
   const prompt = `Bu PDF bir Türk yatırım fonunun aylık portföy raporu. "III-FON PORTFÖY DEĞERİ TABLOSU" bölümündeki TÜM hisse senetlerini (yerli ve yabancı) çıkar. Her hisse için: ticker (sade kod, örn THYAO veya yabancıda INTC), ISIN, ve "TOPLAM (FTD GÖRE)" kolonundaki yüzde ağırlık. Negatif (açığa satış) değerleri koru. Sadece JSON: {"hisseler":[{"ticker":"X","isin":"...","agirlik":0.0}]}`
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${KEYG}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ inline_data: { mime_type: 'application/pdf', data: buf.toString('base64') } }, { text: prompt }] }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } }),
-  })
-  const txt = (await res.json())?.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!txt) return null
-  return (JSON.parse(txt)?.hisseler ?? []).filter(h => h.ticker && h.isin)
-    .map(h => ({ ticker: String(h.ticker).toUpperCase().replace(/ (US|TI|GR|LN|FP) EQUITY$/, '').trim(), isin: h.isin, agirlik: +Number(h.agirlik).toFixed(2) }))
-    .sort((a, b) => b.agirlik - a.agirlik)
+  for (let i = 0; i < tries; i++) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${KEYG}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ inline_data: { mime_type: 'application/pdf', data: buf.toString('base64') } }, { text: prompt }] }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } }),
+      })
+      const txt = (await res.json())?.candidates?.[0]?.content?.parts?.[0]?.text
+      if (txt) {
+        const arr = (JSON.parse(txt)?.hisseler ?? []).filter(h => h.ticker && h.isin)
+          .map(h => ({ ticker: String(h.ticker).toUpperCase().replace(/ (US|TI|GR|LN|FP) EQUITY$/, '').trim(), isin: h.isin, agirlik: +Number(h.agirlik).toFixed(2) }))
+          .sort((a, b) => b.agirlik - a.agirlik)
+        if (arr.length) return arr
+      }
+    } catch { /* retry */ }
+    if (i < tries - 1) await new Promise(r => setTimeout(r, 1500 * (i + 1)))
+  }
+  return null
 }
 
 // PDF URL → parse → doğrula → DB. Döner: {ok, hisse, toplam, kaynak} veya {ok:false, neden}
 export async function processFund(fonKodu, url, hisseDagilim) {
-  const buf = Buffer.from(await (await fetch(url, { headers: UA, redirect: 'follow' })).arrayBuffer())
+  let buf = Buffer.from(await (await fetch(url, { headers: UA, redirect: 'follow' })).arrayBuffer())
+  // KAP file download'u Java-serialized wrapper içinde döner → %PDF'ten kes
+  if (buf.slice(0, 5).toString() !== '%PDF-') {
+    const i = buf.indexOf('%PDF'), j = buf.lastIndexOf('%%EOF')
+    if (i >= 0) buf = buf.slice(i, j > i ? j + 5 : undefined)
+  }
   const text = (await new PDFParse({ data: new Uint8Array(buf) }).getText()).text || ''
   let r = parseHoldings(text)
   let kaynak = 'regex'
