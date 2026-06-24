@@ -12,7 +12,7 @@ export default async function Home() {
     const { data } = await supabase
       .from('tefas_fon_ozet')
       .select('*')
-      .order('portfoyBuyukluk', { ascending: false })
+      .order('portfoyBuyukluk', { ascending: false, nullsFirst: false })
       .range(from, from + 999)
     if (!data || !data.length) break
     ozet.push(...data)
