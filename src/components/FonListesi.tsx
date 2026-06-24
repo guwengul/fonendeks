@@ -124,9 +124,9 @@ export default function FonListesi({ fonlar }: { fonlar: Fon[] }) {
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-20 bg-white">
             <tr className="border-b border-slate-100 text-slate-500 text-left">
-              <th className="px-4 py-3 font-medium sticky left-0 bg-white z-10">Kod</th>
+              <th className="px-4 py-3 font-medium sticky left-0 bg-white z-30">Kod</th>
               <th className="px-4 py-3 font-medium">Tip</th>
               <ThBtn col="fiyat" label="Fiyat" />
               <ThBtn col="portfoyBuyukluk" label="Portföy" />
@@ -145,10 +145,17 @@ export default function FonListesi({ fonlar }: { fonlar: Fon[] }) {
                 <td className="px-4 py-3 sticky left-0 bg-white">
                   <Link
                     href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
-                    className="font-mono font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                    className="block group"
                     title={f.fonUnvan ?? ''}
                   >
-                    {f.fonKodu}
+                    <span className="font-mono font-semibold text-indigo-600 group-hover:text-indigo-800 transition-colors">
+                      {f.fonKodu}
+                    </span>
+                    {f.fonUnvan && (
+                      <span className="block text-xs text-slate-400 font-normal max-w-[220px] truncate">
+                        {f.fonUnvan}
+                      </span>
+                    )}
                   </Link>
                 </td>
                 <td className="px-4 py-3">
