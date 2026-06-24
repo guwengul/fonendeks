@@ -67,4 +67,6 @@ async function main() {
   console.log(res.ok ? 'DB: yazıldı' : `DB hata: ${await res.text()}`)
   console.log('İlk 8:', r.holdings.slice(0, 8).map(h => `${h.ticker} %${h.agirlik}`).join(', '))
 }
-main()
+
+// Sadece doğrudan çalıştırılınca main() (import edilince değil)
+if (process.argv[1] && process.argv[1].endsWith('fon-holdings.mjs')) main()
