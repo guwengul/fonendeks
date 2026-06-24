@@ -26,7 +26,7 @@ export default async function Home() {
       for (let from = 0; ; from += 1000) {
         const { data } = await supabase
           .from('tefas_fon_meta')
-          .select('fonKodu, riskDegeri, kurucuKod, fonTurAciklama, stopaj, yonetimUcreti')
+          .select('fonKodu, riskDegeri, kurucuKod, fonTurAciklama, stopaj, yonetimUcreti, tefasDurum')
           .range(from, from + 999)
         if (!data || !data.length) break
         rows.push(...data)
@@ -55,6 +55,7 @@ export default async function Home() {
       fonTurAciklama: meta?.fonTurAciklama ?? null,
       stopaj: meta?.stopaj ?? null,
       yonetimUcreti: meta?.yonetimUcreti ?? null,
+      tefasAcik: meta?.tefasDurum?.includes('işlem görüyor') ?? null,
       getiriler: {
         '1g': f.getiri1g, '1h': f.getiri1h, '1a': f.getiri1a, '3a': f.getiri3a,
         '6a': f.getiri6a, 'yb': f.getiriYb, '1y': f.getiri1y, '3y': f.getiri3y, '5y': f.getiri5y,

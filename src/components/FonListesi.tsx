@@ -16,6 +16,7 @@ type Fon = {
   fonTurAciklama: string | null
   stopaj: number | null
   yonetimUcreti: number | null
+  tefasAcik: boolean | null
   getiriler: Record<string, number | null>
 }
 
@@ -36,6 +37,8 @@ const VERGI_OPTIONS = ['YOK', 'VAR']
 const VERGI_LABELS: Record<string, string> = { YOK: 'Vergisiz', VAR: 'Vergili' }
 const UCRET_OPTIONS = ['DUSUK', 'ORTA', 'YUKSEK']
 const UCRET_LABELS: Record<string, string> = { DUSUK: '<%1', ORTA: '%1–2', YUKSEK: '>%2' }
+const TEFAS_OPTIONS = ['ACIK', 'KAPALI']
+const TEFAS_LABELS: Record<string, string> = { ACIK: 'TEFAS\'ta İşlem Görüyor', KAPALI: 'TEFAS\'a Kapalı' }
 
 function sirketAdi(fonUnvan: string | null): string {
   if (!fonUnvan) return '-'
@@ -87,6 +90,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const [riskler, setRiskler] = useState(new Set(RISK_OPTIONS))
   const [vergiler, setVergiler] = useState(new Set(VERGI_OPTIONS))
   const [ucretler, setUcretler] = useState(new Set(UCRET_OPTIONS))
+  const [tefas, setTefas] = useState(new Set(TEFAS_OPTIONS))
   const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
   const [siraAsc, setSiraAsc] = useState(false)
 
@@ -105,6 +109,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const riskFiltre = riskler.size < RISK_OPTIONS.length
   const vergiFiltre = vergiler.size < VERGI_OPTIONS.length
   const ucretFiltre = ucretler.size < UCRET_OPTIONS.length
+  const tefasFiltre = tefas.size < TEFAS_OPTIONS.length
 
   const filtrelenmis = fonlar.filter(f => {
     if (arama) {
@@ -127,6 +132,11 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
     if (vergiFiltre) {
       if (vergiler.has('YOK') && !vergiler.has('VAR') && f.stopaj !== 0) return false
       if (vergiler.has('VAR') && !vergiler.has('YOK') && (f.stopaj == null || f.stopaj === 0)) return false
+    }
+    if (tefasFiltre) {
+      const acik = f.tefasAcik === true
+      if (tefas.has('ACIK') && !tefas.has('KAPALI') && !acik) return false
+      if (tefas.has('KAPALI') && !tefas.has('ACIK') && acik) return false
     }
     if (ucretFiltre) {
       const u = f.yonetimUcreti
@@ -190,6 +200,13 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
             {VERGI_OPTIONS.map(v => (
               <Chip key={v} label={VERGI_LABELS[v]} active={vergiler.has(v)}
                 onClick={() => setVergiler(s => toggle(s, v))} />
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-400">TEFAS</span>
+            {TEFAS_OPTIONS.map(v => (
+              <Chip key={v} label={TEFAS_LABELS[v]} active={tefas.has(v)}
+                onClick={() => setTefas(s => toggle(s, v))} />
             ))}
           </div>
           <div className="flex items-center gap-1.5">
