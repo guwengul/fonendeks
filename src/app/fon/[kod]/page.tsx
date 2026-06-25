@@ -172,7 +172,7 @@ export default async function FonDetay({
           {meta?.isinKodu && <span>ISIN: <span className="font-mono text-slate-600">{meta.isinKodu}</span></span>}
           <span>Kuruluş: <span className="text-slate-600">{ilk.tarih}</span></span>
           {meta?.riskDegeri && <span>Risk: <span className="text-slate-600">{meta.riskDegeri}/7</span></span>}
-          {meta?.yonetimUcreti && <span>Yönetim ücreti: <span className="text-slate-600">%{meta.yonetimUcreti}</span></span>}
+          <span>Yönetim ücreti: <span className="text-slate-600">{meta?.yonetimUcreti ? `%${meta.yonetimUcreti}` : '-'}</span></span>
           {meta?.stopaj != null && <span>Stopaj: <span className="text-slate-600">%{meta.stopaj}</span></span>}
           {meta?.basIsSaat && meta?.sonIsSaat && <span>İşlem saatleri: <span className="text-slate-600">{meta.basIsSaat}–{meta.sonIsSaat}</span></span>}
           {meta?.fonGeriAlisValor != null && <span>Alış valörü: <span className="text-slate-600">{meta.fonGeriAlisValor} gün</span></span>}
