@@ -3,12 +3,31 @@
 import { useState } from 'react'
 import FonGrafik from './FonGrafik'
 import FonBuyumeGrafik from './FonBuyumeGrafik'
+import { GRAFIK_ARALIKLAR } from './FonGrafik'
 
 type GecmisRow = { tarih: string; fiyat: number | null; portfoyBuyukluk: number | null; kisiSayisi: number | null; tedPaySayisi: number | null }
 type BenchmarkRow = Record<string, number | null> & { tarih: string; fiyat: number | null }
-type Donem = { label: string; val: number | null }
 type Hisse = { ticker: string; isin: string; agirlik: number }
 type Dagilim = [string, number][]
+
+const BENCH_SERILER = [
+  { key: 'fiyat',      label: 'Fon',        renk: 'bg-indigo-600 text-white' },
+  { key: 'USD',        label: 'USD/TL',     renk: 'bg-emerald-600 text-white' },
+  { key: 'EUR',        label: 'EUR/TL',     renk: 'bg-cyan-600 text-white' },
+  { key: 'BIST100',    label: 'BIST 100',   renk: 'bg-red-600 text-white' },
+  { key: 'BIST30',     label: 'BIST 30',    renk: 'bg-orange-500 text-white' },
+  { key: 'GRAM_ALTIN', label: 'Gram Altın', renk: 'bg-yellow-500 text-white' },
+] as const
+
+const BENCH_DONEMLER = GRAFIK_ARALIKLAR.filter(a => a.label !== 'Tümü')
+
+function hesaplaBenchGetiri(benchmark: BenchmarkRow[], key: string, baslangicTarih: string): number | null {
+  const filtreli = baslangicTarih ? benchmark.filter(d => d.tarih >= baslangicTarih) : benchmark
+  const ilk = filtreli.find(d => d[key] != null)?.[key]
+  const son = [...filtreli].reverse().find(d => d[key] != null)?.[key]
+  if (ilk == null || son == null || ilk === 0) return null
+  return ((son / ilk) - 1) * 100
+}
 
 export default function FonTabs({
   gecmis, benchmark, dagilim, dagilimTarih,
@@ -33,6 +52,7 @@ export default function FonTabs({
   getiri5y: number | null
 }) {
   const [tab, setTab] = useState<'performans' | 'buyume' | 'dagilim'>('performans')
+  const [benchDonem, setBenchDonem] = useState('1Y')
 
   const TABS = [
     { key: 'performans', label: 'Fon Performansı' },
@@ -51,6 +71,15 @@ export default function FonTabs({
     { label: '5 Yıllık',  val: getiri5y },
   ]
 
+  const sonTarih = benchmark.length > 0 ? benchmark[benchmark.length - 1].tarih : ''
+  const secilenDonem = BENCH_DONEMLER.find(a => a.label === benchDonem) ?? BENCH_DONEMLER[5]
+  const benchBaslangic = sonTarih ? secilenDonem.bas(sonTarih) : ''
+
+  const benchGetiriler = BENCH_SERILER.map(s => ({
+    ...s,
+    val: hesaplaBenchGetiri(benchmark, s.key, benchBaslangic),
+  }))
+
   return (
     <div>
       <div className="flex gap-1 border-b border-slate-200 mb-6">
@@ -68,6 +97,7 @@ export default function FonTabs({
 
       {tab === 'performans' && (
         <div className="space-y-6">
+          {/* Getiri kartları */}
           <div className="grid grid-cols-4 gap-3">
             {getiriKartlari.map(({ label, val }) => (
               <div key={label} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
@@ -78,6 +108,40 @@ export default function FonTabs({
               </div>
             ))}
           </div>
+
+          {/* Benchmark karşılaştırması */}
+          {benchmark.length > 0 && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
+                <h2 className="font-semibold text-slate-800 text-sm">Benchmark Karşılaştırması</h2>
+                <div className="flex flex-wrap gap-1.5">
+                  {BENCH_DONEMLER.map(a => (
+                    <button
+                      key={a.label}
+                      onClick={() => setBenchDonem(a.label)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                        benchDonem === a.label
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-6 divide-x divide-slate-100">
+                {benchGetiriler.map(({ key, label, renk, val }) => (
+                  <div key={key} className="p-4 text-center">
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mb-2 ${renk}`}>{label}</span>
+                    <p className={`font-semibold text-lg ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {val != null ? `%${val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <FonGrafik data={gecmis} benchmark={benchmark} />
         </div>
@@ -114,7 +178,7 @@ export default function FonTabs({
           {hisseler.length > 0 && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 flex items-baseline justify-between gap-2 flex-wrap">
-                <h2 className="font-semibold text-slate-800">Hisse Dağılımı</h2>
+                <h2 className="font-semibold text-slate-800">Hisse Senedi Dağılımı</h2>
                 <div className="flex items-center gap-3 text-xs text-slate-400">
                   <span>{hisseler.length} hisse{holdingsYayinTarihi ? ` · rapor ${holdingsYayinTarihi}` : ''}</span>
                   {holdingsPdfLink && (
