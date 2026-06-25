@@ -196,34 +196,44 @@ export default async function FonDetay({
       </div>
 
       {/* Metrik kartlar */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-8">
+      <div className="grid grid-cols-3 sm:grid-cols-7 gap-3 mb-8">
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
           <p className="text-slate-400 text-xs mb-1">Son Fiyat</p>
-          <p className="text-slate-900 font-mono font-semibold text-sm">{son.fiyat?.toFixed(6) ?? '-'}</p>
+          <p className="text-slate-900 font-mono font-semibold text-sm">
+            {son.fiyat != null ? son.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+          </p>
           <p className="text-slate-400 text-xs mt-1">{son.tarih}</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+          <p className="text-slate-400 text-xs mb-1">Günlük</p>
+          <p className={`font-semibold text-lg ${(gunlukGetiri ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+            {gunlukGetiri != null ? `%${gunlukGetiri.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+          </p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
           <p className="text-slate-400 text-xs mb-1">1 Haftalık</p>
           <p className={`font-semibold text-lg ${(getiri1h ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {getiri1h != null ? `%${getiri1h.toFixed(2)}` : '-'}
+            {getiri1h != null ? `%${getiri1h.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
           <p className="text-slate-400 text-xs mb-1">1 Aylık</p>
           <p className={`font-semibold text-lg ${(getiri1a ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {getiri1a != null ? `%${getiri1a.toFixed(2)}` : '-'}
+            {getiri1a != null ? `%${getiri1a.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
           <p className="text-slate-400 text-xs mb-1">1 Yıllık</p>
           <p className={`font-semibold text-lg ${(birYillik ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {birYillik != null ? `%${birYillik.toFixed(2)}` : '-'}
+            {birYillik != null ? `%${birYillik.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
           <p className="text-slate-400 text-xs mb-1">Portföy Büyüklüğü</p>
           <p className="text-slate-900 font-semibold text-sm">
-            {son.portfoyBuyukluk ? (son.portfoyBuyukluk / 1_000_000).toFixed(1) + ' Mn ₺' : '-'}
+            {son.portfoyBuyukluk != null
+              ? (son.portfoyBuyukluk / 1_000_000).toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Mn ₺'
+              : '-'}
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
