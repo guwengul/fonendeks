@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import FonGrafik from './FonGrafik'
+import FonBuyumeGrafik from './FonBuyumeGrafik'
 
 type GecmisRow = { tarih: string; fiyat: number | null; portfoyBuyukluk: number | null; kisiSayisi: number | null; tedPaySayisi: number | null }
 type BenchmarkRow = Record<string, number | null> & { tarih: string; fiyat: number | null }
@@ -31,10 +32,11 @@ export default function FonTabs({
   getiri3y: number | null
   getiri5y: number | null
 }) {
-  const [tab, setTab] = useState<'performans' | 'dagilim'>('performans')
+  const [tab, setTab] = useState<'performans' | 'buyume' | 'dagilim'>('performans')
 
   const TABS = [
     { key: 'performans', label: 'Fon Performansı' },
+    { key: 'buyume', label: 'Fon Büyümesi' },
     { key: 'dagilim', label: 'Fon Varlık Dağılımı' },
   ] as const
 
@@ -79,6 +81,10 @@ export default function FonTabs({
 
           <FonGrafik data={gecmis} benchmark={benchmark} />
         </div>
+      )}
+
+      {tab === 'buyume' && (
+        <FonBuyumeGrafik data={gecmis} />
       )}
 
       {tab === 'dagilim' && (
