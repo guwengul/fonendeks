@@ -220,7 +220,12 @@ export default async function FonDetay({
         gunlukGetiri={gunlukGetiri}
         getiri1h={getiri1h}
         getiri1a={getiri1a}
+        getiri3a={ozet?.getiri3a ?? null}
+        getiri6a={ozet?.getiri6a ?? null}
+        getiriYb={ozet?.getiriYb ?? null}
         birYillik={birYillik}
+        getiri3y={ozet?.getiri3y ?? null}
+        getiri5y={ozet?.getiri5y ?? null}
         gecmis={gecmis}
         benchmark={benchmarkData}
         donemler={donemler}
