@@ -68,6 +68,43 @@ function GetiriCell({ val }: { val: number | null }) {
   </span>
 }
 
+function SirketListe({ secili, onChange, adMap, tumKodlar }: {
+  secili: Set<string>; onChange: (s: Set<string>) => void
+  adMap: Map<string, string>; tumKodlar: string[]
+}) {
+  const [ara, setAra] = useState('')
+
+  const filtrelenmis = tumKodlar.filter(k =>
+    (adMap.get(k) ?? k).toLowerCase().includes(ara.toLowerCase())
+  )
+
+  function toggleKod(k: string) {
+    const next = new Set(secili)
+    next.has(k) ? next.delete(k) : next.add(k)
+    onChange(next)
+  }
+
+  return (
+    <div className="w-56">
+      <div className="flex gap-2 mb-1.5">
+        <button onClick={() => onChange(new Set(tumKodlar))} className="text-xs text-indigo-600 hover:underline">Tümü</button>
+        <button onClick={() => onChange(new Set())} className="text-xs text-slate-400 hover:underline">Temizle</button>
+      </div>
+      <input type="text" placeholder="Ara..." value={ara} onChange={e => setAra(e.target.value)}
+        className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-400 mb-1.5" />
+      <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
+        {filtrelenmis.map(k => (
+          <label key={k} className="flex items-center gap-2 px-1 py-0.5 hover:bg-slate-100 rounded cursor-pointer">
+            <input type="checkbox" checked={secili.has(k)} onChange={() => toggleKod(k)}
+              className="accent-indigo-600 w-3.5 h-3.5 shrink-0" />
+            <span className="text-xs text-slate-700 truncate">{adMap.get(k) ?? k}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function Chip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick}
@@ -211,14 +248,9 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
 
         {filtrePaneli && (
           <div className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-wrap gap-x-8 gap-y-4">
-            <div className="flex flex-col gap-1.5 w-full">
+            <div className="flex flex-col gap-1.5">
               <span className="text-xs text-slate-400 font-medium">Portföy Şirketi</span>
-              <div className="flex flex-wrap gap-1.5">
-                {kurucular.map(k => (
-                  <Chip key={k} label={kurucuAdMap.get(k) ?? k} active={sirketler.has(k)}
-                    onClick={() => setSirketler(s => toggle(s, k))} />
-                ))}
-              </div>
+              <SirketListe secili={sirketler} onChange={setSirketler} adMap={kurucuAdMap} tumKodlar={kurucular} />
             </div>
             <div className="flex flex-col gap-1.5">
               <span className="text-xs text-slate-400 font-medium">Fon Türü</span>
