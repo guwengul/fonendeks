@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import FonGrafik from '@/components/FonGrafik'
+import FonTabs from '@/components/FonTabs'
 
 export const revalidate = 3600
 
@@ -136,6 +136,7 @@ export default async function FonDetay({
   const yilBasi = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1))
   const ybbEski = sonFiyat ? fiyatBul(gecmis, yilBasi) : null
   const donemler = sonFiyat ? [
+    { label: '1 Hafta', val: getiriHesapla(gecmis, sonFiyat, 7) },
     { label: '1 Ay', val: getiriHesapla(gecmis, sonFiyat, 30) },
     { label: '3 Ay', val: getiriHesapla(gecmis, sonFiyat, 90) },
     { label: '6 Ay', val: getiriHesapla(gecmis, sonFiyat, 180) },
@@ -144,6 +145,8 @@ export default async function FonDetay({
     { label: '3 Yıl', val: getiriHesapla(gecmis, sonFiyat, 365 * 3) },
     { label: '5 Yıl', val: getiriHesapla(gecmis, sonFiyat, 365 * 5) },
   ] : []
+  const getiri1h = donemler.find(d => d.label === '1 Hafta')?.val ?? null
+  const getiri1a = donemler.find(d => d.label === '1 Ay')?.val ?? null
   const birYillik = donemler.find(d => d.label === '1 Yıl')?.val ?? null
 
   const TIP_RENK: Record<string, string> = {
@@ -176,161 +179,72 @@ export default async function FonDetay({
           )}
         </div>
         <p className="text-slate-500 mt-1">{info?.fonUnvan}</p>
-        {/* ISIN + detay bilgiler */}
+        {/* Bilgi çubuğu */}
         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-400">
           {meta?.isinKodu && <span>ISIN: <span className="font-mono text-slate-600">{meta.isinKodu}</span></span>}
-          {meta?.basIsSaat && meta?.sonIsSaat && (
-            <span>İşlem: {meta.basIsSaat}–{meta.sonIsSaat}</span>
-          )}
-          {meta?.fonSatisValor != null && <span>Alış valörü: {meta.fonSatisValor} gün</span>}
-          {meta?.fonGeriAlisValor != null && <span>Satış valörü: {meta.fonGeriAlisValor} gün</span>}
-          {meta?.yonetimUcreti && <span>Yönetim ücreti: %{meta.yonetimUcreti}</span>}
-          {meta?.stopaj != null && <span>Stopaj: %{meta.stopaj}</span>}
-          {meta?.tefasDurum && <span>{meta.tefasDurum === true || meta.tefasDurum === 'true' ? "TEFAS'ta işlem görüyor" : meta.tefasDurum}</span>}
+          <span>Kuruluş: <span className="text-slate-600">{ilk.tarih}</span></span>
+          {meta?.riskDegeri && <span>Risk: <span className="text-slate-600">{meta.riskDegeri}/7</span></span>}
+          {meta?.yonetimUcreti && <span>Yönetim ücreti: <span className="text-slate-600">%{meta.yonetimUcreti}</span></span>}
+          {meta?.stopaj != null && <span>Stopaj: <span className="text-slate-600">%{meta.stopaj}</span></span>}
+          {meta?.basIsSaat && meta?.sonIsSaat && <span>İşlem saatleri: <span className="text-slate-600">{meta.basIsSaat}–{meta.sonIsSaat}</span></span>}
+          {meta?.fonSatisValor != null && <span>Alış valörü: <span className="text-slate-600">{meta.fonSatisValor} gün</span></span>}
+          {meta?.fonGeriAlisValor != null && <span>Satış valörü: <span className="text-slate-600">{meta.fonGeriAlisValor} gün</span></span>}
           {meta?.kapLink && (
-            <a href={meta.kapLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600 transition-colors">
-              KAP →
-            </a>
+            <a href={meta.kapLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600 transition-colors">KAP →</a>
           )}
         </div>
       </div>
 
-      {/* Metrik kartlar - satır 1 */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+      {/* Metrik kartlar */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-8">
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
           <p className="text-slate-400 text-xs mb-1">Son Fiyat</p>
-          <p className="text-slate-900 font-mono font-semibold">{son.fiyat?.toFixed(6) ?? '-'}</p>
+          <p className="text-slate-900 font-mono font-semibold text-sm">{son.fiyat?.toFixed(6) ?? '-'}</p>
           <p className="text-slate-400 text-xs mt-1">{son.tarih}</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-slate-400 text-xs mb-1">Günlük Getiri</p>
-          <p className={`font-semibold text-lg ${(gunlukGetiri ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {gunlukGetiri != null ? `%${gunlukGetiri.toFixed(4)}` : '-'}
+          <p className="text-slate-400 text-xs mb-1">1 Haftalık</p>
+          <p className={`font-semibold text-lg ${(getiri1h ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+            {getiri1h != null ? `%${getiri1h.toFixed(2)}` : '-'}
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-slate-400 text-xs mb-1">1 Yıllık Getiri</p>
+          <p className="text-slate-400 text-xs mb-1">1 Aylık</p>
+          <p className={`font-semibold text-lg ${(getiri1a ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+            {getiri1a != null ? `%${getiri1a.toFixed(2)}` : '-'}
+          </p>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+          <p className="text-slate-400 text-xs mb-1">1 Yıllık</p>
           <p className={`font-semibold text-lg ${(birYillik ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
             {birYillik != null ? `%${birYillik.toFixed(2)}` : '-'}
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-slate-400 text-xs mb-1">Toplam Getiri</p>
-          <p className={`font-semibold text-lg ${toplamGetiri && +toplamGetiri >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {toplamGetiri ? `%${toplamGetiri}` : '-'}
-          </p>
-          <p className="text-slate-400 text-xs mt-1">{ilk.tarih} → {son.tarih}</p>
-        </div>
-      </div>
-
-      {/* Metrik kartlar - satır 2 */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
           <p className="text-slate-400 text-xs mb-1">Portföy Büyüklüğü</p>
-          <p className="text-slate-900 font-semibold">
+          <p className="text-slate-900 font-semibold text-sm">
             {son.portfoyBuyukluk ? (son.portfoyBuyukluk / 1_000_000).toFixed(1) + ' Mn ₺' : '-'}
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-slate-400 text-xs mb-1">Yatırımcı Sayısı</p>
-          <p className="text-slate-900 font-semibold">
+          <p className="text-slate-400 text-xs mb-1">Yatırımcı</p>
+          <p className="text-slate-900 font-semibold text-sm">
             {son.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-slate-400 text-xs mb-1">Kategori Sırası</p>
-          <p className="text-slate-900 font-semibold">
-            {meta?.kategoriDerece != null && meta?.kategoriFonSay != null
-              ? `${meta.kategoriDerece} / ${meta.kategoriFonSay}`
-              : '-'}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-slate-400 text-xs mb-1">Pazar Payı</p>
-          <p className="text-slate-900 font-semibold">
-            {meta?.pazarPayi != null ? `%${Number(meta.pazarPayi).toFixed(2)}` : '-'}
           </p>
         </div>
       </div>
 
-      <FonGrafik data={gecmis} benchmark={benchmarkData} />
-
-      {/* Dönemsel getiriler - ham fiyat verisinden hesaplanır */}
-      {donemler.length > 0 && (
-        <div className="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100">
-            <h2 className="font-semibold text-slate-800">Dönemsel Getiriler</h2>
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-7 divide-x divide-slate-100">
-            {donemler.map(({ label, val }) => (
-              <div key={label} className="px-4 py-4 text-center">
-                <p className="text-slate-400 text-xs mb-1">{label}</p>
-                <p className={`font-mono font-semibold text-sm ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {val != null ? `%${val.toFixed(2)}` : '-'}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Varlık dağılımı - kendi DB tablomuzdan */}
-      {dagilim.length > 0 && (
-        <div className="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-baseline justify-between">
-            <h2 className="font-semibold text-slate-800">Varlık Dağılımı</h2>
-            {dagilimRow?.tarih && <span className="text-xs text-slate-400">{dagilimRow.tarih}</span>}
-          </div>
-          <div className="p-5 space-y-2.5">
-            {dagilim.map(([isim, oran]) => (
-              <div key={isim}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-600">{isim}</span>
-                  <span className="font-mono font-medium text-slate-900">%{oran.toFixed(2)}</span>
-                </div>
-                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(oran, 100)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Portföydeki hisseler */}
-      {hisseler.length > 0 && (
-        <div className="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-baseline justify-between gap-2 flex-wrap">
-            <h2 className="font-semibold text-slate-800">Portföydeki Hisseler</h2>
-            <div className="flex items-center gap-3 text-xs text-slate-400">
-              <span>{hisseler.length} hisse{holdingsRow?.yayinTarihi ? ` · rapor ${holdingsRow.yayinTarihi}` : ''}</span>
-              {holdingsRow?.pdfLink && (
-                <a href={holdingsRow.pdfLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600 transition-colors">
-                  PDF →
-                </a>
-              )}
-              {holdingsRow?.kapBildirimLink && (
-                <a href={holdingsRow.kapBildirimLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600 transition-colors">
-                  KAP →
-                </a>
-              )}
-            </div>
-          </div>
-          <div className="p-5 space-y-2.5">
-            {hisseler.filter(h => h.agirlik > 0).map(h => (
-              <div key={h.isin}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-700 font-mono font-medium">{h.ticker}</span>
-                  <span className="font-mono text-slate-900">%{h.agirlik.toFixed(2)}</span>
-                </div>
-                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-rose-500 rounded-full" style={{ width: `${Math.min(h.agirlik * 5, 100)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <FonTabs
+        gecmis={gecmis}
+        benchmark={benchmarkData}
+        donemler={donemler}
+        dagilim={dagilim}
+        dagilimTarih={dagilimRow?.tarih}
+        hisseler={hisseler}
+        holdingsYayinTarihi={holdingsRow?.yayinTarihi}
+        holdingsPdfLink={holdingsRow?.pdfLink}
+        holdingsKapLink={holdingsRow?.kapBildirimLink}
+      />
     </div>
   )
 }
