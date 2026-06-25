@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import FonTabs from '@/components/FonTabs'
 
-export const revalidate = 3600
+export const dynamic = 'force-dynamic'
 
 type Gecmis = {
   tarih: string
