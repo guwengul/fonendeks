@@ -85,16 +85,12 @@ function SirketListe({ secili, onChange, adMap, tumKodlar }: {
   }
 
   return (
-    <div className="w-56">
-      <div className="flex gap-2 mb-1.5">
-        <button onClick={() => onChange(new Set(tumKodlar))} className="text-xs text-indigo-600 hover:underline">Tümü</button>
-        <button onClick={() => onChange(new Set())} className="text-xs text-slate-400 hover:underline">Temizle</button>
-      </div>
-      <input type="text" placeholder="Ara..." value={ara} onChange={e => setAra(e.target.value)}
-        className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-400 mb-1.5" />
-      <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
+    <div>
+      <input type="text" placeholder="Şirket ara..." value={ara} onChange={e => setAra(e.target.value)}
+        className="w-48 px-2.5 py-1 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-400 mb-2" />
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-x-4 gap-y-0.5">
         {filtrelenmis.map(k => (
-          <label key={k} className="flex items-center gap-2 px-1 py-0.5 hover:bg-slate-100 rounded cursor-pointer">
+          <label key={k} className="flex items-center gap-1.5 py-0.5 hover:bg-slate-100 rounded cursor-pointer">
             <input type="checkbox" checked={secili.has(k)} onChange={() => toggleKod(k)}
               className="accent-indigo-600 w-3.5 h-3.5 shrink-0" />
             <span className="text-xs text-slate-700 truncate">{adMap.get(k) ?? k}</span>
@@ -247,55 +243,63 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
         </button>
 
         {filtrePaneli && (
-          <div className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-wrap gap-x-8 gap-y-4">
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-slate-400 font-medium">Portföy Şirketi</span>
+          <div className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col gap-4">
+            <div className="flex flex-wrap gap-x-8 gap-y-3">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-400 font-medium">Fon Türü</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {TIP_OPTIONS.map(o => (
+                    <Chip key={o.value} label={o.label} active={tipler.has(o.value)}
+                      onClick={() => setTipler(s => toggle(s, o.value))} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-400 font-medium">Risk Seviyesi</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {RISK_OPTIONS.map(v => (
+                    <Chip key={v} label={RISK_LABELS[v]} active={riskler.has(v)}
+                      onClick={() => setRiskler(s => toggle(s, v))} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-400 font-medium">Stopaj Durumu</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {VERGI_OPTIONS.map(v => (
+                    <Chip key={v} label={VERGI_LABELS[v]} active={vergiler.has(v)}
+                      onClick={() => setVergiler(s => toggle(s, v))} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-400 font-medium">TEFAS Durumu</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {TEFAS_OPTIONS.map(v => (
+                    <Chip key={v} label={TEFAS_LABELS[v]} active={tefas.has(v)}
+                      onClick={() => setTefas(s => toggle(s, v))} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-400 font-medium">Yönetim Ücreti</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {UCRET_OPTIONS.map(v => (
+                    <Chip key={v} label={UCRET_LABELS[v]} active={ucretler.has(v)}
+                      onClick={() => setUcretler(s => toggle(s, v))} />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-slate-200 pt-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-slate-400 font-medium">Portföy Şirketi</span>
+                <div className="flex gap-2">
+                  <button onClick={() => setSirketler(new Set(kurucular))} className="text-xs text-indigo-600 hover:underline">Tümü</button>
+                  <button onClick={() => setSirketler(new Set())} className="text-xs text-slate-400 hover:underline">Temizle</button>
+                </div>
+              </div>
               <SirketListe secili={sirketler} onChange={setSirketler} adMap={kurucuAdMap} tumKodlar={kurucular} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-slate-400 font-medium">Fon Türü</span>
-              <div className="flex flex-wrap gap-1.5">
-                {TIP_OPTIONS.map(o => (
-                  <Chip key={o.value} label={o.label} active={tipler.has(o.value)}
-                    onClick={() => setTipler(s => toggle(s, o.value))} />
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-slate-400 font-medium">Risk Seviyesi</span>
-              <div className="flex flex-wrap gap-1.5">
-                {RISK_OPTIONS.map(v => (
-                  <Chip key={v} label={RISK_LABELS[v]} active={riskler.has(v)}
-                    onClick={() => setRiskler(s => toggle(s, v))} />
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-slate-400 font-medium">Stopaj Durumu</span>
-              <div className="flex flex-wrap gap-1.5">
-                {VERGI_OPTIONS.map(v => (
-                  <Chip key={v} label={VERGI_LABELS[v]} active={vergiler.has(v)}
-                    onClick={() => setVergiler(s => toggle(s, v))} />
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-slate-400 font-medium">TEFAS Durumu</span>
-              <div className="flex flex-wrap gap-1.5">
-                {TEFAS_OPTIONS.map(v => (
-                  <Chip key={v} label={TEFAS_LABELS[v]} active={tefas.has(v)}
-                    onClick={() => setTefas(s => toggle(s, v))} />
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-slate-400 font-medium">Yönetim Ücreti</span>
-              <div className="flex flex-wrap gap-1.5">
-                {UCRET_OPTIONS.map(v => (
-                  <Chip key={v} label={UCRET_LABELS[v]} active={ucretler.has(v)}
-                    onClick={() => setUcretler(s => toggle(s, v))} />
-                ))}
-              </div>
             </div>
           </div>
         )}
