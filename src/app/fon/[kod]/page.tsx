@@ -80,78 +80,49 @@ export default async function FonDetay({
     .maybeSingle()
   const hisseler: { ticker: string; isin: string; agirlik: number }[] = holdingsRow?.hisseler ?? []
 
-  // Benchmark serileri (fon başlangıcından itibaren)
-  const GOSTERGELER = ['USD', 'EUR', 'BIST100', 'BIST30', 'GRAM_ALTIN'] as const
-  const { data: benchRows } = await supabase
-    .from('tefas_benchmark_fiyatlari')
-    .select('tarih, gosterge, deger')
-    .order('tarih', { ascending: true })
-    .limit(10000)
+  // Benchmark getirileri önceden hesaplanmış tablodan
+  const { data: benchGetiriRows } = await supabase
+    .from('tefas_benchmark_getiri')
+    .select('gosterge, getiri1h, getiri1a, getiri3a, getiri6a, getiriYb, getiri1y, getiri3y, getiri5y')
 
-  // gosterge → sıralı dizi (ascending)
-  const benchMap: Record<string, { tarih: string; deger: number }[]> = {}
-  for (const g of GOSTERGELER) benchMap[g] = []
-  for (const r of benchRows ?? []) {
-    benchMap[r.gosterge]?.push({ tarih: r.tarih, deger: Number(r.deger) })
+  // { '1H': { USD: x, EUR: y, ... }, '1A': { ... }, ... }
+  const benchGetiriler: Record<string, Record<string, number | null>> = {
+    '1H': {}, '1A': {}, '3A': {}, '6A': {}, 'YBB': {}, '1Y': {}, '3Y': {}, '5Y': {},
+  }
+  for (const r of benchGetiriRows ?? []) {
+    benchGetiriler['1H'][r.gosterge]  = r.getiri1h
+    benchGetiriler['1A'][r.gosterge]  = r.getiri1a
+    benchGetiriler['3A'][r.gosterge]  = r.getiri3a
+    benchGetiriler['6A'][r.gosterge]  = r.getiri6a
+    benchGetiriler['YBB'][r.gosterge] = r.getiriYb
+    benchGetiriler['1Y'][r.gosterge]  = r.getiri1y
+    benchGetiriler['3Y'][r.gosterge]  = r.getiri3y
+    benchGetiriler['5Y'][r.gosterge]  = r.getiri5y
   }
 
-  // Belirli bir tarihteki (veya öncesindeki) en son benchmark değerini döner
-  function benchAt(seri: { tarih: string; deger: number }[], tarih: string): number | null {
-    let result: number | null = null
-    for (const row of seri) {
-      if (row.tarih <= tarih) result = row.deger
-      else break
-    }
-    return result
-  }
-
+  // Fon getirilerini benchGetiriler'e ekle (gecmis'ten)
+  const sonFiyat = gecmis[gecmis.length - 1].fiyat
   function ayGeriStr(tarih: string, ay: number) {
     const d = new Date(tarih); d.setMonth(d.getMonth() - ay); return d.toISOString().slice(0, 10)
   }
-
-  const sonTarih = gecmis[gecmis.length - 1].tarih
-  const sonFiyat = gecmis[gecmis.length - 1].fiyat
-
-  const BENCH_DONEMLER_LIST = [
-    { label: '1H',  bas: (() => { const d = new Date(sonTarih); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10) })() },
-    { label: '1A',  bas: ayGeriStr(sonTarih, 1) },
-    { label: '3A',  bas: ayGeriStr(sonTarih, 3) },
-    { label: '6A',  bas: ayGeriStr(sonTarih, 6) },
-    { label: 'YBB', bas: `${new Date(sonTarih).getFullYear()}-01-01` },
-    { label: '1Y',  bas: ayGeriStr(sonTarih, 12) },
-    { label: '3Y',  bas: ayGeriStr(sonTarih, 36) },
-    { label: '5Y',  bas: ayGeriStr(sonTarih, 60) },
+  const sonTarihGecmis = gecmis[gecmis.length - 1].tarih
+  const fonDonemler: { label: string; bas: string }[] = [
+    { label: '1H',  bas: (() => { const d = new Date(sonTarihGecmis); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10) })() },
+    { label: '1A',  bas: ayGeriStr(sonTarihGecmis, 1) },
+    { label: '3A',  bas: ayGeriStr(sonTarihGecmis, 3) },
+    { label: '6A',  bas: ayGeriStr(sonTarihGecmis, 6) },
+    { label: 'YBB', bas: `${new Date(sonTarihGecmis).getFullYear()}-01-01` },
+    { label: '1Y',  bas: ayGeriStr(sonTarihGecmis, 12) },
+    { label: '3Y',  bas: ayGeriStr(sonTarihGecmis, 36) },
+    { label: '5Y',  bas: ayGeriStr(sonTarihGecmis, 60) },
   ]
-
-  // Benchmark getirilerini server'da hesapla
-  const benchGetiriler: Record<string, Record<string, number | null>> = {}
-  for (const { label, bas } of BENCH_DONEMLER_LIST) {
-    const getiriler: Record<string, number | null> = {}
-    for (const g of GOSTERGELER) {
-      const seri = benchMap[g] ?? []
-      const ilkVal = benchAt(seri, bas)
-      const sonVal = benchAt(seri, sonTarih)
-      getiriler[g] = (ilkVal && sonVal && ilkVal !== 0) ? (sonVal / ilkVal - 1) * 100 : null
-    }
-    const fonIlkRow = gecmis.find(r => r.tarih >= bas)
-    getiriler['fiyat'] = (fonIlkRow?.fiyat && sonFiyat) ? (sonFiyat / fonIlkRow.fiyat - 1) * 100 : null
-    benchGetiriler[label] = getiriler
+  for (const { label, bas } of fonDonemler) {
+    const ilkRow = gecmis.find(r => r.tarih >= bas)
+    benchGetiriler[label]['fiyat'] = (ilkRow?.fiyat && sonFiyat)
+      ? +((sonFiyat / ilkRow.fiyat - 1) * 100).toFixed(2) : null
   }
 
-  // Fon tarihlerine forward-fill ile hizala (grafik için)
-  const benchSerileri = new Map<string, { tarih: string; deger: number }[]>()
-  for (const g of GOSTERGELER) benchSerileri.set(g, benchMap[g])
-  const benchPtr: Record<string, number> = {}
-  for (const g of GOSTERGELER) benchPtr[g] = 0
-  const benchmarkData = gecmis.map(row => {
-    const nokta: Record<string, number | null> = {}
-    for (const g of GOSTERGELER) {
-      const seri = benchSerileri.get(g)!
-      while (benchPtr[g] < seri.length && seri[benchPtr[g]].tarih <= row.tarih) benchPtr[g]++
-      nokta[g] = benchPtr[g] > 0 ? seri[benchPtr[g] - 1].deger : null
-    }
-    return { tarih: row.tarih, fiyat: row.fiyat, ...nokta }
-  })
+  const benchmarkData: { tarih: string; fiyat: number | null }[] = gecmis.map(r => ({ tarih: r.tarih, fiyat: r.fiyat }))
 
   // Getiriler özet tablosundan gelir (önceden hesaplanmış)
   const gunlukGetiri = ozet?.getiri1g ?? null

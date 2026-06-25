@@ -6,7 +6,7 @@ import FonBuyumeGrafik from './FonBuyumeGrafik'
 import { GRAFIK_ARALIKLAR } from './FonGrafik'
 
 type GecmisRow = { tarih: string; fiyat: number | null; portfoyBuyukluk: number | null; kisiSayisi: number | null; tedPaySayisi: number | null }
-type BenchmarkRow = Record<string, number | null> & { tarih: string; fiyat: number | null }
+type BenchmarkRow = { tarih: string; fiyat: number | null }
 type Hisse = { ticker: string; isin: string; agirlik: number }
 type Dagilim = [string, number][]
 
@@ -97,7 +97,7 @@ export default function FonTabs({
               </div>
             ))}
           </div>
-          <FonGrafik data={gecmis} benchmark={benchmark} />
+          <FonGrafik data={gecmis} />
         </div>
       )}
 
