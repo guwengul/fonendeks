@@ -46,7 +46,7 @@ export default function FonTabs({
   getiri5y: number | null
 }) {
   const [tab, setTab] = useState<'performans' | 'benchmark' | 'buyume' | 'dagilim'>('performans')
-  const [benchGosterge, setBenchGosterge] = useState<string>('USD')
+  const [benchDonem, setBenchDonem] = useState('1Y')
 
   const TABS = [
     { key: 'performans',  label: 'Fon Performansı' },
@@ -66,19 +66,19 @@ export default function FonTabs({
     { label: '5 Yıllık',  val: getiri5y },
   ]
 
-  const benchDonemKartlar = BENCH_DONEMLER_LABELS.map(donem => {
-    const d = benchGetiriler[donem] ?? {}
-    const fonPct = d['fiyat'] ?? null
+  const d = benchGetiriler[benchDonem] ?? {}
+  const fonPct = d['fiyat'] ?? null
+  const benchGostergeDegerleri = BENCH_SERILER.map(s => {
     let val: number | null = null
-    if (benchGosterge === 'fiyat') {
+    if (s.key === 'fiyat') {
       val = fonPct
     } else {
-      const benchPct = d[benchGosterge] ?? null
+      const benchPct = d[s.key] ?? null
       if (fonPct !== null && benchPct !== null) {
         val = +((((1 + fonPct / 100) / (1 + benchPct / 100)) - 1) * 100).toFixed(2)
       }
     }
-    return { label: donem, val }
+    return { key: s.key, label: s.label, renk: s.renk, val }
   })
 
   return (
@@ -114,41 +114,26 @@ export default function FonTabs({
 
       {tab === 'benchmark' && (
         <div className="space-y-6">
-          {/* Gösterge seçici */}
+          {/* Dönem seçici */}
           <div className="flex flex-wrap gap-2">
-            {BENCH_SERILER.map(s => (
-              <button
-                key={s.key}
-                onClick={() => setBenchGosterge(s.key)}
+            {BENCH_DONEMLER_LABELS.map(l => (
+              <button key={l} onClick={() => setBenchDonem(l)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  benchGosterge === s.key
-                    ? s.renk
+                  benchDonem === l
+                    ? 'bg-indigo-600 text-white'
                     : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
-                }`}
-              >
-                {s.label}
+                }`}>
+                {l}
               </button>
-            ))}
-          </div>
-
-          {/* Dönem kartları */}
-          <div className="grid grid-cols-4 gap-3">
-            {benchDonemKartlar.map(({ label, val }) => (
-              <div key={label} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-                <p className="text-slate-400 text-xs mb-1">{label}</p>
-                <p className={`font-semibold text-xl ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {val != null ? `%${val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
-                </p>
-              </div>
             ))}
           </div>
 
           {/* Bar chart */}
           <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={benchDonemKartlar} barCategoryGap="30%">
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={benchGostergeDegerleri} barCategoryGap="25%">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 12 }} tickLine={false} axisLine={false} />
+                <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 12 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} axisLine={false} width={48} tickFormatter={v => `%${v}`} />
                 <Tooltip
                   contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8 }}
@@ -157,12 +142,24 @@ export default function FonTabs({
                 />
                 <ReferenceLine y={0} stroke="#e2e8f0" />
                 <Bar dataKey="val" radius={[4, 4, 0, 0]}>
-                  {benchDonemKartlar.map(({ label, val }) => (
-                    <Cell key={label} fill={val == null ? '#e2e8f0' : val >= 0 ? '#10b981' : '#ef4444'} />
+                  {benchGostergeDegerleri.map(({ key, val }) => (
+                    <Cell key={key} fill={val == null ? '#e2e8f0' : val >= 0 ? '#10b981' : '#ef4444'} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+
+          {/* Enstrüman kartları */}
+          <div className="grid grid-cols-3 gap-3">
+            {benchGostergeDegerleri.map(({ key, label, renk, val }) => (
+              <div key={key} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mb-2 ${renk}`}>{label}</span>
+                <p className={`font-semibold text-xl ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {val != null ? `%${val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       )}
