@@ -21,22 +21,14 @@ const BENCH_SERILER = [
 
 const BENCH_DONEMLER = GRAFIK_ARALIKLAR.filter(a => a.label !== 'Tümü')
 
-function benchGetiri(benchmark: BenchmarkRow[], key: string, baslangicTarih: string): number | null {
-  const filtreli = baslangicTarih ? benchmark.filter(d => d.tarih >= baslangicTarih) : benchmark
-  if (filtreli.length === 0) return null
-  const ilk = filtreli.find(d => d[key] != null)?.[key] as number | null
-  const son = [...filtreli].reverse().find(d => d[key] != null)?.[key] as number | null
-  if (ilk == null || son == null || ilk === 0) return null
-  return (son / ilk - 1) * 100
-}
-
 export default function FonTabs({
-  gecmis, benchmark, dagilim, dagilimTarih,
+  gecmis, benchmark, benchGetiriler, dagilim, dagilimTarih,
   hisseler, holdingsYayinTarihi, holdingsPdfLink, holdingsKapLink,
   getiri1h, getiri1a, getiri3a, getiri6a, getiriYb, birYillik, getiri3y, getiri5y,
 }: {
   gecmis: GecmisRow[]
   benchmark: BenchmarkRow[]
+  benchGetiriler: Record<string, Record<string, number | null>>
   dagilim: Dagilim
   dagilimTarih?: string | null
   hisseler: Hisse[]
@@ -73,14 +65,9 @@ export default function FonTabs({
     { label: '5 Yıllık',  val: getiri5y },
   ]
 
-  // Benchmark hesabı: benchmarkData'daki raw değerlerden dönem başı ve sonu alınır
-  const sonTarih = benchmark.length > 0 ? benchmark[benchmark.length - 1].tarih : ''
-  const secilenDonem = BENCH_DONEMLER.find(a => a.label === benchDonem) ?? BENCH_DONEMLER[5]
-  const benchBaslangic = sonTarih ? secilenDonem.bas(sonTarih) : ''
-
   const benchKartlar = BENCH_SERILER.map(s => ({
     ...s,
-    val: benchGetiri(benchmark, s.key, benchBaslangic),
+    val: (benchGetiriler[benchDonem] ?? {})[s.key] ?? null,
   }))
 
   return (
@@ -131,15 +118,6 @@ export default function FonTabs({
                 {a.label}
               </button>
             ))}
-          </div>
-
-          {/* DEBUG */}
-          <div className="text-xs text-slate-400 font-mono bg-slate-50 p-3 rounded-lg space-y-1">
-            <p>benchmark.length: {benchmark.length}</p>
-            <p>sonTarih: {sonTarih}</p>
-            <p>benchBaslangic: {benchBaslangic}</p>
-            <p>USD ilk: {String(benchmark.filter(d => d.tarih >= benchBaslangic).find(d => d['USD'] != null)?.['USD'])}</p>
-            <p>USD son: {String([...benchmark.filter(d => d.tarih >= benchBaslangic)].reverse().find(d => d['USD'] != null)?.['USD'])}</p>
           </div>
 
           {/* Karşılaştırma kartları */}

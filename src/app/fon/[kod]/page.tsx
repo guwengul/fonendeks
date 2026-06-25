@@ -80,7 +80,7 @@ export default async function FonDetay({
     .maybeSingle()
   const hisseler: { ticker: string; isin: string; agirlik: number }[] = holdingsRow?.hisseler ?? []
 
-  // Benchmark serileri (fon başlangıcından itibaren) — grafikte karşılaştırma için
+  // Benchmark serileri (fon başlangıcından itibaren)
   const GOSTERGELER = ['USD', 'EUR', 'BIST100', 'BIST30', 'GRAM_ALTIN'] as const
   const { data: benchRows } = await supabase
     .from('tefas_benchmark_fiyatlari')
@@ -89,18 +89,63 @@ export default async function FonDetay({
     .order('tarih', { ascending: true })
     .limit(10000)
 
-  // gosterge → sıralı [tarih, deger] dizisi
-  const benchSerileri = new Map<string, { tarih: string; deger: number }[]>()
-  for (const g of GOSTERGELER) benchSerileri.set(g, [])
+  // gosterge → sıralı dizi (ascending)
+  const benchMap: Record<string, { tarih: string; deger: number }[]> = {}
+  for (const g of GOSTERGELER) benchMap[g] = []
   for (const r of benchRows ?? []) {
-    benchSerileri.get(r.gosterge)?.push({ tarih: r.tarih, deger: r.deger })
+    benchMap[r.gosterge]?.push({ tarih: r.tarih, deger: Number(r.deger) })
   }
 
-  // Fon tarihlerine forward-fill ile hizala
+  // Belirli bir tarihteki (veya öncesindeki) en son benchmark değerini döner
+  function benchAt(seri: { tarih: string; deger: number }[], tarih: string): number | null {
+    let result: number | null = null
+    for (const row of seri) {
+      if (row.tarih <= tarih) result = row.deger
+      else break
+    }
+    return result
+  }
+
+  function ayGeriStr(tarih: string, ay: number) {
+    const d = new Date(tarih); d.setMonth(d.getMonth() - ay); return d.toISOString().slice(0, 10)
+  }
+
+  const sonTarih = gecmis[gecmis.length - 1].tarih
+  const sonFiyat = gecmis[gecmis.length - 1].fiyat
+
+  const BENCH_DONEMLER_LIST = [
+    { label: '1H',  bas: (() => { const d = new Date(sonTarih); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10) })() },
+    { label: '1A',  bas: ayGeriStr(sonTarih, 1) },
+    { label: '3A',  bas: ayGeriStr(sonTarih, 3) },
+    { label: '6A',  bas: ayGeriStr(sonTarih, 6) },
+    { label: 'YBB', bas: `${new Date(sonTarih).getFullYear()}-01-01` },
+    { label: '1Y',  bas: ayGeriStr(sonTarih, 12) },
+    { label: '3Y',  bas: ayGeriStr(sonTarih, 36) },
+    { label: '5Y',  bas: ayGeriStr(sonTarih, 60) },
+  ]
+
+  // Benchmark getirilerini server'da hesapla
+  const benchGetiriler: Record<string, Record<string, number | null>> = {}
+  for (const { label, bas } of BENCH_DONEMLER_LIST) {
+    const getiriler: Record<string, number | null> = {}
+    for (const g of GOSTERGELER) {
+      const seri = benchMap[g] ?? []
+      const ilkVal = benchAt(seri, bas)
+      const sonVal = benchAt(seri, sonTarih)
+      getiriler[g] = (ilkVal && sonVal && ilkVal !== 0) ? (sonVal / ilkVal - 1) * 100 : null
+    }
+    const fonIlkRow = gecmis.find(r => r.tarih >= bas)
+    getiriler['fiyat'] = (fonIlkRow?.fiyat && sonFiyat) ? (sonFiyat / fonIlkRow.fiyat - 1) * 100 : null
+    benchGetiriler[label] = getiriler
+  }
+
+  // Fon tarihlerine forward-fill ile hizala (grafik için)
+  const benchSerileri = new Map<string, { tarih: string; deger: number }[]>()
+  for (const g of GOSTERGELER) benchSerileri.set(g, benchMap[g])
   const benchPtr: Record<string, number> = {}
   for (const g of GOSTERGELER) benchPtr[g] = 0
   const benchmarkData = gecmis.map(row => {
-    const nokta: Record<string, number | null> = { }
+    const nokta: Record<string, number | null> = {}
     for (const g of GOSTERGELER) {
       const seri = benchSerileri.get(g)!
       while (benchPtr[g] < seri.length && seri[benchPtr[g]].tarih <= row.tarih) benchPtr[g]++
@@ -230,6 +275,7 @@ export default async function FonDetay({
         getiri5y={ozet?.getiri5y ?? null}
         gecmis={gecmis}
         benchmark={benchmarkData}
+        benchGetiriler={benchGetiriler}
         dagilim={dagilim}
         dagilimTarih={dagilimRow?.tarih}
         hisseler={hisseler}
