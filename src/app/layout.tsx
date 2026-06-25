@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="tr" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-slate-50">
         <header className="relative border-b border-slate-200 bg-white">
-          <nav className="mx-auto flex w-full max-w-5xl items-center gap-1 px-6 h-14">
+          <nav className="mx-auto flex w-full max-w-7xl items-center gap-1 px-4 sm:px-6 h-14">
             <Link href="/" className="mr-4 flex items-center gap-2 font-semibold text-slate-900 tracking-tight shrink-0">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden>
                 <circle cx="12" cy="12" r="9" stroke="#1e293b" strokeWidth="2" />

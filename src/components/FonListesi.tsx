@@ -58,7 +58,7 @@ function fmt(n: number | null) {
 function GetiriCell({ val }: { val: number | null }) {
   if (val == null) return <span className="text-slate-300">-</span>
   return <span className={`font-medium ${val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-    {val >= 0 ? '+' : ''}{val.toFixed(2)}%
+    {val >= 0 ? '+' : ''}{val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
   </span>
 }
 
@@ -250,13 +250,14 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
         )}
       </div>
 
-      <p className="text-slate-400 text-sm mb-3">{filtrelenmis.length} fon</p>
+      <p className="text-slate-400 text-sm mb-3">{filtrelenmis.length.toLocaleString('tr-TR')} fon listeleniyor</p>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-20 bg-white">
             <tr className="border-b border-slate-100 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium sticky left-0 bg-white z-30">Kod</th>
+              <th className="px-3 py-3 font-medium">Şirket</th>
               <ThBtn col="fiyat" label="Fiyat" />
               <ThBtn col="portfoyBuyukluk" label="Portföy" />
               <ThBtn col="kisiSayisi" label="Yatırımcı" />
@@ -274,6 +275,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
                     {f.fonKodu}
                   </Link>
                 </td>
+                <td className="px-3 py-3 text-slate-600 text-sm whitespace-nowrap">{sirketAdi(f.fonUnvan)}</td>
                 <td className="px-3 py-3 text-right font-mono text-slate-700">{f.fiyat != null ? f.fiyat.toFixed(4) : '-'}</td>
                 <td className="px-3 py-3 text-right text-slate-600">{fmt(f.portfoyBuyukluk)}</td>
                 <td className="px-3 py-3 text-right text-slate-600">{f.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}</td>

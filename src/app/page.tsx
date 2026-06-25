@@ -39,9 +39,9 @@ export default async function Home() {
   const metaMap = new Map(metaResult.map((m: any) => [m.fonKodu, m]))
 
   const sonGuncelleme = ozetResult[0]?.guncellenmeTarihi
-    ? new Date(ozetResult[0].guncellenmeTarihi).toLocaleString('tr-TR', {
+    ? new Date(ozetResult[0].guncellenmeTarihi).toLocaleDateString('tr-TR', {
         timeZone: 'Europe/Istanbul',
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        day: 'numeric', month: 'long', year: 'numeric',
       })
     : ozetResult[0]?.tarih ?? ''
 
