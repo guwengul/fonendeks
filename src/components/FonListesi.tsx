@@ -167,7 +167,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const [riskler, setRiskler] = useState(new Set(RISK_OPTIONS))
   const [vergiler, setVergiler] = useState(new Set(VERGI_OPTIONS))
   const [ucretler, setUcretler] = useState(new Set(UCRET_OPTIONS))
-  const [tefas, setTefas] = useState(new Set(TEFAS_OPTIONS))
+  const [tefas, setTefas] = useState(new Set(['ACIK']))
   const [sirketler, setSirketler] = useState<Set<string>>(new Set())
   const [filtrePaneli, setFiltrePaneli] = useState(false)
   const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
