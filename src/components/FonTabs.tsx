@@ -65,10 +65,20 @@ export default function FonTabs({
     { label: '5 Yıllık',  val: getiri5y },
   ]
 
-  const benchDonemKartlar = BENCH_DONEMLER_LABELS.map(donem => ({
-    label: donem,
-    val: (benchGetiriler[donem] ?? {})[benchGosterge] ?? null,
-  }))
+  const benchDonemKartlar = BENCH_DONEMLER_LABELS.map(donem => {
+    const d = benchGetiriler[donem] ?? {}
+    const fonPct = d['fiyat'] ?? null
+    let val: number | null = null
+    if (benchGosterge === 'fiyat') {
+      val = fonPct
+    } else {
+      const benchPct = d[benchGosterge] ?? null
+      if (fonPct !== null && benchPct !== null) {
+        val = +((((1 + fonPct / 100) / (1 + benchPct / 100)) - 1) * 100).toFixed(2)
+      }
+    }
+    return { label: donem, val }
+  })
 
   return (
     <div>
