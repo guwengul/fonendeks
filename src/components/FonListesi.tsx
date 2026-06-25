@@ -268,9 +268,10 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
               <tr key={`${f.fonKodu}-${f.fonTipi}`}
                 className="border-b border-slate-50 hover:bg-indigo-50/40 transition-colors">
                 <td className="px-4 py-3 sticky left-0 bg-white">
-                  <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`} className="block group">
-                    <span className="font-mono font-semibold text-indigo-600 group-hover:text-indigo-800 transition-colors">{f.fonKodu}</span>
-                    {f.fonUnvan && <span className="block text-xs text-slate-400 font-normal max-w-[220px] truncate">{f.fonUnvan}</span>}
+                  <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
+                    title={f.fonUnvan ?? undefined}
+                    className="font-mono font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                    {f.fonKodu}
                   </Link>
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-slate-700">{f.fiyat != null ? f.fiyat.toFixed(4) : '-'}</td>
