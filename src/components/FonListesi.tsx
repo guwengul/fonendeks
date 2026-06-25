@@ -127,7 +127,7 @@ function SirketCombo({ secili, onChange, adMap, tumKodlar }: {
             {filtrelenmis.map(k => (
               <label key={k} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
                 <input type="checkbox" checked={secili.has(k)} onChange={() => toggleKod(k)} className="accent-indigo-600 w-3.5 h-3.5 shrink-0" />
-                <span className="text-xs text-slate-600">{adMap.get(k) ?? k}</span>
+                <span className="text-xs text-indigo-600">{adMap.get(k) ?? k}</span>
               </label>
             ))}
           </div>
