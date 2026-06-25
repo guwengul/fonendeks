@@ -130,6 +130,12 @@ export default async function FonDetay({
     BYF: 'bg-purple-50 text-purple-600',
   }
 
+  const TIP_AD: Record<string, string> = {
+    YAT: 'Yatırım Fonu',
+    EMK: 'Emeklilik Fonu',
+    BYF: 'Borsa Yatırım Fonu',
+  }
+
   return (
     <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
       <Link href="/" className="text-slate-400 hover:text-indigo-600 text-sm mb-6 inline-block transition-colors">
@@ -140,7 +146,7 @@ export default async function FonDetay({
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-2xl font-bold text-slate-900 font-mono">{fonKodu}</h1>
           <span className={`px-2 py-0.5 rounded text-xs font-medium ${TIP_RENK[info?.fonTipi ?? ''] ?? ''}`}>
-            {info?.fonTipi}
+            {TIP_AD[info?.fonTipi ?? ''] ?? info?.fonTipi}
           </span>
           {(meta?.fonTurAciklama ?? meta?.fonKategori) && (
             <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
