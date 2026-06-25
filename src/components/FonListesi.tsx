@@ -21,9 +21,15 @@ type Fon = {
 }
 
 const DONEMLER = [
-  { key: '1g', label: '1G' }, { key: '1h', label: '1H' }, { key: '1a', label: '1A' },
-  { key: '3a', label: '3A' }, { key: '6a', label: '6A' }, { key: 'yb', label: 'YBB' },
-  { key: '1y', label: '1Y' }, { key: '3y', label: '3Y' }, { key: '5y', label: '5Y' },
+  { key: '1g', label: '1G', title: '1 Günlük Getiri' },
+  { key: '1h', label: '1H', title: '1 Haftalık Getiri' },
+  { key: '1a', label: '1A', title: '1 Aylık Getiri' },
+  { key: '3a', label: '3A', title: '3 Aylık Getiri' },
+  { key: '6a', label: '6A', title: '6 Aylık Getiri' },
+  { key: 'yb', label: 'YBB', title: 'Yılbaşından Beri' },
+  { key: '1y', label: '1Y', title: '1 Yıllık Getiri' },
+  { key: '3y', label: '3Y', title: '3 Yıllık Getiri' },
+  { key: '5y', label: '5Y', title: '5 Yıllık Getiri' },
 ]
 
 const TIP_OPTIONS = [
@@ -93,6 +99,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const [vergiler, setVergiler] = useState(new Set(VERGI_OPTIONS))
   const [ucretler, setUcretler] = useState(new Set(UCRET_OPTIONS))
   const [tefas, setTefas] = useState(new Set(TEFAS_OPTIONS))
+  const [sirketler, setSirketler] = useState<Set<string>>(new Set(kurucular))
   const [filtrePaneli, setFiltrePaneli] = useState(false)
   const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
   const [siraAsc, setSiraAsc] = useState(false)
@@ -108,11 +115,13 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   }
 
   // Hepsi seçiliyse = filtre yok (null dahil geç)
+  const sirketFiltre = sirketler.size < kurucular.length
   const aktifFiltreCount = (tipler.size < TIP_OPTIONS.length ? 1 : 0) +
     (riskler.size < RISK_OPTIONS.length ? 1 : 0) +
     (vergiler.size < VERGI_OPTIONS.length ? 1 : 0) +
     (ucretler.size < UCRET_OPTIONS.length ? 1 : 0) +
-    (tefas.size < TEFAS_OPTIONS.length ? 1 : 0)
+    (tefas.size < TEFAS_OPTIONS.length ? 1 : 0) +
+    (sirketFiltre ? 1 : 0)
 
   const tipFiltre = tipler.size < TIP_OPTIONS.length
   const riskFiltre = riskler.size < RISK_OPTIONS.length
@@ -130,6 +139,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
           !(f.fonTurAciklama ?? '').toLowerCase().includes(q)) return false
     }
     if (tipFiltre && !tipler.has(f.fonTipi)) return false
+    if (sirketFiltre && !sirketler.has(f.kurucuKod ?? '')) return false
     if (riskFiltre) {
       const r = f.riskDegeri
       const match = r != null && [...riskler].some(band => {
@@ -169,10 +179,10 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
     return siraAsc ? av - bv : bv - av
   })
 
-  function ThBtn({ col, label }: { col: string; label: string }) {
+  function ThBtn({ col, label, title }: { col: string; label: string; title?: string }) {
     const aktif = siraKey === col
     return (
-      <th className="px-3 py-3 font-medium text-right cursor-pointer select-none hover:text-indigo-600 whitespace-nowrap"
+      <th title={title} className="px-3 py-3 font-medium text-right cursor-pointer select-none hover:text-indigo-600 whitespace-nowrap"
         onClick={() => handleSira(col)}>
         {label}{aktif ? (siraAsc ? ' ↑' : ' ↓') : ''}
       </th>
@@ -201,6 +211,15 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
 
         {filtrePaneli && (
           <div className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-wrap gap-x-8 gap-y-4">
+            <div className="flex flex-col gap-1.5 w-full">
+              <span className="text-xs text-slate-400 font-medium">Portföy Şirketi</span>
+              <div className="flex flex-wrap gap-1.5">
+                {kurucular.map(k => (
+                  <Chip key={k} label={kurucuAdMap.get(k) ?? k} active={sirketler.has(k)}
+                    onClick={() => setSirketler(s => toggle(s, k))} />
+                ))}
+              </div>
+            </div>
             <div className="flex flex-col gap-1.5">
               <span className="text-xs text-slate-400 font-medium">Fon Türü</span>
               <div className="flex flex-wrap gap-1.5">
@@ -257,11 +276,10 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
           <thead className="sticky top-0 z-20 bg-white">
             <tr className="border-b border-slate-100 text-slate-500 text-left">
               <th className="px-4 py-3 font-medium sticky left-0 bg-white z-30">Kod</th>
-              <th className="px-3 py-3 font-medium">Şirket</th>
               <ThBtn col="fiyat" label="Fiyat" />
               <ThBtn col="portfoyBuyukluk" label="Portföy" />
               <ThBtn col="kisiSayisi" label="Yatırımcı" />
-              {DONEMLER.map(d => <ThBtn key={d.key} col={d.key} label={d.label} />)}
+              {DONEMLER.map(d => <ThBtn key={d.key} col={d.key} label={d.label} title={d.title} />)}
             </tr>
           </thead>
           <tbody>
@@ -275,7 +293,6 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
                     {f.fonKodu}
                   </Link>
                 </td>
-                <td className="px-3 py-3 text-slate-600 text-sm whitespace-nowrap">{sirketAdi(f.fonUnvan)}</td>
                 <td className="px-3 py-3 text-right font-mono text-slate-700">{f.fiyat != null ? f.fiyat.toFixed(4) : '-'}</td>
                 <td className="px-3 py-3 text-right text-slate-600">{fmt(f.portfoyBuyukluk)}</td>
                 <td className="px-3 py-3 text-right text-slate-600">{f.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}</td>
