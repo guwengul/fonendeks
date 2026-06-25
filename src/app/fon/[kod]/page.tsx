@@ -186,9 +186,16 @@ export default async function FonDetay({
         <div className="flex flex-wrap gap-px mt-4 bg-slate-200 rounded-xl overflow-hidden border border-slate-200">
           <div className="flex-1 min-w-[120px] bg-white px-4 py-3">
             <p className="text-slate-400 text-xs mb-0.5">Son Fiyat</p>
-            <p className="text-slate-900 font-semibold text-base">
-              {son.fiyat != null ? son.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '-'}
-            </p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-slate-900 font-semibold text-base">
+                {son.fiyat != null ? son.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '-'}
+              </p>
+              {gunlukGetiri != null && (
+                <span className={`text-sm font-semibold ${gunlukGetiri >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  %{gunlukGetiri.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              )}
+            </div>
             <p className="text-slate-400 text-xs mt-0.5">{son.tarih}</p>
           </div>
           <div className="flex-1 min-w-[120px] bg-white px-4 py-3">
@@ -217,10 +224,14 @@ export default async function FonDetay({
       </div>
 
       <FonTabs
-        gunlukGetiri={gunlukGetiri}
         getiri1h={getiri1h}
         getiri1a={getiri1a}
+        getiri3a={ozet?.getiri3a ?? null}
+        getiri6a={ozet?.getiri6a ?? null}
+        getiriYb={ozet?.getiriYb ?? null}
         birYillik={birYillik}
+        getiri3y={ozet?.getiri3y ?? null}
+        getiri5y={ozet?.getiri5y ?? null}
         gecmis={gecmis}
         benchmark={benchmarkData}
         donemler={donemler}
