@@ -188,7 +188,7 @@ export default async function FonDetay({
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
           <p className="text-slate-400 text-xs mb-1">Son Fiyat</p>
           <p className="text-slate-900 font-mono font-semibold text-sm">
-            {son.fiyat != null ? son.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+            {son.fiyat != null ? son.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : '-'}
           </p>
           <p className="text-slate-400 text-xs mt-1">{son.tarih}</p>
         </div>
