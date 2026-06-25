@@ -143,7 +143,7 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
       className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
         active
           ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100'
-          : 'bg-white border border-slate-200 text-slate-400 hover:border-slate-300'
+          : 'bg-white border border-slate-200 text-slate-400 hover:border-indigo-200 hover:text-indigo-500'
       }`}>
       {label}
     </button>
@@ -272,7 +272,8 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   function ThBtn({ col, label, title }: { col: string; label: string; title?: string }) {
     const aktif = siraKey === col
     return (
-      <th title={title} className="px-3 py-2 font-medium text-right cursor-pointer select-none hover:text-indigo-600 whitespace-nowrap"
+      <th title={title}
+        className={`px-3 py-2 font-medium text-right cursor-pointer select-none whitespace-nowrap transition-colors ${aktif ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-500'}`}
         onClick={() => handleSira(col)}>
         {label}{aktif ? (siraAsc ? ' ↑' : ' ↓') : ''}
       </th>
@@ -287,7 +288,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
 
       <div className="mb-4">
         <button onClick={() => setFiltrePaneli(v => !v)}
-          className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors">
+          className={`flex items-center gap-2 text-sm font-medium transition-colors ${filtrePaneli ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}>
           <svg className={`w-4 h-4 transition-transform ${filtrePaneli ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -303,7 +304,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
           <div className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col gap-4">
             <div className="flex flex-wrap gap-x-8 gap-y-3">
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-slate-400 font-medium">Fon Türü</span>
+                <span className="text-xs text-slate-500 font-medium">Fon Türü</span>
                 <div className="flex flex-wrap gap-1.5">
                   {TIP_OPTIONS.map(o => (
                     <Chip key={o.value} label={o.label} active={tipler.has(o.value)}
@@ -312,7 +313,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-slate-400 font-medium">Risk Seviyesi</span>
+                <span className="text-xs text-slate-500 font-medium">Risk Seviyesi</span>
                 <div className="flex flex-wrap gap-1.5">
                   {RISK_OPTIONS.map(v => (
                     <Chip key={v} label={RISK_LABELS[v]} active={riskler.has(v)}
@@ -321,7 +322,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-slate-400 font-medium">Stopaj Durumu</span>
+                <span className="text-xs text-slate-500 font-medium">Stopaj Durumu</span>
                 <div className="flex flex-wrap gap-1.5">
                   {VERGI_OPTIONS.map(v => (
                     <Chip key={v} label={VERGI_LABELS[v]} active={vergiler.has(v)}
@@ -330,7 +331,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-slate-400 font-medium">TEFAS Durumu</span>
+                <span className="text-xs text-slate-500 font-medium">TEFAS Durumu</span>
                 <div className="flex flex-wrap gap-1.5">
                   {TEFAS_OPTIONS.map(v => (
                     <Chip key={v} label={TEFAS_LABELS[v]} active={tefas.has(v)}
@@ -339,7 +340,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-slate-400 font-medium">Yönetim Ücreti</span>
+                <span className="text-xs text-slate-500 font-medium">Yönetim Ücreti</span>
                 <div className="flex flex-wrap gap-1.5">
                   {UCRET_OPTIONS.map(v => (
                     <Chip key={v} label={UCRET_LABELS[v]} active={ucretler.has(v)}
@@ -349,7 +350,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
               </div>
             </div>
             <div className="border-t border-slate-200 pt-3">
-              <span className="text-xs text-slate-400 font-medium block mb-1.5">Portföy Şirketi</span>
+              <span className="text-xs text-slate-500 font-medium block mb-1.5">Portföy Şirketi</span>
               <SirketCombo secili={sirketler} onChange={setSirketler} adMap={kurucuAdMap} tumKodlar={gorunurKurucular} />
             </div>
           </div>
@@ -380,9 +381,9 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
                     {f.fonKodu}
                   </Link>
                 </td>
-                <td className="px-3 py-2 text-right text-slate-700">{f.fiyat != null ? f.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '-'}</td>
-                <td className="px-3 py-2 text-right text-slate-600">{fmt(f.portfoyBuyukluk)}</td>
-                <td className="px-3 py-2 text-right text-slate-600">{f.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}</td>
+                <td className="px-3 py-2 text-right text-slate-600">{f.fiyat != null ? f.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '-'}</td>
+                <td className="px-3 py-2 text-right text-slate-500">{fmt(f.portfoyBuyukluk)}</td>
+                <td className="px-3 py-2 text-right text-slate-500">{f.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}</td>
                 {DONEMLER.map(d => (
                   <td key={d.key} className="px-3 py-2 text-right">
                     <GetiriCell val={f.getiriler[d.key]} />
