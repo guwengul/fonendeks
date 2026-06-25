@@ -291,7 +291,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
     <div>
       <input type="text" placeholder="Fon kodu, kurucu şirket veya fon adı ile arayın..."
         value={arama} onChange={e => setArama(e.target.value)}
-        className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 bg-white shadow-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 mb-4" />
+        className="w-full border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 bg-white shadow-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 mb-4" />
 
       <div className="mb-4">
         <button onClick={() => setFiltrePaneli(v => !v)}
