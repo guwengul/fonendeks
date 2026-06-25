@@ -4,6 +4,7 @@ import { useState } from 'react'
 import FonGrafik from './FonGrafik'
 import FonBuyumeGrafik from './FonBuyumeGrafik'
 import { GRAFIK_ARALIKLAR } from './FonGrafik'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell, ResponsiveContainer, ReferenceLine } from 'recharts'
 
 type GecmisRow = { tarih: string; fiyat: number | null; portfoyBuyukluk: number | null; kisiSayisi: number | null; tedPaySayisi: number | null }
 type BenchmarkRow = { tarih: string; fiyat: number | null }
@@ -140,6 +141,28 @@ export default function FonTabs({
                 </p>
               </div>
             ))}
+          </div>
+
+          {/* Bar chart */}
+          <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={benchDonemKartlar} barCategoryGap="30%">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 12 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} axisLine={false} width={48} tickFormatter={v => `%${v}`} />
+                <Tooltip
+                  contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8 }}
+                  formatter={(v: any) => [`%${Number(v).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, '']}
+                  labelStyle={{ color: '#64748b', fontSize: 12 }}
+                />
+                <ReferenceLine y={0} stroke="#e2e8f0" />
+                <Bar dataKey="val" radius={[4, 4, 0, 0]}>
+                  {benchDonemKartlar.map(({ label, val }) => (
+                    <Cell key={label} fill={val == null ? '#e2e8f0' : val >= 0 ? '#10b981' : '#ef4444'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       )}
