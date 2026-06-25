@@ -187,6 +187,7 @@ export default async function FonDetay({
               {gunlukGetiri != null && (
                 <span className={`text-sm font-semibold ${gunlukGetiri >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                   %{gunlukGetiri.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <span className="text-slate-400 font-normal text-xs ml-1">günlük</span>
                 </span>
               )}
             </div>
