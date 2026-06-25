@@ -175,8 +175,8 @@ export default async function FonDetay({
           {meta?.yonetimUcreti && <span>Yönetim ücreti: <span className="text-slate-600">%{meta.yonetimUcreti}</span></span>}
           {meta?.stopaj != null && <span>Stopaj: <span className="text-slate-600">%{meta.stopaj}</span></span>}
           {meta?.basIsSaat && meta?.sonIsSaat && <span>İşlem saatleri: <span className="text-slate-600">{meta.basIsSaat}–{meta.sonIsSaat}</span></span>}
-          {meta?.fonSatisValor != null && <span>Alış valörü: <span className="text-slate-600">{meta.fonSatisValor} gün</span></span>}
-          {meta?.fonGeriAlisValor != null && <span>Satış valörü: <span className="text-slate-600">{meta.fonGeriAlisValor} gün</span></span>}
+          {meta?.fonGeriAlisValor != null && <span>Alış valörü: <span className="text-slate-600">{meta.fonGeriAlisValor} gün</span></span>}
+          {meta?.fonSatisValor != null && <span>Satış valörü: <span className="text-slate-600">{meta.fonSatisValor} gün</span></span>}
           {meta?.kapLink && (
             <a href={meta.kapLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600 transition-colors">KAP →</a>
           )}
