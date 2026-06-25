@@ -169,6 +169,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const [ucretler, setUcretler] = useState(new Set(UCRET_OPTIONS))
   const [tefas, setTefas] = useState(new Set(['ACIK']))
   const [sirketler, setSirketler] = useState<Set<string>>(new Set())
+  const [serbest, setSerbest] = useState(true)
   const [filtrePaneli, setFiltrePaneli] = useState(false)
   const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
   const [siraAsc, setSiraAsc] = useState(false)
@@ -205,6 +206,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   // Hepsi seçiliyse = filtre yok (null dahil geç)
   const sirketFiltre = sirketler.size > 0
   const aktifFiltreCount = (tipler.size < TIP_OPTIONS.length ? 1 : 0) +
+    (!serbest ? 1 : 0) +
     (riskler.size < RISK_OPTIONS.length ? 1 : 0) +
     (vergiler.size < VERGI_OPTIONS.length ? 1 : 0) +
     (ucretler.size < UCRET_OPTIONS.length ? 1 : 0) +
@@ -227,6 +229,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
           !(f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes(q)) return false
     }
     if (tipFiltre && !tipler.has(f.fonTipi)) return false
+    if (!serbest && (f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('serbest')) return false
     if (sirketFiltre && f.kurucuKod && !sirketler.has(f.kurucuKod)) return false
     if (riskFiltre) {
       const r = f.riskDegeri
@@ -310,6 +313,13 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
                     <Chip key={o.value} label={o.label} active={tipler.has(o.value)}
                       onClick={() => handleTipToggle(o.value)} />
                   ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-500 font-medium">Serbest Fonlar</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <Chip label="Dahil" active={serbest} onClick={() => setSerbest(true)} />
+                  <Chip label="Hariç" active={!serbest} onClick={() => setSerbest(false)} />
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
