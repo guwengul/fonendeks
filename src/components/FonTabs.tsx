@@ -12,6 +12,7 @@ type Dagilim = [string, number][]
 export default function FonTabs({
   gecmis, benchmark, donemler, dagilim, dagilimTarih,
   hisseler, holdingsYayinTarihi, holdingsPdfLink, holdingsKapLink,
+  gunlukGetiri, getiri1h, getiri1a, birYillik,
 }: {
   gecmis: GecmisRow[]
   benchmark: BenchmarkRow[]
@@ -22,13 +23,24 @@ export default function FonTabs({
   holdingsYayinTarihi?: string | null
   holdingsPdfLink?: string | null
   holdingsKapLink?: string | null
+  gunlukGetiri: number | null
+  getiri1h: number | null
+  getiri1a: number | null
+  birYillik: number | null
 }) {
-  const [tab, setTab] = useState<'genel' | 'portfoy'>('genel')
+  const [tab, setTab] = useState<'performans' | 'dagilim'>('performans')
 
   const TABS = [
-    { key: 'genel', label: 'Genel Bakış' },
-    { key: 'portfoy', label: 'Portföy' },
+    { key: 'performans', label: 'Fon Performansı' },
+    { key: 'dagilim', label: 'Fon Varlık Dağılımı' },
   ] as const
+
+  const getiriKartlari = [
+    { label: 'Günlük',    val: gunlukGetiri },
+    { label: '1 Haftalık', val: getiri1h },
+    { label: '1 Aylık',   val: getiri1a },
+    { label: '1 Yıllık',  val: birYillik },
+  ]
 
   return (
     <div>
@@ -45,8 +57,19 @@ export default function FonTabs({
         ))}
       </div>
 
-      {tab === 'genel' && (
+      {tab === 'performans' && (
         <div className="space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {getiriKartlari.map(({ label, val }) => (
+              <div key={label} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                <p className="text-slate-400 text-xs mb-1">{label}</p>
+                <p className={`font-semibold text-xl ${(val ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {val != null ? `%${val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+                </p>
+              </div>
+            ))}
+          </div>
+
           <FonGrafik data={gecmis} benchmark={benchmark} />
 
           {donemler.length > 0 && (
@@ -69,7 +92,7 @@ export default function FonTabs({
         </div>
       )}
 
-      {tab === 'portfoy' && (
+      {tab === 'dagilim' && (
         <div className="space-y-6">
           {dagilim.length > 0 && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

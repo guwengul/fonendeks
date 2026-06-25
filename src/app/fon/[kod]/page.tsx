@@ -200,7 +200,7 @@ export default async function FonDetay({
             </p>
           </div>
           <div className="flex-1 min-w-[120px] bg-white px-4 py-3">
-            <p className="text-slate-400 text-xs mb-0.5">Yatırımcı</p>
+            <p className="text-slate-400 text-xs mb-0.5">Yatırımcı Sayısı</p>
             <p className="text-slate-900 font-semibold text-base">
               {son.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}
             </p>
@@ -216,35 +216,11 @@ export default async function FonDetay({
         </div>
       </div>
 
-      {/* Getiri kartları */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-slate-400 text-xs mb-1">Günlük</p>
-          <p className={`font-semibold text-xl ${(gunlukGetiri ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {gunlukGetiri != null ? `%${gunlukGetiri.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-slate-400 text-xs mb-1">1 Haftalık</p>
-          <p className={`font-semibold text-xl ${(getiri1h ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {getiri1h != null ? `%${getiri1h.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-slate-400 text-xs mb-1">1 Aylık</p>
-          <p className={`font-semibold text-xl ${(getiri1a ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {getiri1a != null ? `%${getiri1a.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-slate-400 text-xs mb-1">1 Yıllık</p>
-          <p className={`font-semibold text-xl ${(birYillik ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {birYillik != null ? `%${birYillik.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
-          </p>
-        </div>
-      </div>
-
       <FonTabs
+        gunlukGetiri={gunlukGetiri}
+        getiri1h={getiri1h}
+        getiri1a={getiri1a}
+        birYillik={birYillik}
         gecmis={gecmis}
         benchmark={benchmarkData}
         donemler={donemler}
