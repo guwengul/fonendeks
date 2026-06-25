@@ -21,12 +21,13 @@ const BENCH_SERILER = [
 
 const BENCH_DONEMLER = GRAFIK_ARALIKLAR.filter(a => a.label !== 'Tümü')
 
-function hesaplaBenchGetiri(benchmark: BenchmarkRow[], key: string, baslangicTarih: string): number | null {
+function benchGetiri(benchmark: BenchmarkRow[], key: string, baslangicTarih: string): number | null {
   const filtreli = baslangicTarih ? benchmark.filter(d => d.tarih >= baslangicTarih) : benchmark
-  const ilk = filtreli.find(d => d[key] != null)?.[key]
-  const son = [...filtreli].reverse().find(d => d[key] != null)?.[key]
+  if (filtreli.length === 0) return null
+  const ilk = filtreli.find(d => d[key] != null)?.[key] as number | null
+  const son = [...filtreli].reverse().find(d => d[key] != null)?.[key] as number | null
   if (ilk == null || son == null || ilk === 0) return null
-  return ((son / ilk) - 1) * 100
+  return (son / ilk - 1) * 100
 }
 
 export default function FonTabs({
@@ -51,13 +52,14 @@ export default function FonTabs({
   getiri3y: number | null
   getiri5y: number | null
 }) {
-  const [tab, setTab] = useState<'performans' | 'buyume' | 'dagilim'>('performans')
+  const [tab, setTab] = useState<'performans' | 'benchmark' | 'buyume' | 'dagilim'>('performans')
   const [benchDonem, setBenchDonem] = useState('1Y')
 
   const TABS = [
-    { key: 'performans', label: 'Fon Performansı' },
-    { key: 'buyume', label: 'Fon Büyümesi' },
-    { key: 'dagilim', label: 'Fon Varlık Dağılımı' },
+    { key: 'performans',  label: 'Fon Performansı' },
+    { key: 'benchmark',   label: 'Benchmark' },
+    { key: 'buyume',      label: 'Fon Büyümesi' },
+    { key: 'dagilim',     label: 'Fon Varlık Dağılımı' },
   ] as const
 
   const getiriKartlari = [
@@ -71,13 +73,14 @@ export default function FonTabs({
     { label: '5 Yıllık',  val: getiri5y },
   ]
 
+  // Benchmark hesabı: benchmarkData'daki raw değerlerden dönem başı ve sonu alınır
   const sonTarih = benchmark.length > 0 ? benchmark[benchmark.length - 1].tarih : ''
   const secilenDonem = BENCH_DONEMLER.find(a => a.label === benchDonem) ?? BENCH_DONEMLER[5]
   const benchBaslangic = sonTarih ? secilenDonem.bas(sonTarih) : ''
 
-  const benchGetiriler = BENCH_SERILER.map(s => ({
+  const benchKartlar = BENCH_SERILER.map(s => ({
     ...s,
-    val: hesaplaBenchGetiri(benchmark, s.key, benchBaslangic),
+    val: benchGetiri(benchmark, s.key, benchBaslangic),
   }))
 
   return (
@@ -97,7 +100,6 @@ export default function FonTabs({
 
       {tab === 'performans' && (
         <div className="space-y-6">
-          {/* Getiri kartları */}
           <div className="grid grid-cols-4 gap-3">
             {getiriKartlari.map(({ label, val }) => (
               <div key={label} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
@@ -108,42 +110,40 @@ export default function FonTabs({
               </div>
             ))}
           </div>
-
-          {/* Benchmark karşılaştırması */}
-          {benchmark.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
-                <h2 className="font-semibold text-slate-800 text-sm">Benchmark Karşılaştırması</h2>
-                <div className="flex flex-wrap gap-1.5">
-                  {BENCH_DONEMLER.map(a => (
-                    <button
-                      key={a.label}
-                      onClick={() => setBenchDonem(a.label)}
-                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                        benchDonem === a.label
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      {a.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6 divide-x divide-slate-100">
-                {benchGetiriler.map(({ key, label, renk, val }) => (
-                  <div key={key} className="p-4 text-center">
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mb-2 ${renk}`}>{label}</span>
-                    <p className={`font-semibold text-lg ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {val != null ? `%${val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <FonGrafik data={gecmis} benchmark={benchmark} />
+        </div>
+      )}
+
+      {tab === 'benchmark' && (
+        <div className="space-y-6">
+          {/* Dönem seçici */}
+          <div className="flex flex-wrap gap-2">
+            {BENCH_DONEMLER.map(a => (
+              <button
+                key={a.label}
+                onClick={() => setBenchDonem(a.label)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  benchDonem === a.label
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
+                }`}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Karşılaştırma kartları */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {benchKartlar.map(({ key, label, renk, val }) => (
+              <div key={key} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mb-2 ${renk}`}>{label}</span>
+                <p className={`font-semibold text-2xl ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {val != null ? `%${val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
