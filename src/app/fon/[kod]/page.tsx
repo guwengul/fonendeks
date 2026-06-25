@@ -29,19 +29,13 @@ export default async function FonDetay({
 
   // Özet + meta paralel çek
   const [gecmisRes, ozetRes, metaRes] = await Promise.all([
-    (() => {
-      const ikiYilOnce = new Date()
-      ikiYilOnce.setFullYear(ikiYilOnce.getFullYear() - 2)
-      const basTarih = ikiYilOnce.toISOString().slice(0, 10)
-      return supabase
-        .from('tefas_fon_verileri')
-        .select('tarih, fiyat, portfoyBuyukluk, kisiSayisi, tedPaySayisi')
-        .eq('fonKodu', fonKodu)
-        .eq('fonTipi', tip)
-        .gte('tarih', basTarih)
-        .order('tarih', { ascending: true })
-        .limit(1000)
-    })(),
+    supabase
+      .from('tefas_fon_verileri')
+      .select('tarih, fiyat, portfoyBuyukluk, kisiSayisi, tedPaySayisi')
+      .eq('fonKodu', fonKodu)
+      .eq('fonTipi', tip)
+      .order('tarih', { ascending: false })
+      .limit(2000),
     supabase
       .from('tefas_fon_ozet')
       .select('fonUnvan, fonTipi, fiyat, portfoyBuyukluk, kisiSayisi, tarih, getiri1g, getiri1h, getiri1a, getiri3a, getiri6a, getiriYb, getiri1y, getiri3y, getiri5y')
@@ -55,7 +49,7 @@ export default async function FonDetay({
       .maybeSingle(),
   ])
 
-  const gecmis = gecmisRes.data
+  const gecmis = (gecmisRes.data ?? []).slice().reverse()
   const ozet = ozetRes.data
   const meta = metaRes.data
 
