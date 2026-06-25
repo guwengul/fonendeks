@@ -94,7 +94,7 @@ export default async function FonDetay({
     benchGetiriler['1A'][r.gosterge]  = r.getiri1a
     benchGetiriler['3A'][r.gosterge]  = r.getiri3a
     benchGetiriler['6A'][r.gosterge]  = r.getiri6a
-    benchGetiriler['YBB'][r.gosterge] = r.getiriYb
+    benchGetiriler['YBB'][r.gosterge] = r.getiriyb
     benchGetiriler['1Y'][r.gosterge]  = r.getiri1y
     benchGetiriler['3Y'][r.gosterge]  = r.getiri3y
     benchGetiriler['5Y'][r.gosterge]  = r.getiri5y

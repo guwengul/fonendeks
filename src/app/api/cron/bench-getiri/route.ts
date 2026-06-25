@@ -73,7 +73,7 @@ export async function GET(req: Request) {
       son_tarih: sonTarih,
       son_deger: sonDeger,
       getiri1h: g1h, getiri1a: g1a, getiri3a: g3a, getiri6a: g6a,
-      getiriYb: gyb, getiri1y: g1y, getiri3y: g3y, getiri5y: g5y,
+      getiriyb: gyb, getiri1y: g1y, getiri3y: g3y, getiri5y: g5y,
     }
   }))
 
