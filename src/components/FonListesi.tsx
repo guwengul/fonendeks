@@ -51,7 +51,7 @@ function sirketAdi(fonUnvan: string | null): string {
   const kelimeler = fonUnvan.trim().split(/\s+/)
   const idx = kelimeler.findIndex(k => ['PORTFÖY', 'EMEKLİLİK', 'HAYAT', 'PORTFOY'].includes(k.toUpperCase()))
   const slice = idx >= 0 ? kelimeler.slice(0, idx + 1) : kelimeler.slice(0, 2)
-  return slice.map(k => k.charAt(0).toUpperCase() + k.slice(1).toLowerCase()).join(' ')
+  return slice.map(k => k.charAt(0).toUpperCase() + k.slice(1).toLocaleLowerCase('tr-TR')).join(' ')
 }
 
 function fmt(n: number | null) {
@@ -85,7 +85,7 @@ function SirketCombo({ secili, onChange, adMap, tumKodlar }: {
   }, [])
 
   const filtrelenmis = tumKodlar.filter(k =>
-    (adMap.get(k) ?? k).toLowerCase().includes(ara.toLowerCase())
+    (adMap.get(k) ?? k).toLocaleLowerCase('tr-TR').includes(ara.toLocaleLowerCase('tr-TR'))
   )
 
   function toggleKod(k: string) {
@@ -219,12 +219,12 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
 
   const filtrelenmis = fonlar.filter(f => {
     if (arama) {
-      const q = arama.toLowerCase()
-      const sirket = (kurucuAdMap.get(f.kurucuKod ?? '') ?? '').toLowerCase()
-      if (!f.fonKodu.toLowerCase().includes(q) &&
-          !(f.fonUnvan ?? '').toLowerCase().includes(q) &&
+      const q = arama.toLocaleLowerCase('tr-TR')
+      const sirket = (kurucuAdMap.get(f.kurucuKod ?? '') ?? '').toLocaleLowerCase('tr-TR')
+      if (!f.fonKodu.toLocaleLowerCase('tr-TR').includes(q) &&
+          !(f.fonUnvan ?? '').toLocaleLowerCase('tr-TR').includes(q) &&
           !sirket.includes(q) &&
-          !(f.fonTurAciklama ?? '').toLowerCase().includes(q)) return false
+          !(f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes(q)) return false
     }
     if (tipFiltre && !tipler.has(f.fonTipi)) return false
     if (sirketFiltre && f.kurucuKod && !sirketler.has(f.kurucuKod)) return false
