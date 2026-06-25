@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 
 type Fon = {
@@ -68,11 +68,21 @@ function GetiriCell({ val }: { val: number | null }) {
   </span>
 }
 
-function SirketListe({ secili, onChange, adMap, tumKodlar }: {
+function SirketCombo({ secili, onChange, adMap, tumKodlar }: {
   secili: Set<string>; onChange: (s: Set<string>) => void
   adMap: Map<string, string>; tumKodlar: string[]
 }) {
+  const [acik, setAcik] = useState(false)
   const [ara, setAra] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function kapat(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAcik(false)
+    }
+    document.addEventListener('mousedown', kapat)
+    return () => document.removeEventListener('mousedown', kapat)
+  }, [])
 
   const filtrelenmis = tumKodlar.filter(k =>
     (adMap.get(k) ?? k).toLowerCase().includes(ara.toLowerCase())
@@ -84,19 +94,45 @@ function SirketListe({ secili, onChange, adMap, tumKodlar }: {
     onChange(next)
   }
 
+  const seciliListe = tumKodlar.filter(k => secili.has(k))
+
   return (
-    <div>
-      <input type="text" placeholder="Şirket ara..." value={ara} onChange={e => setAra(e.target.value)}
-        className="w-48 px-2.5 py-1 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-400 mb-2" />
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-x-4 gap-y-0.5">
-        {filtrelenmis.map(k => (
-          <label key={k} className="flex items-center gap-1.5 py-0.5 hover:bg-slate-100 rounded cursor-pointer">
-            <input type="checkbox" checked={secili.has(k)} onChange={() => toggleKod(k)}
-              className="accent-indigo-600 w-3.5 h-3.5 shrink-0" />
-            <span className="text-xs text-slate-700 truncate">{adMap.get(k) ?? k}</span>
-          </label>
-        ))}
+    <div ref={ref} className="relative">
+      <div
+        onClick={() => setAcik(v => !v)}
+        className="min-h-[36px] w-full flex flex-wrap gap-1 items-center px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:border-slate-300 transition-colors">
+        {seciliListe.length === 0 ? (
+          <span className="text-sm text-slate-400">Tüm şirketler</span>
+        ) : (
+          seciliListe.map(k => (
+            <span key={k} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs px-2 py-0.5 rounded-full">
+              {adMap.get(k) ?? k}
+              <button onClick={e => { e.stopPropagation(); toggleKod(k) }} className="hover:text-indigo-900 leading-none">×</button>
+            </span>
+          ))
+        )}
+        <svg className={`w-3.5 h-3.5 text-slate-400 ml-auto shrink-0 transition-transform ${acik ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
       </div>
+
+      {acik && (
+        <div className="absolute z-50 mt-1 w-full min-w-[240px] bg-white border border-slate-200 rounded-xl shadow-lg">
+          <div className="p-2 border-b border-slate-100 flex gap-2 items-center">
+            <input autoFocus type="text" placeholder="Ara..." value={ara} onChange={e => setAra(e.target.value)}
+              className="flex-1 px-2.5 py-1 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-400" />
+            <button onClick={() => onChange(new Set())} className="text-xs text-slate-400 hover:underline whitespace-nowrap">Temizle</button>
+          </div>
+          <div className="max-h-52 overflow-y-auto">
+            {filtrelenmis.map(k => (
+              <label key={k} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                <input type="checkbox" checked={secili.has(k)} onChange={() => toggleKod(k)} className="accent-indigo-600 w-3.5 h-3.5 shrink-0" />
+                <span className="text-sm text-slate-700">{adMap.get(k) ?? k}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -132,14 +168,33 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const [vergiler, setVergiler] = useState(new Set(VERGI_OPTIONS))
   const [ucretler, setUcretler] = useState(new Set(UCRET_OPTIONS))
   const [tefas, setTefas] = useState(new Set(TEFAS_OPTIONS))
-  const [sirketler, setSirketler] = useState<Set<string>>(new Set(kurucular))
+  const [sirketler, setSirketler] = useState<Set<string>>(new Set())
   const [filtrePaneli, setFiltrePaneli] = useState(false)
   const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
   const [siraAsc, setSiraAsc] = useState(false)
 
   const kurucuAdMap = new Map<string, string>()
+  const kurucuTipMap = new Map<string, Set<string>>()
   for (const f of fonlar) {
-    if (f.kurucuKod && !kurucuAdMap.has(f.kurucuKod)) kurucuAdMap.set(f.kurucuKod, sirketAdi(f.fonUnvan))
+    if (f.kurucuKod) {
+      if (!kurucuAdMap.has(f.kurucuKod)) kurucuAdMap.set(f.kurucuKod, sirketAdi(f.fonUnvan))
+      if (!kurucuTipMap.has(f.kurucuKod)) kurucuTipMap.set(f.kurucuKod, new Set())
+      kurucuTipMap.get(f.kurucuKod)!.add(f.fonTipi)
+    }
+  }
+
+  // Seçili fon tiplerine göre görünür şirketler
+  const gorunurKurucular = kurucular.filter(k => {
+    const tipler_ = kurucuTipMap.get(k)
+    if (!tipler_) return false
+    return [...tipler].some(t => tipler_.has(t))
+  })
+
+  function handleTipToggle(tip: string) {
+    const yeniTipler = toggle(tipler, tip)
+    setTipler(yeniTipler)
+    // Fon tipi değişince şirket listesini sıfırla (tümünü seç)
+    setSirketler(new Set())
   }
 
   function handleSira(key: SiraKey) {
@@ -148,13 +203,13 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   }
 
   // Hepsi seçiliyse = filtre yok (null dahil geç)
-  const sirketFiltre = sirketler.size < kurucular.length
+  const sirketFiltre = sirketler.size > 0
   const aktifFiltreCount = (tipler.size < TIP_OPTIONS.length ? 1 : 0) +
     (riskler.size < RISK_OPTIONS.length ? 1 : 0) +
     (vergiler.size < VERGI_OPTIONS.length ? 1 : 0) +
     (ucretler.size < UCRET_OPTIONS.length ? 1 : 0) +
     (tefas.size < TEFAS_OPTIONS.length ? 1 : 0) +
-    (sirketFiltre ? 1 : 0)
+    (sirketler.size > 0 ? 1 : 0)
 
   const tipFiltre = tipler.size < TIP_OPTIONS.length
   const riskFiltre = riskler.size < RISK_OPTIONS.length
@@ -172,7 +227,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
           !(f.fonTurAciklama ?? '').toLowerCase().includes(q)) return false
     }
     if (tipFiltre && !tipler.has(f.fonTipi)) return false
-    if (sirketFiltre && !sirketler.has(f.kurucuKod ?? '')) return false
+    if (sirketFiltre && f.kurucuKod && !sirketler.has(f.kurucuKod)) return false
     if (riskFiltre) {
       const r = f.riskDegeri
       const match = r != null && [...riskler].some(band => {
@@ -250,7 +305,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
                 <div className="flex flex-wrap gap-1.5">
                   {TIP_OPTIONS.map(o => (
                     <Chip key={o.value} label={o.label} active={tipler.has(o.value)}
-                      onClick={() => setTipler(s => toggle(s, o.value))} />
+                      onClick={() => handleTipToggle(o.value)} />
                   ))}
                 </div>
               </div>
@@ -292,14 +347,8 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
               </div>
             </div>
             <div className="border-t border-slate-200 pt-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-slate-400 font-medium">Portföy Şirketi</span>
-                <div className="flex gap-2">
-                  <button onClick={() => setSirketler(new Set(kurucular))} className="text-xs text-indigo-600 hover:underline">Tümü</button>
-                  <button onClick={() => setSirketler(new Set())} className="text-xs text-slate-400 hover:underline">Temizle</button>
-                </div>
-              </div>
-              <SirketListe secili={sirketler} onChange={setSirketler} adMap={kurucuAdMap} tumKodlar={kurucular} />
+              <span className="text-xs text-slate-400 font-medium block mb-1.5">Portföy Şirketi</span>
+              <SirketCombo secili={sirketler} onChange={setSirketler} adMap={kurucuAdMap} tumKodlar={gorunurKurucular} />
             </div>
           </div>
         )}
