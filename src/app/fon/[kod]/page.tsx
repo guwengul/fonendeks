@@ -87,6 +87,7 @@ export default async function FonDetay({
     .select('tarih, gosterge, deger')
     .gte('tarih', ilk.tarih)
     .order('tarih', { ascending: true })
+    .limit(10000)
 
   // gosterge → sıralı [tarih, deger] dizisi
   const benchSerileri = new Map<string, { tarih: string; deger: number }[]>()
