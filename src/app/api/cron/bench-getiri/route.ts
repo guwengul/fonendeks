@@ -34,7 +34,8 @@ async function degerAt(supabase: ReturnType<typeof createAdminClient>, gosterge:
 }
 
 export async function GET(req: Request) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  const secret = new URL(req.url).searchParams.get('secret')
+  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}` && secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
