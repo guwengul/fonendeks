@@ -83,7 +83,7 @@ export default async function FonDetay({
   // Benchmark getirileri önceden hesaplanmış tablodan
   const { data: benchGetiriRows } = await supabase
     .from('tefas_benchmark_getiri')
-    .select('gosterge, getiri1h, getiri1a, getiri3a, getiri6a, getiriYb, getiri1y, getiri3y, getiri5y')
+    .select('gosterge, getiri1h, getiri1a, getiri3a, getiri6a, getiriyb, getiri1y, getiri3y, getiri5y')
 
   // { '1H': { USD: x, EUR: y, ... }, '1A': { ... }, ... }
   const benchGetiriler: Record<string, Record<string, number | null>> = {
