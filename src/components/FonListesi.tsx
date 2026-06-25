@@ -230,11 +230,13 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
     if (sirketFiltre && f.kurucuKod && !sirketler.has(f.kurucuKod)) return false
     if (riskFiltre) {
       const r = f.riskDegeri
-      const match = r != null && [...riskler].some(band => {
-        const [min, max] = band.split('-').map(Number)
-        return r >= min && r <= max
-      })
-      if (!match) return false
+      if (r != null) {
+        const match = [...riskler].some(band => {
+          const [min, max] = band.split('-').map(Number)
+          return r >= min && r <= max
+        })
+        if (!match) return false
+      }
     }
     if (vergiFiltre) {
       if (vergiler.has('YOK') && !vergiler.has('VAR') && f.stopaj !== 0) return false
