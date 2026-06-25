@@ -67,19 +67,10 @@ export default function FonTabs({
   ]
 
   const d = benchGetiriler[benchDonem] ?? {}
-  const fonPct = d['fiyat'] ?? null
-  const benchGostergeDegerleri = BENCH_SERILER.map(s => {
-    let val: number | null = null
-    if (s.key === 'fiyat') {
-      val = fonPct
-    } else {
-      const benchPct = d[s.key] ?? null
-      if (fonPct !== null && benchPct !== null) {
-        val = +((((1 + fonPct / 100) / (1 + benchPct / 100)) - 1) * 100).toFixed(2)
-      }
-    }
-    return { key: s.key, label: s.label, renk: s.renk, val }
-  })
+  const benchGostergeDegerleri = BENCH_SERILER.map(s => ({
+    key: s.key, label: s.label, renk: s.renk,
+    val: (d[s.key] ?? null) as number | null,
+  }))
 
   return (
     <div>
