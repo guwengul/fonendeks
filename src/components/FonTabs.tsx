@@ -10,13 +10,12 @@ type Hisse = { ticker: string; isin: string; agirlik: number }
 type Dagilim = [string, number][]
 
 export default function FonTabs({
-  gecmis, benchmark, donemler, dagilim, dagilimTarih,
+  gecmis, benchmark, dagilim, dagilimTarih,
   hisseler, holdingsYayinTarihi, holdingsPdfLink, holdingsKapLink,
   getiri1h, getiri1a, getiri3a, getiri6a, getiriYb, birYillik, getiri3y, getiri5y,
 }: {
   gecmis: GecmisRow[]
   benchmark: BenchmarkRow[]
-  donemler: Donem[]
   dagilim: Dagilim
   dagilimTarih?: string | null
   hisseler: Hisse[]
@@ -79,24 +78,6 @@ export default function FonTabs({
           </div>
 
           <FonGrafik data={gecmis} benchmark={benchmark} />
-
-          {donemler.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100">
-                <h2 className="font-semibold text-slate-800">Dönemsel Getiriler</h2>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-7 divide-x divide-slate-100">
-                {donemler.map(({ label, val }) => (
-                  <div key={label} className="px-4 py-4 text-center">
-                    <p className="text-slate-400 text-xs mb-1">{label}</p>
-                    <p className={`font-semibold text-base ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {val != null ? `%${val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 

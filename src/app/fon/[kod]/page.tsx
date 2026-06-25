@@ -234,7 +234,6 @@ export default async function FonDetay({
         getiri5y={ozet?.getiri5y ?? null}
         gecmis={gecmis}
         benchmark={benchmarkData}
-        donemler={donemler}
         dagilim={dagilim}
         dagilimTarih={dagilimRow?.tarih}
         hisseler={hisseler}
