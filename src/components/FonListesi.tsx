@@ -100,34 +100,34 @@ function SirketCombo({ secili, onChange, adMap, tumKodlar }: {
     <div ref={ref} className="relative">
       <div
         onClick={() => setAcik(v => !v)}
-        className="min-h-[36px] w-full flex flex-wrap gap-1 items-center px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:border-slate-300 transition-colors">
+        className="min-h-[34px] w-full flex flex-wrap gap-1 items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:border-slate-300 transition-colors">
         {seciliListe.length === 0 ? (
-          <span className="text-sm text-slate-400">Tüm şirketler</span>
+          <span className="text-xs text-slate-400">Tüm şirketler</span>
         ) : (
           seciliListe.map(k => (
-            <span key={k} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs px-2 py-0.5 rounded-full">
+            <span key={k} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs px-2 py-0.5 rounded-full font-medium">
               {adMap.get(k) ?? k}
               <button onClick={e => { e.stopPropagation(); toggleKod(k) }} className="hover:text-indigo-900 leading-none">×</button>
             </span>
           ))
         )}
-        <svg className={`w-3.5 h-3.5 text-slate-400 ml-auto shrink-0 transition-transform ${acik ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`w-3 h-3 text-slate-400 ml-auto shrink-0 transition-transform ${acik ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </div>
 
       {acik && (
         <div className="absolute z-50 mt-1 w-full min-w-[240px] bg-white border border-slate-200 rounded-xl shadow-lg">
-          <div className="p-2 border-b border-slate-100 flex gap-2 items-center">
+          <div className="px-3 py-2 border-b border-slate-100 flex gap-2 items-center">
             <input autoFocus type="text" placeholder="Ara..." value={ara} onChange={e => setAra(e.target.value)}
-              className="flex-1 px-2.5 py-1 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-400" />
-            <button onClick={() => onChange(new Set())} className="text-xs text-slate-400 hover:underline whitespace-nowrap">Temizle</button>
+              className="flex-1 px-2.5 py-1 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-400 text-slate-700 placeholder-slate-400" />
+            {secili.size > 0 && <button onClick={() => onChange(new Set())} className="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap">Temizle</button>}
           </div>
           <div className="max-h-52 overflow-y-auto">
             {filtrelenmis.map(k => (
               <label key={k} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
                 <input type="checkbox" checked={secili.has(k)} onChange={() => toggleKod(k)} className="accent-indigo-600 w-3.5 h-3.5 shrink-0" />
-                <span className="text-sm text-slate-700">{adMap.get(k) ?? k}</span>
+                <span className="text-xs text-slate-600">{adMap.get(k) ?? k}</span>
               </label>
             ))}
           </div>
