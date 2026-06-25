@@ -133,6 +133,15 @@ export default function FonTabs({
             ))}
           </div>
 
+          {/* DEBUG */}
+          <div className="text-xs text-slate-400 font-mono bg-slate-50 p-3 rounded-lg space-y-1">
+            <p>benchmark.length: {benchmark.length}</p>
+            <p>sonTarih: {sonTarih}</p>
+            <p>benchBaslangic: {benchBaslangic}</p>
+            <p>USD ilk: {String(benchmark.filter(d => d.tarih >= benchBaslangic).find(d => d['USD'] != null)?.['USD'])}</p>
+            <p>USD son: {String([...benchmark.filter(d => d.tarih >= benchBaslangic)].reverse().find(d => d['USD'] != null)?.['USD'])}</p>
+          </div>
+
           {/* Karşılaştırma kartları */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {benchKartlar.map(({ key, label, renk, val }) => (
