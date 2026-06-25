@@ -12,7 +12,7 @@ type Dagilim = [string, number][]
 export default function FonTabs({
   gecmis, benchmark, donemler, dagilim, dagilimTarih,
   hisseler, holdingsYayinTarihi, holdingsPdfLink, holdingsKapLink,
-  gunlukGetiri, getiri1h, getiri1a, getiri3a, getiri6a, getiriYb, birYillik, getiri3y, getiri5y,
+  gunlukGetiri, getiri1h, getiri1a, birYillik,
 }: {
   gecmis: GecmisRow[]
   benchmark: BenchmarkRow[]
@@ -26,12 +26,7 @@ export default function FonTabs({
   gunlukGetiri: number | null
   getiri1h: number | null
   getiri1a: number | null
-  getiri3a: number | null
-  getiri6a: number | null
-  getiriYb: number | null
   birYillik: number | null
-  getiri3y: number | null
-  getiri5y: number | null
 }) {
   const [tab, setTab] = useState<'performans' | 'dagilim'>('performans')
 
@@ -41,15 +36,10 @@ export default function FonTabs({
   ] as const
 
   const getiriKartlari = [
-    { label: 'Günlük',   val: gunlukGetiri },
+    { label: 'Günlük',    val: gunlukGetiri },
     { label: '1 Haftalık', val: getiri1h },
-    { label: '1 Aylık',  val: getiri1a },
-    { label: '3 Aylık',  val: getiri3a },
-    { label: '6 Aylık',  val: getiri6a },
-    { label: 'YBB',      val: getiriYb },
-    { label: '1 Yıllık', val: birYillik },
-    { label: '3 Yıllık', val: getiri3y },
-    { label: '5 Yıllık', val: getiri5y },
+    { label: '1 Aylık',   val: getiri1a },
+    { label: '1 Yıllık',  val: birYillik },
   ]
 
   return (
@@ -69,7 +59,7 @@ export default function FonTabs({
 
       {tab === 'performans' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-3 sm:grid-cols-9 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {getiriKartlari.map(({ label, val }) => (
               <div key={label} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
                 <p className="text-slate-400 text-xs mb-1">{label}</p>
@@ -91,8 +81,8 @@ export default function FonTabs({
                 {donemler.map(({ label, val }) => (
                   <div key={label} className="px-4 py-4 text-center">
                     <p className="text-slate-400 text-xs mb-1">{label}</p>
-                    <p className={`font-mono font-semibold text-sm ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {val != null ? `%${val.toFixed(2)}` : '-'}
+                    <p className={`font-semibold text-base ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {val != null ? `%${val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                     </p>
                   </div>
                 ))}
