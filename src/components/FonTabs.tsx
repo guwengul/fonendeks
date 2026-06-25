@@ -19,7 +19,7 @@ const BENCH_SERILER = [
   { key: 'GRAM_ALTIN', label: 'Gram Altın', renk: 'bg-yellow-500 text-white' },
 ] as const
 
-const BENCH_DONEMLER = GRAFIK_ARALIKLAR.filter(a => a.label !== 'Tümü')
+const BENCH_DONEMLER_LABELS = ['1H', '1A', '3A', '6A', 'YBB', '1Y', '3Y', '5Y']
 
 export default function FonTabs({
   gecmis, benchmark, benchGetiriler, dagilim, dagilimTarih,
@@ -45,7 +45,7 @@ export default function FonTabs({
   getiri5y: number | null
 }) {
   const [tab, setTab] = useState<'performans' | 'benchmark' | 'buyume' | 'dagilim'>('performans')
-  const [benchDonem, setBenchDonem] = useState('1Y')
+  const [benchGosterge, setBenchGosterge] = useState<string>('USD')
 
   const TABS = [
     { key: 'performans',  label: 'Fon Performansı' },
@@ -65,9 +65,9 @@ export default function FonTabs({
     { label: '5 Yıllık',  val: getiri5y },
   ]
 
-  const benchKartlar = BENCH_SERILER.map(s => ({
-    ...s,
-    val: (benchGetiriler[benchDonem] ?? {})[s.key] ?? null,
+  const benchDonemKartlar = BENCH_DONEMLER_LABELS.map(donem => ({
+    label: donem,
+    val: (benchGetiriler[donem] ?? {})[benchGosterge] ?? null,
   }))
 
   return (
@@ -103,29 +103,29 @@ export default function FonTabs({
 
       {tab === 'benchmark' && (
         <div className="space-y-6">
-          {/* Dönem seçici */}
+          {/* Gösterge seçici */}
           <div className="flex flex-wrap gap-2">
-            {BENCH_DONEMLER.map(a => (
+            {BENCH_SERILER.map(s => (
               <button
-                key={a.label}
-                onClick={() => setBenchDonem(a.label)}
+                key={s.key}
+                onClick={() => setBenchGosterge(s.key)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  benchDonem === a.label
-                    ? 'bg-indigo-600 text-white'
+                  benchGosterge === s.key
+                    ? s.renk
                     : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
                 }`}
               >
-                {a.label}
+                {s.label}
               </button>
             ))}
           </div>
 
-          {/* Karşılaştırma kartları */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {benchKartlar.map(({ key, label, renk, val }) => (
-              <div key={key} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mb-2 ${renk}`}>{label}</span>
-                <p className={`font-semibold text-2xl ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+          {/* Dönem kartları */}
+          <div className="grid grid-cols-4 gap-3">
+            {benchDonemKartlar.map(({ label, val }) => (
+              <div key={label} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                <p className="text-slate-400 text-xs mb-1">{label}</p>
+                <p className={`font-semibold text-xl ${val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                   {val != null ? `%${val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                 </p>
               </div>

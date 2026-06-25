@@ -85,7 +85,6 @@ export default async function FonDetay({
   const { data: benchRows } = await supabase
     .from('tefas_benchmark_fiyatlari')
     .select('tarih, gosterge, deger')
-    .gte('tarih', ilk.tarih)
     .order('tarih', { ascending: true })
     .limit(10000)
 
