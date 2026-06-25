@@ -272,7 +272,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   function ThBtn({ col, label, title }: { col: string; label: string; title?: string }) {
     const aktif = siraKey === col
     return (
-      <th title={title} className="px-3 py-3 font-medium text-right cursor-pointer select-none hover:text-indigo-600 whitespace-nowrap"
+      <th title={title} className="px-3 py-2 font-medium text-right cursor-pointer select-none hover:text-indigo-600 whitespace-nowrap"
         onClick={() => handleSira(col)}>
         {label}{aktif ? (siraAsc ? ' ↑' : ' ↓') : ''}
       </th>
@@ -359,10 +359,10 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
       <p className="text-slate-400 text-sm mb-3">{filtrelenmis.length.toLocaleString('tr-TR')} fon listeleniyor</p>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
+        <table className="w-full text-xs">
           <thead className="sticky top-0 z-20 bg-white">
             <tr className="border-b border-slate-100 text-slate-500 text-left">
-              <th className="px-4 py-3 font-medium sticky left-0 bg-white z-30">Kod</th>
+              <th className="px-4 py-2 font-medium sticky left-0 bg-white z-30">Kod</th>
               <ThBtn col="fiyat" label="Fiyat" />
               <ThBtn col="portfoyBuyukluk" label="Portföy" />
               <ThBtn col="kisiSayisi" label="Yatırımcı" />
@@ -373,18 +373,18 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
             {filtrelenmis.map(f => (
               <tr key={`${f.fonKodu}-${f.fonTipi}`}
                 className="border-b border-slate-50 hover:bg-indigo-50/40 transition-colors">
-                <td className="px-4 py-3 sticky left-0 bg-white">
+                <td className="px-4 py-2 sticky left-0 bg-white">
                   <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
                     title={f.fonUnvan ?? undefined}
-                    className="font-mono font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                    className="font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
                     {f.fonKodu}
                   </Link>
                 </td>
-                <td className="px-3 py-3 text-right font-mono text-slate-700">{f.fiyat != null ? f.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '-'}</td>
-                <td className="px-3 py-3 text-right text-slate-600">{fmt(f.portfoyBuyukluk)}</td>
-                <td className="px-3 py-3 text-right text-slate-600">{f.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}</td>
+                <td className="px-3 py-2 text-right text-slate-700">{f.fiyat != null ? f.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '-'}</td>
+                <td className="px-3 py-2 text-right text-slate-600">{fmt(f.portfoyBuyukluk)}</td>
+                <td className="px-3 py-2 text-right text-slate-600">{f.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}</td>
                 {DONEMLER.map(d => (
-                  <td key={d.key} className="px-3 py-3 text-right">
+                  <td key={d.key} className="px-3 py-2 text-right">
                     <GetiriCell val={f.getiriler[d.key]} />
                   </td>
                 ))}
