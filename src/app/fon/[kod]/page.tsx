@@ -13,25 +13,6 @@ type Gecmis = {
   tedPaySayisi: number | null
 }
 
-// Hedef tarihteki (veya hemen öncesindeki) fiyatı bul
-function fiyatBul(gecmis: Gecmis[], hedef: Date): number | null {
-  const hedefStr = hedef.toISOString().slice(0, 10)
-  let bulunan: number | null = null
-  for (const g of gecmis) {
-    if (g.tarih <= hedefStr && g.fiyat) bulunan = g.fiyat
-    else if (g.tarih > hedefStr) break
-  }
-  return bulunan
-}
-
-// Son fiyata göre, N gün önceki fiyattan yüzde getiri
-function getiriHesapla(gecmis: Gecmis[], sonFiyat: number, gunOnce: number): number | null {
-  const hedef = new Date()
-  hedef.setUTCDate(hedef.getUTCDate() - gunOnce)
-  const eski = fiyatBul(gecmis, hedef)
-  if (!eski) return null
-  return ((sonFiyat - eski) / eski) * 100
-}
 
 export default async function FonDetay({
   params,
@@ -46,33 +27,38 @@ export default async function FonDetay({
 
   const supabase = createAdminClient()
 
-  const { data: gecmis } = await supabase
-    .from('tefas_fon_verileri')
-    .select('tarih, fiyat, portfoyBuyukluk, kisiSayisi, tedPaySayisi')
-    .eq('fonKodu', fonKodu)
-    .eq('fonTipi', tip)
-    .order('tarih', { ascending: true })
+  // Özet + meta paralel çek
+  const [gecmisRes, ozetRes, metaRes] = await Promise.all([
+    supabase
+      .from('tefas_fon_verileri')
+      .select('tarih, fiyat, portfoyBuyukluk, kisiSayisi, tedPaySayisi')
+      .eq('fonKodu', fonKodu)
+      .eq('fonTipi', tip)
+      .order('tarih', { ascending: true }),
+    supabase
+      .from('tefas_fon_ozet')
+      .select('fonUnvan, fonTipi, fiyat, portfoyBuyukluk, kisiSayisi, tarih, getiri1g, getiri1h, getiri1a, getiri3a, getiri6a, getiriYb, getiri1y, getiri3y, getiri5y')
+      .eq('fonKodu', fonKodu)
+      .eq('fonTipi', tip)
+      .maybeSingle(),
+    supabase
+      .from('tefas_fon_meta')
+      .select('*')
+      .eq('fonKodu', fonKodu)
+      .maybeSingle(),
+  ])
+
+  const gecmis = gecmisRes.data
+  const ozet = ozetRes.data
+  const meta = metaRes.data
 
   if (!gecmis || gecmis.length === 0) notFound()
 
   const son = gecmis[gecmis.length - 1]
   const ilk = gecmis[0]
-  const onceki = gecmis.length > 1 ? gecmis[gecmis.length - 2] : null
 
-  const { data: info } = await supabase
-    .from('tefas_fon_verileri')
-    .select('fonUnvan, fonTipi')
-    .eq('fonKodu', fonKodu)
-    .eq('fonTipi', tip)
-    .limit(1)
-    .single()
-
-  // Meta bilgiler kendi DB tablomuzdan
-  const { data: meta } = await supabase
-    .from('tefas_fon_meta')
-    .select('*')
-    .eq('fonKodu', fonKodu)
-    .maybeSingle()
+  // info artık ozet'ten geliyor
+  const info = ozet ? { fonUnvan: ozet.fonUnvan, fonTipi: ozet.fonTipi } : null
 
   // Varlık dağılımı kendi DB tablomuzdan
   const { data: dagilimRow } = await supabase
@@ -121,33 +107,22 @@ export default async function FonDetay({
     return { tarih: row.tarih, fiyat: row.fiyat, ...nokta }
   })
 
-  const sonFiyat = son.fiyat ?? null
+  // Getiriler özet tablosundan gelir (önceden hesaplanmış)
+  const gunlukGetiri = ozet?.getiri1g ?? null
+  const getiri1h = ozet?.getiri1h ?? null
+  const getiri1a = ozet?.getiri1a ?? null
+  const birYillik = ozet?.getiri1y ?? null
 
-  const toplamGetiri = son.fiyat && ilk.fiyat
-    ? (((son.fiyat - ilk.fiyat) / ilk.fiyat) * 100).toFixed(2)
-    : null
-
-  // Günlük getiri: son iki fiyat
-  const gunlukGetiri = son.fiyat && onceki?.fiyat
-    ? ((son.fiyat - onceki.fiyat) / onceki.fiyat) * 100
-    : null
-
-  // Dönemsel getiriler ham fiyat verisinden hesaplanır
-  const yilBasi = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1))
-  const ybbEski = sonFiyat ? fiyatBul(gecmis, yilBasi) : null
-  const donemler = sonFiyat ? [
-    { label: '1 Hafta', val: getiriHesapla(gecmis, sonFiyat, 7) },
-    { label: '1 Ay', val: getiriHesapla(gecmis, sonFiyat, 30) },
-    { label: '3 Ay', val: getiriHesapla(gecmis, sonFiyat, 90) },
-    { label: '6 Ay', val: getiriHesapla(gecmis, sonFiyat, 180) },
-    { label: 'YBB', val: ybbEski ? ((sonFiyat - ybbEski) / ybbEski) * 100 : null },
-    { label: '1 Yıl', val: getiriHesapla(gecmis, sonFiyat, 365) },
-    { label: '3 Yıl', val: getiriHesapla(gecmis, sonFiyat, 365 * 3) },
-    { label: '5 Yıl', val: getiriHesapla(gecmis, sonFiyat, 365 * 5) },
-  ] : []
-  const getiri1h = donemler.find(d => d.label === '1 Hafta')?.val ?? null
-  const getiri1a = donemler.find(d => d.label === '1 Ay')?.val ?? null
-  const birYillik = donemler.find(d => d.label === '1 Yıl')?.val ?? null
+  const donemler = [
+    { label: '1 Hafta', val: ozet?.getiri1h ?? null },
+    { label: '1 Ay',   val: ozet?.getiri1a ?? null },
+    { label: '3 Ay',   val: ozet?.getiri3a ?? null },
+    { label: '6 Ay',   val: ozet?.getiri6a ?? null },
+    { label: 'YBB',    val: ozet?.getiriYb ?? null },
+    { label: '1 Yıl',  val: ozet?.getiri1y ?? null },
+    { label: '3 Yıl',  val: ozet?.getiri3y ?? null },
+    { label: '5 Yıl',  val: ozet?.getiri5y ?? null },
+  ]
 
   const TIP_RENK: Record<string, string> = {
     YAT: 'bg-indigo-50 text-indigo-600',
