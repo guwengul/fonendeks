@@ -360,9 +360,9 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-20 bg-white">
+          <thead className="sticky top-0 z-20 bg-slate-50">
             <tr className="border-b border-slate-100 text-slate-500 text-left">
-              <th className="px-4 py-2 font-medium sticky left-0 bg-white z-30">Kod</th>
+              <th className="px-4 py-2 font-medium sticky left-0 bg-slate-50 z-30">Kod</th>
               <ThBtn col="fiyat" label="Fiyat" title="Birim pay fiyatı (son işlem günü)" />
               <ThBtn col="portfoyBuyukluk" label="Portföy" title="Portföy büyüklüğü (₺)" />
               <ThBtn col="kisiSayisi" label="Yatırımcı" title="Yatırımcı sayısı" />
