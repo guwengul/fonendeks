@@ -363,9 +363,9 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
           <thead className="sticky top-0 z-20 bg-white">
             <tr className="border-b border-slate-100 text-slate-500 text-left">
               <th className="px-4 py-2 font-medium sticky left-0 bg-white z-30">Kod</th>
-              <ThBtn col="fiyat" label="Fiyat" />
-              <ThBtn col="portfoyBuyukluk" label="Portföy" />
-              <ThBtn col="kisiSayisi" label="Yatırımcı" />
+              <ThBtn col="fiyat" label="Fiyat" title="Birim pay fiyatı (son işlem günü)" />
+              <ThBtn col="portfoyBuyukluk" label="Portföy" title="Portföy büyüklüğü (₺)" />
+              <ThBtn col="kisiSayisi" label="Yatırımcı" title="Yatırımcı sayısı" />
               {DONEMLER.map(d => <ThBtn key={d.key} col={d.key} label={d.label} title={d.title} />)}
             </tr>
           </thead>
