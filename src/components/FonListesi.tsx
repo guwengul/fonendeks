@@ -64,7 +64,7 @@ function fmt(n: number | null) {
 function GetiriCell({ val }: { val: number | null }) {
   if (val == null) return <span className="text-slate-300">-</span>
   return <span className={`font-medium ${val >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-    {val >= 0 ? '+' : ''}{val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+    {val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
   </span>
 }
 
@@ -380,7 +380,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
                     {f.fonKodu}
                   </Link>
                 </td>
-                <td className="px-3 py-3 text-right font-mono text-slate-700">{f.fiyat != null ? f.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : '-'}</td>
+                <td className="px-3 py-3 text-right font-mono text-slate-700">{f.fiyat != null ? f.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '-'}</td>
                 <td className="px-3 py-3 text-right text-slate-600">{fmt(f.portfoyBuyukluk)}</td>
                 <td className="px-3 py-3 text-right text-slate-600">{f.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}</td>
                 {DONEMLER.map(d => (
