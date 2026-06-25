@@ -34,20 +34,21 @@ const BENCHMARKLAR = [
   { key: 'GRAM_ALTIN', label: 'Gram Altın', renk: '#ca8a04' },
 ] as const
 
-const ARALIKLAR = [
-  { label: '1A', ay: 1 },
-  { label: '3A', ay: 3 },
-  { label: '6A', ay: 6 },
-  { label: '1Y', ay: 12 },
-  { label: '3Y', ay: 36 },
-  { label: 'Tümü', ay: 0 },
-]
-
-function hedefTarihHesapla(sonTarih: string, ay: number): string {
-  const d = new Date(sonTarih)
-  d.setMonth(d.getMonth() - ay)
-  return d.toISOString().slice(0, 10)
+function ayGeri(son: string, ay: number) {
+  const d = new Date(son); d.setMonth(d.getMonth() - ay); return d.toISOString().slice(0, 10)
 }
+
+const ARALIKLAR = [
+  { label: '1H',  bas: (s: string) => { const d = new Date(s); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10) } },
+  { label: '1A',  bas: (s: string) => ayGeri(s, 1) },
+  { label: '3A',  bas: (s: string) => ayGeri(s, 3) },
+  { label: '6A',  bas: (s: string) => ayGeri(s, 6) },
+  { label: 'YBB', bas: (s: string) => `${new Date(s).getFullYear()}-01-01` },
+  { label: '1Y',  bas: (s: string) => ayGeri(s, 12) },
+  { label: '3Y',  bas: (s: string) => ayGeri(s, 36) },
+  { label: '5Y',  bas: (s: string) => ayGeri(s, 60) },
+  { label: 'Tümü', bas: () => '' },
+]
 
 function formatTarih(t: string) { return t.slice(5) }
 function formatMn(v: number) { return (v / 1_000_000).toFixed(1) + ' Mn' }
@@ -58,21 +59,17 @@ const TOOLTIP_STYLE = {
 }
 
 export default function FonGrafik({ data, benchmark = [] }: { data: Veri[]; benchmark?: BenchNokta[] }) {
-  const [aralik, setAralik] = useState(12)
-  // Varsayılan açık karşılaştırmalar
+  const [aralik, setAralik] = useState('1Y')
   const [secili, setSecili] = useState<Record<string, boolean>>({
     fiyat: true, USD: true, BIST100: true, GRAM_ALTIN: true, EUR: false, BIST30: false,
   })
 
-  const baslangicTarih = (() => {
-    if (aralik === 0 || data.length === 0) return ''
-    return hedefTarihHesapla(data[data.length - 1].tarih, aralik)
-  })()
+  const sonTarih = data.length > 0 ? data[data.length - 1].tarih : ''
+  const secilenAralik = ARALIKLAR.find(a => a.label === aralik) ?? ARALIKLAR[ARALIKLAR.length - 1]
+  const baslangicTarih = sonTarih ? secilenAralik.bas(sonTarih) : ''
 
-  const filtrelenmis = aralik === 0 ? data : data.filter(d => d.tarih >= baslangicTarih)
-
-  // Karşılaştırma: seçili aralıkta her seriyi başlangıçta 100'e endeksle (% getiri)
-  const benchFiltreli = aralik === 0 ? benchmark : benchmark.filter(d => d.tarih >= baslangicTarih)
+  const filtrelenmis = baslangicTarih === '' ? data : data.filter(d => d.tarih >= baslangicTarih)
+  const benchFiltreli = baslangicTarih === '' ? benchmark : benchmark.filter(d => d.tarih >= baslangicTarih)
   const baz: Record<string, number> = {}
   for (const { key } of BENCHMARKLAR) {
     const ilkGecerli = benchFiltreli.find(d => d[key] != null)?.[key]
@@ -93,9 +90,9 @@ export default function FonGrafik({ data, benchmark = [] }: { data: Veri[]; benc
         {ARALIKLAR.map(a => (
           <button
             key={a.label}
-            onClick={() => setAralik(a.ay)}
+            onClick={() => setAralik(a.label)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              aralik === a.ay
+              aralik === a.label
                 ? 'bg-indigo-600 text-white'
                 : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
             }`}
