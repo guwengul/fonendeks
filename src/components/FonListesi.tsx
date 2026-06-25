@@ -66,7 +66,9 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
   return (
     <button onClick={onClick}
       className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
-        active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+        active
+          ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          : 'bg-white border border-slate-200 text-slate-300 hover:border-slate-300'
       }`}>
       {label}
     </button>
