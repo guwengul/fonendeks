@@ -117,7 +117,7 @@ function SirketCombo({ secili, onChange, adMap, tumKodlar }: {
       </div>
 
       {acik && (
-        <div className="absolute z-50 mt-1 w-full min-w-[240px] bg-white border border-slate-200 rounded-xl shadow-lg">
+        <div className="absolute z-50 mt-1 w-full min-w-[320px] bg-white border border-slate-200 rounded-xl shadow-lg">
           <div className="px-3 py-2 border-b border-slate-100 flex gap-2 items-center">
             <input autoFocus type="text" placeholder="Ara..." value={ara} onChange={e => setAra(e.target.value)}
               className="flex-1 px-2.5 py-1 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-400 text-slate-700 placeholder-slate-400" />
