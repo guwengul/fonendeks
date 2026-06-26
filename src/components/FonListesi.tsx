@@ -224,8 +224,9 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const filtrelenmis = fonlar.filter(f => {
     if (arama) {
       const q = arama.toLocaleLowerCase('tr-TR')
+      const qEn = arama.toLowerCase()
       const sirket = (kurucuAdMap.get(f.kurucuKod ?? '') ?? '').toLocaleLowerCase('tr-TR')
-      if (!f.fonKodu.toLocaleLowerCase('tr-TR').includes(q) &&
+      if (!f.fonKodu.toLowerCase().includes(qEn) &&
           !(f.fonUnvan ?? '').toLocaleLowerCase('tr-TR').includes(q) &&
           !sirket.includes(q) &&
           !(f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes(q)) return false
