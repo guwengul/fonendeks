@@ -186,7 +186,7 @@ export default async function FonDetay({
         </div>
 
         {/* Snapshot çubuğu */}
-        <div className="flex flex-wrap gap-px mt-4 bg-slate-200 rounded-xl overflow-hidden border border-slate-200">
+        <div className="grid grid-cols-2 sm:flex gap-px mt-4 bg-slate-200 rounded-xl overflow-hidden border border-slate-200">
           <div className="flex-1 min-w-[120px] bg-white px-4 py-3">
             <p className="text-slate-400 text-xs mb-0.5">Son Fiyat</p>
             <div className="flex items-baseline gap-2">

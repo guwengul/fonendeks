@@ -47,15 +47,16 @@ export default function FonTabs({
   getiri3y: number | null
   getiri5y: number | null
 }) {
-  const [tab, setTab] = useState<'performans' | 'benchmark' | 'buyume' | 'dagilim'>('performans')
+  const [tab, setTab] = useState<'performans' | 'benchmark' | 'buyume' | 'dagilim' | 'hisseler'>('performans')
   const [benchDonem, setBenchDonem] = useState('1Y')
 
   const TABS = [
-    { key: 'performans',  label: 'Fon Performansı' },
-    { key: 'benchmark',   label: 'Benchmark' },
-    { key: 'buyume',      label: 'Fon Büyümesi' },
-    { key: 'dagilim',     label: 'Fon Varlık Dağılımı' },
-  ] as const
+    { key: 'performans' as const, label: 'Fon Performansı' },
+    { key: 'benchmark'  as const, label: 'Benchmark' },
+    { key: 'buyume'     as const, label: 'Fon Büyümesi' },
+    { key: 'dagilim'    as const, label: 'Varlık Dağılımı' },
+    ...(hisseler.length > 0 ? [{ key: 'hisseler' as const, label: 'Hisse Dağılımı' }] : []),
+  ]
 
   const getiriKartlari = [
     { label: '1 Haftalık', val: getiri1h },
@@ -78,10 +79,10 @@ export default function FonTabs({
 
   return (
     <div>
-      <div className="flex gap-1 border-b border-slate-200 mb-6">
+      <div className="flex gap-1 border-b border-slate-200 mb-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`px-3 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
               tab === t.key
                 ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -93,7 +94,7 @@ export default function FonTabs({
 
       {tab === 'performans' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {getiriKartlari.map(({ label, val }) => (
               <div key={label} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
                 <p className="text-slate-400 text-xs mb-1">{label}</p>
@@ -146,7 +147,7 @@ export default function FonTabs({
           </div>
 
           {/* Enstrüman kartları */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {benchGostergeDegerleri.map(({ key, label, renk, val }) => (
               <div key={key} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
                 <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mb-2 ${renk}`}>{label}</span>
@@ -164,8 +165,8 @@ export default function FonTabs({
       )}
 
       {tab === 'dagilim' && (
-        <div className="space-y-6">
-          {dagilim.length > 0 && (
+        <div>
+          {dagilim.length > 0 ? (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 flex items-baseline justify-between">
                 <h2 className="font-semibold text-slate-800">Varlık Dağılımı</h2>
@@ -185,41 +186,39 @@ export default function FonTabs({
                 ))}
               </div>
             </div>
+          ) : (
+            <p className="text-slate-400 text-sm">Bu fon için varlık dağılımı verisi bulunmuyor.</p>
           )}
+        </div>
+      )}
 
-          {hisseler.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100 flex items-baseline justify-between gap-2 flex-wrap">
-                <h2 className="font-semibold text-slate-800">Hisse Senedi Dağılımı</h2>
-                <div className="flex items-center gap-3 text-xs text-slate-400">
-                  <span>{hisseler.length} hisse{holdingsYayinTarihi ? ` · rapor ${holdingsYayinTarihi}` : ''}</span>
-                  {holdingsPdfLink && (
-                    <a href={holdingsPdfLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600">PDF →</a>
-                  )}
-                  {holdingsKapLink && (
-                    <a href={holdingsKapLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600">KAP →</a>
-                  )}
+      {tab === 'hisseler' && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-baseline justify-between gap-2 flex-wrap">
+            <h2 className="font-semibold text-slate-800">Hisse Senedi Dağılımı</h2>
+            <div className="flex items-center gap-3 text-xs text-slate-400">
+              <span>{hisseler.length} hisse{holdingsYayinTarihi ? ` · rapor ${holdingsYayinTarihi}` : ''}</span>
+              {holdingsPdfLink && (
+                <a href={holdingsPdfLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600">PDF →</a>
+              )}
+              {holdingsKapLink && (
+                <a href={holdingsKapLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600">KAP →</a>
+              )}
+            </div>
+          </div>
+          <div className="p-5 space-y-2.5">
+            {hisseler.filter(h => h.agirlik > 0).map(h => (
+              <div key={h.isin}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-slate-700 font-mono font-medium">{h.ticker}</span>
+                  <span className="font-mono text-slate-900">%{h.agirlik.toFixed(2)}</span>
+                </div>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-rose-500 rounded-full" style={{ width: `${Math.min(h.agirlik * 5, 100)}%` }} />
                 </div>
               </div>
-              <div className="p-5 space-y-2.5">
-                {hisseler.filter(h => h.agirlik > 0).map(h => (
-                  <div key={h.isin}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-slate-700 font-mono font-medium">{h.ticker}</span>
-                      <span className="font-mono text-slate-900">%{h.agirlik.toFixed(2)}</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-rose-500 rounded-full" style={{ width: `${Math.min(h.agirlik * 5, 100)}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {dagilim.length === 0 && hisseler.length === 0 && (
-            <p className="text-slate-400 text-sm">Bu fon için portföy verisi bulunmuyor.</p>
-          )}
+            ))}
+          </div>
         </div>
       )}
     </div>
