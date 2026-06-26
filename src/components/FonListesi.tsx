@@ -171,7 +171,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const [sirketler, setSirketler] = useState<Set<string>>(new Set())
   const [serbest, setSerbest] = useState(true)
   const [sadecKatilim, setSadecKatilim] = useState(false)
-  const [doviz, setDoviz] = useState(true)
+  const [dovizMod, setDovizMod] = useState<'tumu' | 'haric' | 'sadece'>('tumu')
   const [filtrePaneli, setFiltrePaneli] = useState(false)
   const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
   const [siraAsc, setSiraAsc] = useState(false)
@@ -210,7 +210,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const aktifFiltreCount = (tipler.size < TIP_OPTIONS.length ? 1 : 0) +
     (!serbest ? 1 : 0) +
     (sadecKatilim ? 1 : 0) +
-    (!doviz ? 1 : 0) +
+    (dovizMod !== 'tumu' ? 1 : 0) +
     (riskler.size < RISK_OPTIONS.length ? 1 : 0) +
     (vergiler.size < VERGI_OPTIONS.length ? 1 : 0) +
     (ucretler.size < UCRET_OPTIONS.length ? 1 : 0) +
@@ -235,10 +235,11 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
     }
     if (tipFiltre && !tipler.has(f.fonTipi)) return false
     if (!serbest && (f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('serbest')) return false
-    if (!doviz) {
+    if (dovizMod !== 'tumu') {
       const u = (f.fonUnvan ?? '').toLocaleLowerCase('tr-TR')
       const isDoviz = /usd|eur|dolar|euro|döviz|avro|sterlin|gbp|chf|jpy|yen/.test(u)
-      if (isDoviz) return false
+      if (dovizMod === 'haric' && isDoviz) return false
+      if (dovizMod === 'sadece' && !isDoviz) return false
     }
     const isKatilim = (f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('katılım')
     if (sadecKatilim && !isKatilim) return false
@@ -344,8 +345,8 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs text-slate-500 font-medium">Döviz Fonları</span>
                 <div className="flex flex-wrap gap-1.5">
-                  <Chip label="Dahil" active={doviz} onClick={() => setDoviz(true)} />
-                  <Chip label="Hariç" active={!doviz} onClick={() => setDoviz(false)} />
+                  <Chip label="Hariç" active={dovizMod === 'haric'} onClick={() => setDovizMod(dovizMod === 'haric' ? 'tumu' : 'haric')} />
+                  <Chip label="Sadece" active={dovizMod === 'sadece'} onClick={() => setDovizMod(dovizMod === 'sadece' ? 'tumu' : 'sadece')} />
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
