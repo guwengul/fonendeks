@@ -193,9 +193,14 @@ export default async function AnalizPage() {
     const yillikPozitif = yillik.filter(p => p !== null && p > 0).length
     const yillikToplam = yillik.filter(p => p !== null).length
 
-    // 5 yıllık toplam getiri
+    // 3 ve 5 yıllık toplam getiri
     const fiyatBugün = fiyatlar[0]
+    const fiyat3y = fiyatlar[6] // AYLAR[6] = 36 ay
     const fiyat5y = fiyatlar[fiyatlar.length - 1]
+    const toplamGetiri3y = fiyatBugün != null && fiyat3y != null && fiyat3y !== 0
+      ? ((fiyatBugün - fiyat3y) / fiyat3y) * 100
+      : null
+    const toplamGetiri3yUsd = usdAyarli(toplamGetiri3y, usdFiyatlar[0], usdFiyatlar[6])
     const toplamGetiri5y = fiyatBugün != null && fiyat5y != null && fiyat5y !== 0
       ? ((fiyatBugün - fiyat5y) / fiyat5y) * 100
       : null
@@ -214,6 +219,8 @@ export default async function AnalizPage() {
       altiAyToplam,
       yillikPozitif,
       yillikToplam,
+      toplamGetiri3y,
+      toplamGetiri3yUsd,
       toplamGetiri5y,
       toplamGetiri5yUsd,
       riskDegeri: meta?.riskDegeri ?? null,
