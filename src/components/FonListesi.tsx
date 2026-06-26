@@ -172,6 +172,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const [sirketler, setSirketler] = useState<Set<string>>(new Set())
   const [serbest, setSerbest] = useState(true)
   const [sadecKatilim, setSadecKatilim] = useState(false)
+  const [sadecHisse, setSadecHisse] = useState(false)
   const [dovizMod, setDovizMod] = useState<'tumu' | 'haric' | 'sadece'>('tumu')
   const [filtrePaneli, setFiltrePaneli] = useState(false)
   const [paraBirimi, setParaBirimi] = useState<'TL' | 'USD'>('TL')
@@ -212,6 +213,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const aktifFiltreCount = (tipler.size < TIP_OPTIONS.length ? 1 : 0) +
     (!serbest ? 1 : 0) +
     (sadecKatilim ? 1 : 0) +
+    (sadecHisse ? 1 : 0) +
     (dovizMod !== 'tumu' ? 1 : 0) +
     (riskler.size < RISK_OPTIONS.length ? 1 : 0) +
     (vergiler.size < VERGI_OPTIONS.length ? 1 : 0) +
@@ -237,6 +239,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
     }
     if (tipFiltre && !tipler.has(f.fonTipi)) return false
     if (!serbest && (f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('serbest')) return false
+    if (sadecHisse && !(f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('hisse')) return false
     if (dovizMod !== 'tumu') {
       const u = (f.fonUnvan ?? '').toLocaleLowerCase('tr-TR')
       const isDoviz = /usd|eur|dolar|euro|döviz|avro|sterlin|gbp|chf|jpy|yen/.test(u)
@@ -308,7 +311,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
         <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white text-sm shrink-0">
           {(['TL', 'USD'] as const).map(pb => (
             <button key={pb} onClick={() => setParaBirimi(pb)}
-              className={`px-4 py-2.5 font-medium transition-colors ${paraBirimi === pb ? 'bg-amber-500 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+              className={`px-4 py-2.5 font-medium transition-colors ${paraBirimi === pb ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
               {pb}
             </button>
           ))}
@@ -353,6 +356,13 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
                 <div className="flex flex-wrap gap-1.5">
                   <Chip label="Tümü" active={!sadecKatilim} onClick={() => setSadecKatilim(false)} />
                   <Chip label="Sadece Katılım" active={sadecKatilim} onClick={() => setSadecKatilim(true)} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-500 font-medium">Hisse Senedi Fonları</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <Chip label="Tümü" active={!sadecHisse} onClick={() => setSadecHisse(false)} />
+                  <Chip label="Sadece Hisse" active={sadecHisse} onClick={() => setSadecHisse(true)} />
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">

@@ -189,6 +189,7 @@ export default function AnalizListesi({
   // Ek filtreler
   const [serbest, setSerbest] = useState(true)
   const [sadecKatilim, setSadecKatilim] = useState(false)
+  const [sadecHisse, setSadecHisse] = useState(false)
   const [dovizMod, setDovizMod] = useState<'tumu' | 'haric' | 'sadece'>('tumu')
   const [riskler, setRiskler] = useState(new Set(RISK_OPTIONS))
   const [vergiler, setVergiler] = useState(new Set(VERGI_OPTIONS))
@@ -207,6 +208,7 @@ export default function AnalizListesi({
   const aktifFiltreCount =
     (!serbest ? 1 : 0) +
     (sadecKatilim ? 1 : 0) +
+    (sadecHisse ? 1 : 0) +
     (dovizMod !== 'tumu' ? 1 : 0) +
     (riskler.size < RISK_OPTIONS.length ? 1 : 0) +
     (vergiler.size < VERGI_OPTIONS.length ? 1 : 0) +
@@ -236,6 +238,7 @@ export default function AnalizListesi({
         if (!serbest && (f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('serbest')) return false
         const isKatilim = (f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('katılım')
         if (sadecKatilim && !isKatilim) return false
+        if (sadecHisse && !(f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('hisse')) return false
         if (dovizMod !== 'tumu') {
           const u = (f.fonUnvan ?? '').toLocaleLowerCase('tr-TR')
           const isDoviz = /usd|eur|dolar|euro|döviz|avro|sterlin|gbp|chf|jpy|yen/.test(u)
@@ -299,7 +302,7 @@ export default function AnalizListesi({
         if (bOran !== aOran) return bOran - aOran
         return bPoz - aPoz
       })
-  }, [fonlar, mod, doviz, minPozitif, tipFiltre, siralama, arama, serbest, sadecKatilim, dovizMod, riskler, vergiler, ucretler, tefas, sirketler])
+  }, [fonlar, mod, doviz, minPozitif, tipFiltre, siralama, arama, serbest, sadecKatilim, sadecHisse, dovizMod, riskler, vergiler, ucretler, tefas, sirketler])
 
   return (
     <div>
@@ -321,7 +324,7 @@ export default function AnalizListesi({
         <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white text-sm">
           {(['TL', 'USD'] as const).map(d => (
             <button key={d} onClick={() => setDoviz(d)}
-              className={`px-4 py-2 font-medium transition-colors ${doviz === d ? 'bg-amber-500 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+              className={`px-4 py-2 font-medium transition-colors ${doviz === d ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
               {d}
             </button>
           ))}
@@ -379,6 +382,13 @@ export default function AnalizListesi({
                 <div className="flex flex-wrap gap-1.5">
                   <Chip label="Tümü" active={!sadecKatilim} onClick={() => setSadecKatilim(false)} />
                   <Chip label="Sadece Katılım" active={sadecKatilim} onClick={() => setSadecKatilim(true)} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-500 font-medium">Hisse Senedi Fonları</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <Chip label="Tümü" active={!sadecHisse} onClick={() => setSadecHisse(false)} />
+                  <Chip label="Sadece Hisse" active={sadecHisse} onClick={() => setSadecHisse(true)} />
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
