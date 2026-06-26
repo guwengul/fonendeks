@@ -3,45 +3,36 @@ import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(req: Request) {
-  const fon = new URL(req.url).searchParams.get('fon') ?? 'TI2'
-  const supabase = createAdminClient()
+export async function GET() {
+  // TEFAS'tan TI2'nin 2021-06-25 fiyatını şimdi çek — düzeltilmiş mi?
+  const res = await fetch('https://www.tefas.gov.tr/api/funds/fonGnlBlgSiraliGetirDosya', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.TEFAS_BEARER_TOKEN}`,
+    },
+    body: JSON.stringify({
+      dil: 'TR', fonTipi: 'YAT',
+      basTarih: '20210625', bitTarih: '20210625',
+      fonKod: null, fonGrup: null, fonTurKod: null,
+      fonUnvanTip: null, kurucuKod: null, fonTurAciklama: null, sfonTurKod: null,
+    }),
+  })
 
-  // Bölünme etrafındaki 5 gün öncesi ve sonrası
-  const { data: etraf } = await supabase
+  const json = await res.json()
+  const ti2 = (json?.data ?? []).find((r: any) => r.FONKODU === 'TI2')
+
+  // DB'deki değerle karşılaştır
+  const supabase = createAdminClient()
+  const { data: dbRow } = await supabase
     .from('tefas_fon_verileri')
     .select('tarih, fiyat')
-    .eq('fonKodu', fon).eq('fonTipi', 'YAT')
-    .gte('tarih', '2025-01-13')
-    .lte('tarih', '2025-01-27')
-    .order('tarih', { ascending: true })
-
-  // Ozetteki getiri5y — TEFAS'ın hesapladığı
-  const { data: ozet } = await supabase
-    .from('tefas_fon_ozet')
-    .select('getiri5y, getiri1y, getiri3y, fiyat, tarih')
-    .eq('fonKodu', fon).eq('fonTipi', 'YAT')
+    .eq('fonKodu', 'TI2').eq('fonTipi', 'YAT').eq('tarih', '2021-06-25')
     .maybeSingle()
 
-  // KAP linki
-  const { data: meta } = await supabase
-    .from('tefas_fon_meta')
-    .select('kapLink')
-    .eq('fonKodu', fon)
-    .maybeSingle()
-
-  // Bölünme oranı hesabı: onceki / sonraki
-  const rows = etraf ?? []
-  const splitIdx = rows.findIndex(r => r.fiyat < 1)
-  const bolunmeHesabi = splitIdx > 0 ? {
-    oncesi: rows[splitIdx - 1],
-    sonrasi: rows[splitIdx],
-    oran: rows[splitIdx - 1].fiyat / rows[splitIdx].fiyat,
-    en_yakin_yuvarlak: [100, 500, 1000, 5000, 10000].map(n => ({
-      n,
-      fark_pct: Math.abs(n - rows[splitIdx - 1].fiyat / rows[splitIdx].fiyat) / n * 100
-    })).sort((a, b) => a.fark_pct - b.fark_pct)[0]
-  } : null
-
-  return NextResponse.json({ etraf, ozet, kapLink: meta?.kapLink, bolunmeHesabi })
+  return NextResponse.json({
+    tefas_fiyat: ti2?.BIRIMPAYFIYATI,
+    db_fiyat: dbRow?.fiyat,
+    duzeltilmis_mi: ti2 ? Math.abs(ti2.BIRIMPAYFIYATI - (dbRow?.fiyat ?? 0)) > 1 : null,
+  })
 }
