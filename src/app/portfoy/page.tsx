@@ -1,12 +1,27 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { PortfoyIslemSil } from '@/components/PortfoyIslemSil'
+import { portfoyIslemSil } from '@/lib/auth-actions'
 import { PortfoyIslemEkle } from '@/components/PortfoyIslemEkle'
+import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Portföyüm' }
+
+type Pozisyon = {
+  portfoy_adi: string
+  fonKodu: string
+  fonTipi: string
+  fonUnvan: string | null
+  eklemeTarihi: string
+  eklemeFiyati: number
+  guncelFiyat: number | null
+  adet: number
+  maliyet: number
+  guncelDeger: number | null
+  kazanc: number | null
+  kazancYuzde: number | null
+  islemId: string
+}
 
 export default async function PortfoyPage() {
   const supabase = await createClient()
@@ -19,172 +34,177 @@ export default async function PortfoyPage() {
     .eq('user_id', user.id)
     .order('tarih', { ascending: false })
 
+  if (!islemler?.length) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl font-bold text-slate-900">Portföyüm</h1>
+          <PortfoyIslemEkle />
+        </div>
+        <div className="text-center py-20 text-slate-400">
+          <p className="text-lg mb-2">Portföyünüz boş</p>
+          <p className="text-sm">Fon ekleyerek başlayabilirsiniz.</p>
+        </div>
+      </div>
+    )
+  }
+
   const admin = createAdminClient()
   const { data: sonTarihRow } = await admin.from('tefas_fon_verileri')
     .select('tarih').order('tarih', { ascending: false }).limit(1).single()
   const sonTarih = sonTarihRow?.tarih
 
-  // Net pozisyon hesapla
-  const pozisyonlar: Record<string, { fonKodu: string; fonTipi: string; adet: number; maliyetToplam: number }> = {}
-  for (const i of (islemler ?? [])) {
-    const k = `${i.fonKodu}-${i.fonTipi}`
-    if (!pozisyonlar[k]) pozisyonlar[k] = { fonKodu: i.fonKodu, fonTipi: i.fonTipi, adet: 0, maliyetToplam: 0 }
-    if (i.islem_tipi === 'AL') {
-      pozisyonlar[k].adet += Number(i.adet)
-      pozisyonlar[k].maliyetToplam += Number(i.adet) * Number(i.fiyat)
-    } else {
-      pozisyonlar[k].adet -= Number(i.adet)
-      pozisyonlar[k].maliyetToplam -= Number(i.adet) * Number(i.fiyat)
-    }
-  }
-  const aktifPozisyonlar = Object.values(pozisyonlar).filter(p => p.adet > 0.0001)
-
-  // Güncel fiyatlar
-  const kodlar = [...new Set(aktifPozisyonlar.map(p => p.fonKodu))]
-  const { data: guncelFiyatlar } = kodlar.length && sonTarih ? await admin
-    .from('tefas_fon_verileri')
+  const { data: guncelFiyatlar } = await admin.from('tefas_fon_verileri')
     .select('fonKodu, fonTipi, fonUnvan, fiyat')
     .eq('tarih', sonTarih)
-    .in('fonKodu', kodlar) : { data: [] }
+    .in('fonKodu', [...new Set(islemler.map(i => i.fonKodu))])
 
-  const fiyatMap = new Map(
-    (guncelFiyatlar ?? []).map(r => [`${r.fonKodu}-${r.fonTipi}`, r])
-  )
+  const fiyatMap = new Map((guncelFiyatlar ?? []).map(r => [`${r.fonKodu}::${r.fonTipi}`, r]))
 
-  let toplamMaliyet = 0, toplamGuncelDeger = 0
-  const pozDetay = aktifPozisyonlar.map(p => {
-    const guncel = fiyatMap.get(`${p.fonKodu}-${p.fonTipi}`)
-    const ortalamaMaliyet = p.adet > 0 ? p.maliyetToplam / p.adet : 0
-    const guncelDeger = guncel?.fiyat ? p.adet * guncel.fiyat : null
-    const kazanc = guncelDeger != null ? guncelDeger - p.maliyetToplam : null
-    const kazancYuzde = kazanc != null && p.maliyetToplam > 0 ? (kazanc / p.maliyetToplam) * 100 : null
-    toplamMaliyet += p.maliyetToplam
-    if (guncelDeger) toplamGuncelDeger += guncelDeger
-    return { ...p, guncel, ortalamaMaliyet, guncelDeger, kazanc, kazancYuzde }
+  const pozisyonlar: Pozisyon[] = islemler.map(i => {
+    const g = fiyatMap.get(`${i.fonKodu}::${i.fonTipi}`)
+    const maliyet = i.adet * i.fiyat
+    const guncelDeger = g?.fiyat ? i.adet * g.fiyat : null
+    const kazanc = guncelDeger != null ? guncelDeger - maliyet : null
+    const kazancYuzde = kazanc != null && maliyet > 0 ? (kazanc / maliyet) * 100 : null
+    return {
+      portfoy_adi: i.portfoy_adi ?? 'Ana Portföy',
+      fonKodu: i.fonKodu, fonTipi: i.fonTipi,
+      fonUnvan: g?.fonUnvan ?? null,
+      eklemeTarihi: i.tarih,
+      eklemeFiyati: i.fiyat, guncelFiyat: g?.fiyat ?? null,
+      adet: i.adet, maliyet, guncelDeger, kazanc, kazancYuzde,
+      islemId: i.id,
+    }
   })
 
-  const toplamKazanc = toplamGuncelDeger - toplamMaliyet
+  const portfoyler = new Map<string, Pozisyon[]>()
+  for (const p of pozisyonlar) {
+    if (!portfoyler.has(p.portfoy_adi)) portfoyler.set(p.portfoy_adi, [])
+    portfoyler.get(p.portfoy_adi)!.push(p)
+  }
+
+  const toplamMaliyet = pozisyonlar.reduce((s, p) => s + p.maliyet, 0)
+  const toplamGuncel = pozisyonlar.reduce((s, p) => s + (p.guncelDeger ?? p.maliyet), 0)
+  const toplamKazanc = toplamGuncel - toplamMaliyet
   const toplamKazancYuzde = toplamMaliyet > 0 ? (toplamKazanc / toplamMaliyet) * 100 : 0
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 mb-1">Portföyüm</h1>
-        <p className="text-slate-400 text-sm">{sonTarih} itibarıyla</p>
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+        <h1 className="text-2xl font-bold text-slate-900">Portföyüm</h1>
+        <PortfoyIslemEkle />
       </div>
 
-      {/* Özet kartları */}
-      {aktifPozisyonlar.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-400 mb-1">Toplam Maliyet</p>
-            <p className="text-lg font-bold text-slate-800">{toplamMaliyet.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺</p>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-400 mb-1">Güncel Değer</p>
-            <p className="text-lg font-bold text-slate-800">{toplamGuncelDeger.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺</p>
-          </div>
-          <div className={`bg-white rounded-xl border p-4 col-span-2 sm:col-span-1 ${toplamKazanc >= 0 ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-200 bg-red-50/50'}`}>
-            <p className="text-xs text-slate-400 mb-1">Kazanç / Kayıp</p>
-            <p className={`text-lg font-bold ${toplamKazanc >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-              {toplamKazanc >= 0 ? '+' : ''}{toplamKazanc.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺
-              <span className="text-sm font-medium ml-1">({toplamKazancYuzde >= 0 ? '+' : ''}{toplamKazancYuzde.toFixed(2)}%)</span>
-            </p>
-          </div>
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <p className="text-xs text-slate-400 mb-1">Toplam Maliyet</p>
+          <p className="text-lg font-bold text-slate-900">
+            {toplamMaliyet.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+          </p>
         </div>
-      )}
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <p className="text-xs text-slate-400 mb-1">Güncel Değer</p>
+          <p className="text-lg font-bold text-slate-900">
+            {toplamGuncel.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+          </p>
+        </div>
+        <div className={`rounded-xl border p-4 ${toplamKazanc >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+          <p className="text-xs text-slate-400 mb-1">Toplam Kazanç</p>
+          <p className={`text-lg font-bold ${toplamKazanc >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+            {toplamKazanc >= 0 ? '+' : ''}{toplamKazanc.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+            <span className="text-sm font-medium ml-1">
+              ({toplamKazancYuzde >= 0 ? '+' : ''}{toplamKazancYuzde.toFixed(2)}%)
+            </span>
+          </p>
+        </div>
+      </div>
 
-      {/* Aktif pozisyonlar */}
-      {pozDetay.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold text-slate-700 mb-3">Pozisyonlar</h2>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-600">Fon</th>
-                  <th className="px-3 py-3 text-right font-semibold text-slate-600">Adet</th>
-                  <th className="px-3 py-3 text-right font-semibold text-slate-600">Ort. Maliyet</th>
-                  <th className="px-3 py-3 text-right font-semibold text-slate-600">Güncel Fiyat</th>
-                  <th className="px-3 py-3 text-right font-semibold text-slate-600">Değer</th>
-                  <th className="px-3 py-3 text-right font-semibold text-slate-600">Kazanç</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pozDetay.map((p, i) => (
-                  <tr key={`${p.fonKodu}-${p.fonTipi}`} className={`border-b border-slate-100 hover:bg-slate-50 ${i % 2 === 1 ? 'bg-slate-50/40' : ''}`}>
-                    <td className="px-4 py-3">
-                      <Link href={`/fon/${p.fonKodu}?tip=${p.fonTipi}`}
-                        className="font-mono font-semibold text-indigo-600 hover:text-indigo-800">
-                        {p.fonKodu}
-                      </Link>
-                      <p className="text-xs text-slate-400 truncate max-w-[180px]">{p.guncel?.fonUnvan ?? ''}</p>
-                    </td>
-                    <td className="px-3 py-3 text-right font-mono text-slate-700">{p.adet.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}</td>
-                    <td className="px-3 py-3 text-right font-mono text-slate-500">{p.ortalamaMaliyet.toFixed(4)}</td>
-                    <td className="px-3 py-3 text-right font-mono text-slate-700">{p.guncel?.fiyat?.toFixed(4) ?? '—'}</td>
-                    <td className="px-3 py-3 text-right font-mono text-slate-700">{p.guncelDeger?.toLocaleString('tr-TR', { maximumFractionDigits: 2 }) ?? '—'}</td>
-                    <td className={`px-3 py-3 text-right font-mono font-semibold ${(p.kazancYuzde ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {p.kazancYuzde != null ? `${p.kazancYuzde >= 0 ? '+' : ''}${p.kazancYuzde.toFixed(2)}%` : '—'}
-                    </td>
+      {[...portfoyler.entries()].map(([portfoyAdi, pozlar]) => {
+        const ptMaliyet = pozlar.reduce((s, p) => s + p.maliyet, 0)
+        const ptGuncel = pozlar.reduce((s, p) => s + (p.guncelDeger ?? p.maliyet), 0)
+        const ptKazanc = ptGuncel - ptMaliyet
+        const ptKazancYuzde = ptMaliyet > 0 ? (ptKazanc / ptMaliyet) * 100 : 0
+
+        return (
+          <div key={portfoyAdi} className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-slate-700">{portfoyAdi}</h2>
+              <span className={`text-sm font-medium ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {ptKazanc >= 0 ? '+' : ''}{ptKazancYuzde.toFixed(2)}%
+              </span>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
+              <table className="w-full text-sm min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-slate-100 text-xs text-slate-400 uppercase tracking-wide">
+                    <th className="text-left px-4 py-3">Fon</th>
+                    <th className="text-right px-4 py-3">Adet</th>
+                    <th className="text-right px-4 py-3">Alış Fiyatı</th>
+                    <th className="text-right px-4 py-3">Güncel Fiyat</th>
+                    <th className="text-right px-4 py-3">Maliyet</th>
+                    <th className="text-right px-4 py-3">Güncel Değer</th>
+                    <th className="text-right px-4 py-3">Kazanç</th>
+                    <th className="px-4 py-3"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {pozlar.map(p => {
+                    const pozitif = (p.kazancYuzde ?? 0) >= 0
+                    return (
+                      <tr key={p.islemId} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <Link href={`/fon/${p.fonKodu}?tip=${p.fonTipi}`}
+                            className="font-mono font-bold text-indigo-600 hover:underline">
+                            {p.fonKodu}
+                          </Link>
+                          {p.fonUnvan && (
+                            <p className="text-xs text-slate-400 truncate max-w-[180px]">{p.fonUnvan}</p>
+                          )}
+                          <p className="text-xs text-slate-300">{p.eklemeTarihi}</p>
+                        </td>
+                        <td className="px-4 py-3 text-right text-slate-700">
+                          {p.adet.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+                        </td>
+                        <td className="px-4 py-3 text-right text-slate-500">{p.eklemeFiyati.toFixed(6)}</td>
+                        <td className="px-4 py-3 text-right text-slate-700">
+                          {p.guncelFiyat ? p.guncelFiyat.toFixed(6) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-slate-500">
+                          {p.maliyet.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+                        </td>
+                        <td className="px-4 py-3 text-right text-slate-700 font-medium">
+                          {p.guncelDeger
+                            ? p.guncelDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺'
+                            : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {p.kazancYuzde != null && (
+                            <span className={`font-semibold ${pozitif ? 'text-emerald-600' : 'text-red-600'}`}>
+                              {pozitif ? '+' : ''}{p.kazancYuzde.toFixed(2)}%
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <form action={async () => {
+                            'use server'
+                            await portfoyIslemSil(p.islemId)
+                          }}>
+                            <button type="submit"
+                              className="text-slate-300 hover:text-red-500 transition-colors text-lg leading-none px-1">
+                              ×
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* İşlem ekle */}
-      <PortfoyIslemEkle />
-
-      {/* İşlem geçmişi */}
-      {(islemler ?? []).length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold text-slate-700 mb-3">İşlem Geçmişi</h2>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-600">Tarih</th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-600">Fon</th>
-                  <th className="px-3 py-3 text-center font-semibold text-slate-600">İşlem</th>
-                  <th className="px-3 py-3 text-right font-semibold text-slate-600">Adet</th>
-                  <th className="px-3 py-3 text-right font-semibold text-slate-600">Fiyat</th>
-                  <th className="px-3 py-3 text-right font-semibold text-slate-600">Tutar</th>
-                  <th className="px-2 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {islemler!.map((i, idx) => (
-                  <tr key={i.id} className={`border-b border-slate-100 hover:bg-slate-50 ${idx % 2 === 1 ? 'bg-slate-50/40' : ''}`}>
-                    <td className="px-4 py-2.5 text-slate-500 text-xs">{new Date(i.tarih).toLocaleDateString('tr-TR')}</td>
-                    <td className="px-4 py-2.5">
-                      <Link href={`/fon/${i.fonKodu}?tip=${i.fonTipi}`} className="font-mono font-semibold text-indigo-600 hover:text-indigo-800">{i.fonKodu}</Link>
-                    </td>
-                    <td className="px-3 py-2.5 text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${i.islem_tipi === 'AL' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                        {i.islem_tipi}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono text-slate-700">{Number(i.adet).toLocaleString('tr-TR', { maximumFractionDigits: 4 })}</td>
-                    <td className="px-3 py-2.5 text-right font-mono text-slate-700">{Number(i.fiyat).toFixed(4)}</td>
-                    <td className="px-3 py-2.5 text-right font-mono text-slate-700">{(Number(i.adet) * Number(i.fiyat)).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}</td>
-                    <td className="px-2 py-2.5"><PortfoyIslemSil id={i.id} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {(islemler ?? []).length === 0 && (
-        <div className="text-center py-12 text-slate-400">
-          <p className="mb-2">Henüz işlem girmediniz.</p>
-          <p className="text-sm">Aşağıdan fon alım/satım işlemi ekleyin.</p>
-        </div>
-      )}
+        )
+      })}
     </div>
   )
 }

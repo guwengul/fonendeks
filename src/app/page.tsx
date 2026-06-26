@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import FonListesi from '@/components/FonListesi'
+import { FavorilerSerit } from '@/components/FavorilerSerit'
 
 export const revalidate = 1800
 
@@ -119,6 +120,7 @@ export default async function Home() {
         <h1 className="text-2xl font-bold text-slate-900">Türkiye Yatırım Fonları Analizi</h1>
         <p className="text-slate-400 text-sm mt-1">TEFAS verilerine göre güncellendi: {sonGuncelleme}</p>
       </div>
+      <FavorilerSerit />
       <FonListesi fonlar={fonlar} kurucular={kurucular} fonTurleri={fonTurleri} />
     </div>
   )
