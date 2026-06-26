@@ -7,9 +7,11 @@ import { usePathname } from 'next/navigation'
 const LINKLER = [
   { href: '/', label: 'Fonlar' },
   { href: '/analiz', label: 'Analiz' },
+  { href: '/favoriler', label: 'Favoriler' },
+  { href: '/portfoy', label: 'Portföy' },
 ]
 
-export function NavMobil() {
+export function NavMobil({ girisYapildi }: { girisYapildi: boolean }) {
   const [acik, setAcik] = useState(false)
   const pathname = usePathname()
 
@@ -37,15 +39,25 @@ export function NavMobil() {
       {acik && (
         <div className="absolute left-0 right-0 top-14 z-50 border-b border-slate-200 bg-white shadow-lg md:hidden">
           <nav className="mx-auto max-w-5xl px-4 py-3 flex flex-col gap-1">
-            {LINKLER.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
-              >
+            {LINKLER.filter(l => girisYapildi || (l.href !== '/favoriler' && l.href !== '/portfoy')).map(({ href, label }) => (
+              <Link key={href} href={href}
+                className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
                 {label}
               </Link>
             ))}
+            {girisYapildi ? (
+              <form action="/api/auth/cikis" method="POST">
+                <button type="submit"
+                  className="w-full text-left flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors">
+                  Çıkış Yap
+                </button>
+              </form>
+            ) : (
+              <Link href="/giris"
+                className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors">
+                Giriş Yap
+              </Link>
+            )}
           </nav>
         </div>
       )}

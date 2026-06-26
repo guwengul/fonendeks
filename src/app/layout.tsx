@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import Link from 'next/link'
 import './globals.css'
 import { NavMobil } from '@/components/NavMobil'
+import { createClient } from '@/lib/supabase/server'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
@@ -17,7 +18,11 @@ export const metadata: Metadata = {
   openGraph: { siteName: 'Fonendeks', type: 'website', locale: 'tr_TR' },
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const girisYapildi = !!user
+
   return (
     <html lang="tr" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-slate-50">
@@ -32,15 +37,39 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
-              <Link href="/" className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors rounded-md hover:bg-indigo-50">
+              <Link href="/" className="px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors rounded-md hover:bg-indigo-50">
                 Fonlar
               </Link>
-              <Link href="/analiz" className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors rounded-md hover:bg-indigo-50">
+              <Link href="/analiz" className="px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors rounded-md hover:bg-indigo-50">
                 Analiz
               </Link>
+              {girisYapildi && (
+                <>
+                  <Link href="/favoriler" className="px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors rounded-md hover:bg-indigo-50">
+                    Favoriler
+                  </Link>
+                  <Link href="/portfoy" className="px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors rounded-md hover:bg-indigo-50">
+                    Portföy
+                  </Link>
+                </>
+              )}
             </div>
 
-            <NavMobil />
+            <div className="hidden md:flex items-center ml-auto">
+              {girisYapildi ? (
+                <form action="/api/auth/cikis" method="POST">
+                  <button type="submit" className="px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-red-600 transition-colors rounded-md hover:bg-red-50">
+                    Çıkış
+                  </button>
+                </form>
+              ) : (
+                <Link href="/giris" className="px-3 py-1.5 text-sm font-medium text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors">
+                  Giriş Yap
+                </Link>
+              )}
+            </div>
+
+            <NavMobil girisYapildi={girisYapildi} />
           </nav>
         </header>
 

@@ -30,6 +30,7 @@ export async function GET(req: Request) {
     { key: 'fonBilgiGetir',       url: `${BASE_FUNDS}/fonBilgiGetir`,       body: { dil: 'TR', fonKodu: kod } },
     { key: 'fonProfilDtyGetir',   url: `${BASE_FUNDS}/fonProfilDtyGetir`,   body: { dil: 'TR', fonKodu: kod, periyod: '12' } },
     { key: 'fonTipiGetir',        url: `${BASE_FUNDS}/fonTipiGetir`,        body: { fonKodu: kod } },
+    { key: 'fonFiyatBilgiGetir', url: `${BASE_FUNDS}/fonFiyatBilgiGetir`,  body: { dil: 'TR', fonKodu: kod, baslangicTarihi: '', bitisTarihi: '' } },
     // Tahmin - fon detay
     { key: 'fonDetayGetir',       url: `${BASE_FUNDS}/fonDetayGetir`,       body: { dil: 'TR', fonKodu: kod } },
     { key: 'fonDetayBilgiGetir',  url: `${BASE_FUNDS}/fonDetayBilgiGetir`,  body: { dil: 'TR', fonKodu: kod } },

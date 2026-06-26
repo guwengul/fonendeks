@@ -1,7 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import FonTabs from '@/components/FonTabs'
+import { FavoriButon } from '@/components/FavoriButon'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,6 +66,8 @@ export default async function FonDetay({
   const fonKodu = kod.toUpperCase()
 
   const supabase = createAdminClient()
+  const authClient = await createClient()
+  const { data: { user } } = await authClient.auth.getUser()
 
   // Özet + meta paralel çek
   const [gecmisRes, ozetRes, metaRes] = await Promise.all([
@@ -155,6 +159,14 @@ export default async function FonDetay({
 
   const benchmarkData: { tarih: string; fiyat: number | null }[] = gecmis.map(r => ({ tarih: r.tarih, fiyat: r.fiyat }))
 
+  // Favori durumu
+  let favoriMi = false
+  if (user) {
+    const { data: fav } = await authClient.from('tefas_favoriler')
+      .select('id').eq('user_id', user.id).eq('fonKodu', fonKodu).eq('fonTipi', tip).maybeSingle()
+    favoriMi = !!fav
+  }
+
   // Getiriler özet tablosundan gelir (önceden hesaplanmış)
   const gunlukGetiri = ozet?.getiri1g ?? null
   const getiri1h = ozet?.getiri1h ?? null
@@ -193,6 +205,9 @@ export default async function FonDetay({
       <div className="mb-6">
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-2xl font-bold text-slate-900 font-mono">{fonKodu}</h1>
+          {user && son.fiyat && (
+            <FavoriButon fonKodu={fonKodu} fonTipi={tip} fiyat={son.fiyat} tarih={son.tarih} baslangicFavori={favoriMi} />
+          )}
           <span className={`px-2 py-0.5 rounded text-xs font-medium ${TIP_RENK[info?.fonTipi ?? ''] ?? ''}`}>
             {TIP_AD[info?.fonTipi ?? ''] ?? info?.fonTipi}
           </span>
