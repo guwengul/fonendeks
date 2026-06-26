@@ -5,6 +5,44 @@ import FonTabs from '@/components/FonTabs'
 
 export const dynamic = 'force-dynamic'
 
+function sirketFonLinki(fonKodu: string, fonUnvan: string | null): string | null {
+  if (!fonUnvan) return null
+  const u = fonUnvan.toUpperCase()
+  // Fon kodundan direkt URL üretilenler
+  if (u.startsWith('AK PORTFÖY') || u.startsWith('AK PORTFOY'))
+    return `https://www.akportfoy.com.tr/tr/fund/${fonKodu}`
+  if (u.includes('QNB') && (u.includes('PORTFÖY') || u.includes('PORTFOY')))
+    return `https://www.qnbportfoy.com.tr/tr-TR/FonDetay/${fonKodu}`
+  // Fon listesine yönlenenler
+  if (u.startsWith('İŞ PORTFÖY') || u.startsWith('IS PORTFOY'))
+    return 'https://www.isportfoy.com.tr/yatirim-fonlari'
+  if (u.includes('GARANTİ') && u.includes('PORTFÖY'))
+    return 'https://www.garantibbvaportfoy.com.tr/fon-getirileri'
+  if (u.startsWith('ZİRAAT PORTFÖY') || u.startsWith('ZIRAAT PORTFOY'))
+    return 'https://www.ziraatportfoy.com.tr/tr/yatirim-fonlari'
+  if (u.startsWith('YAPI KREDİ PORTFÖY') || u.startsWith('YAPI KREDI PORTFOY'))
+    return 'https://www.ykportfoy.com.tr/urun-ve-hizmetlerimiz/yatirim-fonlari'
+  if (u.startsWith('TEB PORTFÖY') || u.startsWith('TEB PORTFOY'))
+    return 'https://www.tebportfoy.com.tr/yatirim-fonlari'
+  if (u.startsWith('ATA PORTFÖY') || u.startsWith('ATA PORTFOY'))
+    return 'https://www.ataportfoy.com.tr/tum-yatirim-fonlari.html'
+  if (u.startsWith('DENİZ PORTFÖY') || u.startsWith('DENIZ PORTFOY'))
+    return 'https://www.denizportfoy.com/Fon/Index'
+  if (u.startsWith('HALK PORTFÖY') || u.startsWith('HALK PORTFOY'))
+    return 'https://www.halkportfoy.com.tr/yatirim-fonlari'
+  if (u.startsWith('İSTANBUL PORTFÖY') || u.startsWith('ISTANBUL PORTFOY'))
+    return 'https://www.istanbulportfoy.com/fon-listesi'
+  if (u.startsWith('FİBA PORTFÖY') || u.startsWith('FIBA PORTFOY'))
+    return 'https://www.fibaportfoy.com.tr/yatirim-fonlari'
+  if (u.startsWith('NEUTRON PORTFÖY') || u.startsWith('NEUTRON PORTFOY'))
+    return 'https://www.neutronportfoy.com.tr'
+  if (u.startsWith('ALTERNATİF PORTFÖY') || u.startsWith('ALTERNATIF PORTFOY'))
+    return 'https://www.alternatiportfoy.com.tr'
+  if (u.startsWith('BNP PARİBAS') || u.startsWith('BNP PARIBAS'))
+    return 'https://www.tebportfoy.com.tr/yatirim-fonlari'
+  return null
+}
+
 type Gecmis = {
   tarih: string
   fiyat: number | null
@@ -185,6 +223,12 @@ export default async function FonDetay({
           {meta?.kapLink && (
             <a href={meta.kapLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600 transition-colors">KAP →</a>
           )}
+          {(() => {
+            const link = sirketFonLinki(fonKodu, info?.fonUnvan ?? null)
+            return link ? (
+              <a href={link} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600 transition-colors">Portföy Şirketi →</a>
+            ) : null
+          })()}
         </div>
 
         {/* Snapshot çubuğu */}
