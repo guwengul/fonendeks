@@ -86,12 +86,31 @@ export default async function AnalizPage() {
     return rows
   }
 
-  const tarihVerileri = await Promise.all(
-    benzersizTarihler.map(async tarih => ({
-      tarih,
-      data: await fetchAllForDate(tarih),
-    }))
-  )
+  const [tarihVerileri, usdFiyatRows] = await Promise.all([
+    Promise.all(
+      benzersizTarihler.map(async tarih => ({
+        tarih,
+        data: await fetchAllForDate(tarih),
+      }))
+    ),
+    // Her checkpoint için USD/TL fiyatı
+    Promise.all(
+      benzersizTarihler.map(async tarih => {
+        const { data } = await supabase
+          .from('tefas_benchmark_fiyatlari')
+          .select('deger')
+          .eq('gosterge', 'USD')
+          .lte('tarih', tarih)
+          .order('tarih', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        return { tarih, deger: data ? Number(data.deger) : null }
+      })
+    ),
+  ])
+
+  const usdMap: Record<string, number | null> = {}
+  for (const { tarih, deger } of usdFiyatRows) usdMap[tarih] = deger
 
   const fiyatMap: Record<string, Record<string, number>> = {}
   for (const { tarih, data } of tarihVerileri) {
@@ -110,37 +129,46 @@ export default async function AnalizPage() {
   // Checkpoint tarihlerini sıralı tut (desc)
   const cpTarihler = checkpointler.map(c => c.tarih)
 
+  const usdFiyatlar = cpTarihler.map(t => (t ? usdMap[t] ?? null : null))
+
+  function usdAyarli(tlGetiri: number | null, usdYeni: number | null, usdEski: number | null): number | null {
+    if (tlGetiri == null || !usdYeni || !usdEski || usdEski === 0) return null
+    const usdDegisim = (usdYeni - usdEski) / usdEski
+    return ((1 + tlGetiri / 100) / (1 + usdDegisim) - 1) * 100
+  }
+
   const fonAnalizler = sonTarihData.map(r => {
     const key = `${r.fonKodu}-${r.fonTipi}`
 
     // Her checkpoint için fiyat (desc: cp[0]=bugün, cp[1]=-6ay, ...)
     const fiyatlar = cpTarihler.map(t => (t ? fiyatMap[t]?.[key] ?? null : null))
 
-    // 6 aylık periyotlar: cp[i] → cp[i+1] arası getiri
+    // 6 aylık periyotlar
     const altiAylik: (number | null)[] = []
+    const altiAylikUsd: (number | null)[] = []
     for (let i = 0; i < cpTarihler.length - 1; i++) {
       const t0 = cpTarihler[i]
       const t1 = cpTarihler[i + 1]
-      // Aynı tarihe düşmüşse veri yok demektir
-      if (!t0 || !t1 || t0 === t1) { altiAylik.push(null); continue }
+      if (!t0 || !t1 || t0 === t1) { altiAylik.push(null); altiAylikUsd.push(null); continue }
       const yeni = fiyatlar[i]
       const eski = fiyatlar[i + 1]
-      altiAylik.push(yeni != null && eski != null && eski !== 0
-        ? ((yeni - eski) / eski) * 100
-        : null)
+      const tl = yeni != null && eski != null && eski !== 0 ? ((yeni - eski) / eski) * 100 : null
+      altiAylik.push(tl)
+      altiAylikUsd.push(usdAyarli(tl, usdFiyatlar[i], usdFiyatlar[i + 1]))
     }
 
-    // Yıllık periyotlar: cp[0]→cp[2], cp[2]→cp[4], ...
+    // Yıllık periyotlar
     const yillik: (number | null)[] = []
+    const yillikUsd: (number | null)[] = []
     for (let i = 0; i < cpTarihler.length - 2; i += 2) {
       const t0 = cpTarihler[i]
       const t2 = cpTarihler[i + 2]
-      if (!t0 || !t2 || t0 === t2) { yillik.push(null); continue }
+      if (!t0 || !t2 || t0 === t2) { yillik.push(null); yillikUsd.push(null); continue }
       const yeni = fiyatlar[i]
       const eski = fiyatlar[i + 2]
-      yillik.push(yeni != null && eski != null && eski !== 0
-        ? ((yeni - eski) / eski) * 100
-        : null)
+      const tl = yeni != null && eski != null && eski !== 0 ? ((yeni - eski) / eski) * 100 : null
+      yillik.push(tl)
+      yillikUsd.push(usdAyarli(tl, usdFiyatlar[i], usdFiyatlar[i + 2]))
     }
 
     const altiAyPozitif = altiAylik.filter(p => p !== null && p > 0).length
@@ -148,24 +176,28 @@ export default async function AnalizPage() {
     const yillikPozitif = yillik.filter(p => p !== null && p > 0).length
     const yillikToplam = yillik.filter(p => p !== null).length
 
-    // 5 yıllık toplam getiri: bugün vs -60ay checkpoint
+    // 5 yıllık toplam getiri
     const fiyatBugün = fiyatlar[0]
     const fiyat5y = fiyatlar[fiyatlar.length - 1]
     const toplamGetiri5y = fiyatBugün != null && fiyat5y != null && fiyat5y !== 0
       ? ((fiyatBugün - fiyat5y) / fiyat5y) * 100
       : null
+    const toplamGetiri5yUsd = usdAyarli(toplamGetiri5y, usdFiyatlar[0], usdFiyatlar[usdFiyatlar.length - 1])
 
     return {
       fonKodu: r.fonKodu,
       fonTipi: r.fonTipi,
       fonUnvan: r.fonUnvan,
       altiAylik,
+      altiAylikUsd,
       yillik,
+      yillikUsd,
       altiAyPozitif,
       altiAyToplam,
       yillikPozitif,
       yillikToplam,
       toplamGetiri5y,
+      toplamGetiri5yUsd,
     }
   }).filter(f => f.altiAyToplam >= 2)
 

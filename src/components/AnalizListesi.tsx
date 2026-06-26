@@ -8,12 +8,15 @@ type FonAnaliz = {
   fonTipi: string
   fonUnvan: string
   altiAylik: (number | null)[]
+  altiAylikUsd: (number | null)[]
   yillik: (number | null)[]
+  yillikUsd: (number | null)[]
   altiAyPozitif: number
   altiAyToplam: number
   yillikPozitif: number
   yillikToplam: number
   toplamGetiri5y: number | null
+  toplamGetiri5yUsd: number | null
 }
 
 type SiralamaKey = 'tutarlilik' | '5y' | `donem_${number}`
@@ -69,6 +72,7 @@ export default function AnalizListesi({
   yillikEtiketler: string[]
 }) {
   const [mod, setMod] = useState<'6ay' | 'yil'>('yil')
+  const [doviz, setDoviz] = useState<'TL' | 'USD'>('TL')
   const [minPozitif, setMinPozitif] = useState(0)
   const [tipFiltre, setTipFiltre] = useState<'HEPSI' | 'YAT' | 'EMK' | 'BYF'>('YAT')
   const [siralama, setSiralama] = useState<SiralamaKey>('tutarlilik')
@@ -76,35 +80,45 @@ export default function AnalizListesi({
   const etiketler = mod === '6ay' ? altiAyEtiketler : yillikEtiketler
   const maxDonem = etiketler.length
 
+  function periyotlar(f: FonAnaliz) {
+    if (mod === '6ay') return doviz === 'USD' ? f.altiAylikUsd : f.altiAylik
+    return doviz === 'USD' ? f.yillikUsd : f.yillik
+  }
+
   const filtreli = useMemo(() => {
     return fonlar
       .filter(f => tipFiltre === 'HEPSI' || f.fonTipi === tipFiltre)
       .filter(f => {
-        const pozitif = mod === '6ay' ? f.altiAyPozitif : f.yillikPozitif
-        const toplam = mod === '6ay' ? f.altiAyToplam : f.yillikToplam
+        const per = periyotlar(f)
+        const pozitif = per.filter(p => p !== null && p > 0).length
+        const toplam = per.filter(p => p !== null).length
         return toplam > 0 && pozitif >= minPozitif
       })
       .sort((a, b) => {
         if (siralama === '5y') {
-          return (b.toplamGetiri5y ?? -Infinity) - (a.toplamGetiri5y ?? -Infinity)
+          const aV = doviz === 'USD' ? a.toplamGetiri5yUsd : a.toplamGetiri5y
+          const bV = doviz === 'USD' ? b.toplamGetiri5yUsd : b.toplamGetiri5y
+          return (bV ?? -Infinity) - (aV ?? -Infinity)
         }
         if (siralama.startsWith('donem_')) {
           const idx = parseInt(siralama.replace('donem_', ''))
-          const aVal = (mod === '6ay' ? a.altiAylik : a.yillik)[idx] ?? -Infinity
-          const bVal = (mod === '6ay' ? b.altiAylik : b.yillik)[idx] ?? -Infinity
+          const aVal = periyotlar(a)[idx] ?? -Infinity
+          const bVal = periyotlar(b)[idx] ?? -Infinity
           return bVal - aVal
         }
         // tutarlilik
-        const aPoz = mod === '6ay' ? a.altiAyPozitif : a.yillikPozitif
-        const bPoz = mod === '6ay' ? b.altiAyPozitif : b.yillikPozitif
-        const aTop = mod === '6ay' ? a.altiAyToplam : a.yillikToplam
-        const bTop = mod === '6ay' ? b.altiAyToplam : b.yillikToplam
+        const perA = periyotlar(a)
+        const perB = periyotlar(b)
+        const aPoz = perA.filter(p => p !== null && p > 0).length
+        const bPoz = perB.filter(p => p !== null && p > 0).length
+        const aTop = perA.filter(p => p !== null).length
+        const bTop = perB.filter(p => p !== null).length
         const aOran = aTop > 0 ? aPoz / aTop : 0
         const bOran = bTop > 0 ? bPoz / bTop : 0
         if (bOran !== aOran) return bOran - aOran
         return bPoz - aPoz
       })
-  }, [fonlar, mod, minPozitif, tipFiltre, siralama])
+  }, [fonlar, mod, doviz, minPozitif, tipFiltre, siralama])
 
   return (
     <div>
@@ -118,6 +132,18 @@ export default function AnalizListesi({
               className={`px-4 py-2 font-medium transition-colors ${mod === m ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
             >
               {m === 'yil' ? 'Yıllık' : '6 Aylık'}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white text-sm">
+          {(['TL', 'USD'] as const).map(d => (
+            <button
+              key={d}
+              onClick={() => setDoviz(d)}
+              className={`px-4 py-2 font-medium transition-colors ${doviz === d ? 'bg-amber-500 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+            >
+              {d}
             </button>
           ))}
         </div>
@@ -182,9 +208,10 @@ export default function AnalizListesi({
           </thead>
           <tbody>
             {filtreli.map((f, idx) => {
-              const periyotlar = mod === '6ay' ? f.altiAylik : f.yillik
-              const pozitif = mod === '6ay' ? f.altiAyPozitif : f.yillikPozitif
-              const toplam = mod === '6ay' ? f.altiAyToplam : f.yillikToplam
+              const per = periyotlar(f)
+              const pozitif = per.filter(p => p !== null && p > 0).length
+              const toplam = per.filter(p => p !== null).length
+              const getiri5y = doviz === 'USD' ? f.toplamGetiri5yUsd : f.toplamGetiri5y
               return (
                 <tr
                   key={`${f.fonKodu}-${f.fonTipi}`}
@@ -204,7 +231,7 @@ export default function AnalizListesi({
                       {f.fonTipi}
                     </span>
                   </td>
-                  {periyotlar.map((p, i) => (
+                  {per.map((p, i) => (
                     <td key={i} className={`px-2 py-2.5 text-center ${siralama === `donem_${i}` ? 'bg-indigo-50/50' : ''}`}>
                       <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-medium ${hucreRenk(p)}`}>
                         {p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(1)}%` : '—'}
@@ -212,8 +239,8 @@ export default function AnalizListesi({
                     </td>
                   ))}
                   <td className={`px-3 py-2.5 text-center ${siralama === '5y' ? 'bg-indigo-50/50' : ''}`}>
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-medium ${hucreRenk(f.toplamGetiri5y)}`}>
-                      {f.toplamGetiri5y !== null ? `${f.toplamGetiri5y >= 0 ? '+' : ''}${f.toplamGetiri5y.toFixed(0)}%` : '—'}
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-medium ${hucreRenk(getiri5y)}`}>
+                      {getiri5y !== null ? `${getiri5y >= 0 ? '+' : ''}${getiri5y.toFixed(0)}%` : '—'}
                     </span>
                   </td>
                   <td className="px-4 py-2.5">
