@@ -178,6 +178,7 @@ export default function AnalizListesi({
   yillikEtiketler: string[]
   kurucular: string[]
 }) {
+  const [arama, setArama] = useState('')
   const [mod, setMod] = useState<'6ay' | 'yil'>('yil')
   const [doviz, setDoviz] = useState<'TL' | 'USD'>('TL')
   const [minPozitif, setMinPozitif] = useState(0)
@@ -188,6 +189,7 @@ export default function AnalizListesi({
   // Ek filtreler
   const [serbest, setSerbest] = useState(true)
   const [sadecKatilim, setSadecKatilim] = useState(false)
+  const [dovizFon, setDovizFon] = useState(true)
   const [riskler, setRiskler] = useState(new Set(RISK_OPTIONS))
   const [vergiler, setVergiler] = useState(new Set(VERGI_OPTIONS))
   const [ucretler, setUcretler] = useState(new Set(UCRET_OPTIONS))
@@ -205,6 +207,7 @@ export default function AnalizListesi({
   const aktifFiltreCount =
     (!serbest ? 1 : 0) +
     (sadecKatilim ? 1 : 0) +
+    (!dovizFon ? 1 : 0) +
     (riskler.size < RISK_OPTIONS.length ? 1 : 0) +
     (vergiler.size < VERGI_OPTIONS.length ? 1 : 0) +
     (ucretler.size < UCRET_OPTIONS.length ? 1 : 0) +
@@ -221,11 +224,22 @@ export default function AnalizListesi({
 
   const filtreli = useMemo(() => {
     return fonlar
+      .filter(f => {
+        if (!arama) return true
+        const q = arama.toLocaleLowerCase('tr-TR')
+        const qEn = arama.toLowerCase()
+        return f.fonKodu.toLowerCase().includes(qEn) ||
+          (f.fonUnvan ?? '').toLocaleLowerCase('tr-TR').includes(q)
+      })
       .filter(f => tipFiltre === 'HEPSI' || f.fonTipi === tipFiltre)
       .filter(f => {
         if (!serbest && (f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('serbest')) return false
         const isKatilim = (f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('katılım')
         if (sadecKatilim && !isKatilim) return false
+        if (!dovizFon) {
+          const u = (f.fonUnvan ?? '').toLocaleLowerCase('tr-TR')
+          if (/usd|eur|dolar|euro|döviz|avro|sterlin|gbp|chf|jpy|yen/.test(u)) return false
+        }
         if (sirketler.size > 0 && f.kurucuKod && !sirketler.has(f.kurucuKod)) return false
         if (riskler.size < RISK_OPTIONS.length) {
           const r = f.riskDegeri
@@ -283,10 +297,14 @@ export default function AnalizListesi({
         if (bOran !== aOran) return bOran - aOran
         return bPoz - aPoz
       })
-  }, [fonlar, mod, doviz, minPozitif, tipFiltre, siralama, serbest, sadecKatilim, riskler, vergiler, ucretler, tefas, sirketler])
+  }, [fonlar, mod, doviz, minPozitif, tipFiltre, siralama, arama, serbest, sadecKatilim, dovizFon, riskler, vergiler, ucretler, tefas, sirketler])
 
   return (
     <div>
+      <input type="text" placeholder="Fon kodu veya adı ile arayın..."
+        value={arama} onChange={e => setArama(e.target.value)}
+        className="w-full border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 bg-white shadow-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 mb-4" />
+
       {/* Ana kontroller */}
       <div className="flex flex-wrap gap-3 mb-4 items-center">
         <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white text-sm">
@@ -359,6 +377,13 @@ export default function AnalizListesi({
                 <div className="flex flex-wrap gap-1.5">
                   <Chip label="Tümü" active={!sadecKatilim} onClick={() => setSadecKatilim(false)} />
                   <Chip label="Sadece Katılım" active={sadecKatilim} onClick={() => setSadecKatilim(true)} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-500 font-medium">Döviz Fonları</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <Chip label="Dahil" active={dovizFon} onClick={() => setDovizFon(true)} />
+                  <Chip label="Hariç" active={!dovizFon} onClick={() => setDovizFon(false)} />
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
