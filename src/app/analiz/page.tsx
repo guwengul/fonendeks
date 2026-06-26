@@ -86,6 +86,23 @@ export default async function AnalizPage() {
     return rows
   }
 
+  // Meta verisi (risk, stopaj, şirket vs)
+  const metaRows: any[] = []
+  {
+    let from = 0
+    while (true) {
+      const { data } = await supabase
+        .from('tefas_fon_meta')
+        .select('fonKodu, riskDegeri, kurucuKod, fonTurAciklama, stopaj, yonetimUcreti, tefasDurum')
+        .range(from, from + 999)
+      if (!data || data.length === 0) break
+      metaRows.push(...data)
+      if (data.length < 1000) break
+      from += 1000
+    }
+  }
+  const metaMap = new Map(metaRows.map((m: any) => [m.fonKodu, m]))
+
   const [tarihVerileri, usdFiyatRows] = await Promise.all([
     Promise.all(
       benzersizTarihler.map(async tarih => ({
@@ -184,6 +201,7 @@ export default async function AnalizPage() {
       : null
     const toplamGetiri5yUsd = usdAyarli(toplamGetiri5y, usdFiyatlar[0], usdFiyatlar[usdFiyatlar.length - 1])
 
+    const meta = metaMap.get(r.fonKodu)
     return {
       fonKodu: r.fonKodu,
       fonTipi: r.fonTipi,
@@ -198,6 +216,12 @@ export default async function AnalizPage() {
       yillikToplam,
       toplamGetiri5y,
       toplamGetiri5yUsd,
+      riskDegeri: meta?.riskDegeri ?? null,
+      kurucuKod: meta?.kurucuKod ?? null,
+      fonTurAciklama: meta?.fonTurAciklama ?? null,
+      stopaj: meta?.stopaj ?? null,
+      yonetimUcreti: meta?.yonetimUcreti ?? null,
+      tefasAcik: meta?.tefasDurum?.includes('işlem görüyor') ?? null,
     }
   }).filter(f => f.altiAyToplam >= 2)
 
@@ -220,6 +244,8 @@ export default async function AnalizPage() {
     return `${ayEtiketi(t0)}→${ayEtiketi(t1)}`
   })
 
+  const kurucular = [...new Set(fonAnalizler.map(f => f.kurucuKod).filter(Boolean))].sort() as string[]
+
   return (
     <div className="w-full px-4 sm:px-6 py-8">
       <div className="mb-6">
@@ -232,6 +258,7 @@ export default async function AnalizPage() {
         fonlar={fonAnalizler}
         altiAyEtiketler={altiAyEtiketler}
         yillikEtiketler={yillikEtiketler}
+        kurucular={kurucular}
       />
     </div>
   )
