@@ -228,6 +228,7 @@ export default async function FonDetay({
       </div>
 
       <FonTabs
+        fonKodu={fonKodu}
         getiri1h={getiri1h}
         getiri1a={getiri1a}
         getiri3a={ozet?.getiri3a ?? null}

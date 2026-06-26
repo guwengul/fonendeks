@@ -23,10 +23,12 @@ const BENCH_SERILER = [
 const BENCH_DONEMLER_LABELS = ['1H', '1A', '3A', '6A', 'YBB', '1Y', '3Y', '5Y']
 
 export default function FonTabs({
+  fonKodu,
   gecmis, benchmark, benchGetiriler, dagilim, dagilimTarih,
   hisseler, holdingsYayinTarihi, holdingsPdfLink, holdingsKapLink,
   getiri1h, getiri1a, getiri3a, getiri6a, getiriYb, birYillik, getiri3y, getiri5y,
 }: {
+  fonKodu: string
   gecmis: GecmisRow[]
   benchmark: BenchmarkRow[]
   benchGetiriler: Record<string, Record<string, number | null>>
@@ -68,7 +70,9 @@ export default function FonTabs({
 
   const d = benchGetiriler[benchDonem] ?? {}
   const benchGostergeDegerleri = BENCH_SERILER.map(s => ({
-    key: s.key, label: s.label, renk: s.renk,
+    key: s.key,
+    label: s.key === 'fiyat' ? fonKodu : s.label,
+    renk: s.renk,
     val: (d[s.key] ?? null) as number | null,
   }))
 
