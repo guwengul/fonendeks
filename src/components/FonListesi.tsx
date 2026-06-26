@@ -18,6 +18,7 @@ type Fon = {
   yonetimUcreti: number | null
   tefasAcik: boolean | null
   getiriler: Record<string, number | null>
+  getirilerUsd: Record<string, number | null>
 }
 
 const DONEMLER = [
@@ -173,6 +174,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   const [sadecKatilim, setSadecKatilim] = useState(false)
   const [dovizMod, setDovizMod] = useState<'tumu' | 'haric' | 'sadece'>('tumu')
   const [filtrePaneli, setFiltrePaneli] = useState(false)
+  const [paraBirimi, setParaBirimi] = useState<'TL' | 'USD'>('TL')
   const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
   const [siraAsc, setSiraAsc] = useState(false)
 
@@ -276,7 +278,8 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
   }).sort((a, b) => {
     let av: number | null, bv: number | null
     if (DONEMLER.find(d => d.key === siraKey)) {
-      av = a.getiriler[siraKey] ?? null; bv = b.getiriler[siraKey] ?? null
+      const src = paraBirimi === 'USD' ? 'getirilerUsd' : 'getiriler'
+      av = a[src][siraKey] ?? null; bv = b[src][siraKey] ?? null
     } else {
       av = (a as any)[siraKey] ?? null; bv = (b as any)[siraKey] ?? null
     }
@@ -298,9 +301,19 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
 
   return (
     <div>
-      <input type="text" placeholder="Fon kodu, kurucu şirket veya fon adı ile arayın..."
-        value={arama} onChange={e => setArama(e.target.value)}
-        className="w-full border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 bg-white shadow-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 mb-4" />
+      <div className="flex gap-2 mb-4">
+        <input type="text" placeholder="Fon kodu, kurucu şirket veya fon adı ile arayın..."
+          value={arama} onChange={e => setArama(e.target.value)}
+          className="flex-1 border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 bg-white shadow-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white text-sm shrink-0">
+          {(['TL', 'USD'] as const).map(pb => (
+            <button key={pb} onClick={() => setParaBirimi(pb)}
+              className={`px-4 py-2.5 font-medium transition-colors ${paraBirimi === pb ? 'bg-amber-500 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+              {pb}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="mb-4">
         <button onClick={() => setFiltrePaneli(v => !v)}
@@ -423,7 +436,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
                 <td className="px-3 py-2 text-right text-slate-500">{f.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}</td>
                 {DONEMLER.map(d => (
                   <td key={d.key} className="px-3 py-2 text-right">
-                    <GetiriCell val={f.getiriler[d.key]} />
+                    <GetiriCell val={(paraBirimi === 'USD' ? f.getirilerUsd : f.getiriler)[d.key]} />
                   </td>
                 ))}
               </tr>
