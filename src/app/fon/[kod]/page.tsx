@@ -210,9 +210,7 @@ export default async function FonDetay({
         <p className="text-slate-500 mt-1">{info?.fonUnvan}</p>
         {/* Bilgi çubuğu */}
         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-400">
-          {meta?.isinKodu && (
-            <span>ISIN: <a href={`https://www.kap.org.tr/tr/Fon/${meta.isinKodu}`} target="_blank" rel="noopener noreferrer" className="font-mono text-indigo-500 hover:text-indigo-700 transition-colors">{meta.isinKodu} →</a></span>
-          )}
+          {meta?.isinKodu && <span>ISIN: <span className="font-mono text-slate-600">{meta.isinKodu}</span></span>}
           <span>Kuruluş: <span className="text-slate-600">{ilk.tarih}</span></span>
           {meta?.riskDegeri && <span>Risk: <span className="text-slate-600">{meta.riskDegeri}/7</span></span>}
           <span>Yönetim ücreti: <span className="text-slate-600">{meta?.yonetimUcreti ? `%${meta.yonetimUcreti}` : '-'}</span></span>
