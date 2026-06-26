@@ -100,26 +100,19 @@ export default async function FonDetay({
     benchGetiriler['5Y'][r.gosterge]  = r.getiri5y
   }
 
-  // Fon getirilerini benchGetiriler'e ekle (gecmis'ten)
-  const sonFiyat = gecmis[gecmis.length - 1].fiyat
-  function ayGeriStr(tarih: string, ay: number) {
-    const d = new Date(tarih); d.setMonth(d.getMonth() - ay); return d.toISOString().slice(0, 10)
+  // Fon getirilerini ozet'ten al (TEFAS önceden hesaplar, daha güvenilir)
+  const ozetFonGetiri: Record<string, number | null> = {
+    '1H': ozet?.getiri1h ?? null,
+    '1A': ozet?.getiri1a ?? null,
+    '3A': ozet?.getiri3a ?? null,
+    '6A': ozet?.getiri6a ?? null,
+    'YBB': ozet?.getiriYb ?? null,
+    '1Y': ozet?.getiri1y ?? null,
+    '3Y': ozet?.getiri3y ?? null,
+    '5Y': ozet?.getiri5y ?? null,
   }
-  const sonTarihGecmis = gecmis[gecmis.length - 1].tarih
-  const fonDonemler: { label: string; bas: string }[] = [
-    { label: '1H',  bas: (() => { const d = new Date(sonTarihGecmis); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10) })() },
-    { label: '1A',  bas: ayGeriStr(sonTarihGecmis, 1) },
-    { label: '3A',  bas: ayGeriStr(sonTarihGecmis, 3) },
-    { label: '6A',  bas: ayGeriStr(sonTarihGecmis, 6) },
-    { label: 'YBB', bas: `${new Date(sonTarihGecmis).getFullYear()}-01-01` },
-    { label: '1Y',  bas: ayGeriStr(sonTarihGecmis, 12) },
-    { label: '3Y',  bas: ayGeriStr(sonTarihGecmis, 36) },
-    { label: '5Y',  bas: ayGeriStr(sonTarihGecmis, 60) },
-  ]
-  for (const { label, bas } of fonDonemler) {
-    const ilkRow = gecmis.find(r => r.tarih >= bas)
-    benchGetiriler[label]['fiyat'] = (ilkRow?.fiyat && sonFiyat)
-      ? +((sonFiyat / ilkRow.fiyat - 1) * 100).toFixed(2) : null
+  for (const [label, val] of Object.entries(ozetFonGetiri)) {
+    benchGetiriler[label]['fiyat'] = val
   }
 
   const benchmarkData: { tarih: string; fiyat: number | null }[] = gecmis.map(r => ({ tarih: r.tarih, fiyat: r.fiyat }))
