@@ -242,7 +242,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
     if (sadecHisse && !(f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('hisse')) return false
     if (dovizMod !== 'tumu') {
       const u = (f.fonUnvan ?? '').toLocaleLowerCase('tr-TR')
-      const isDoviz = /\busd\b|\beur\b|\bdolar\b|\beuro\b|\bdöviz\b|\bavro\b|\bsterlin\b|\bgbp\b|\bchf\b|\bjpy\b|\byen\b/.test(u)
+      const isDoviz = /\busd\b|\beur\b|\bdolar\b|\beuro\b|\bdöviz\b|\bavro\b|\bsterlin\b|\bgbp\b|\bchf\b|\bjpy\b/.test(u)
       if (dovizMod === 'haric' && isDoviz) return false
       if (dovizMod === 'sadece' && !isDoviz) return false
     }
