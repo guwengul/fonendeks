@@ -41,15 +41,30 @@ export async function favoriKaldir(fonKodu: string, fonTipi: string) {
   return error ? { hata: error.message } : { ok: true }
 }
 
+export async function portfoyOlustur(ad: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Giriş gerekli' }
+  const { count } = await supabase.from('tefas_portfoy')
+    .select('*', { count: 'exact', head: true }).eq('user_id', user.id)
+  if ((count ?? 0) >= 3) return { hata: 'En fazla 3 portföy oluşturabilirsiniz' }
+  const { data, error } = await supabase.from('tefas_portfoy')
+    .insert({ user_id: user.id, ad }).select('id').single()
+  return error ? { hata: error.message } : { ok: true, id: data.id }
+}
+
 export async function portfoyIslemEkle(data: {
   fonKodu: string; fonTipi: string; islem_tipi: 'AL' | 'SAT'
-  adet: number; fiyat: number; tarih: string; portfoy_adi?: string
+  adet: number; fiyat: number; tarih: string
+  portfoy_id: string; varlik_grubu: string
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { hata: 'Giriş gerekli' }
   const { error } = await supabase.from('tefas_portfoy_islem').insert({
-    user_id: user.id, portfoy_adi: data.portfoy_adi ?? 'Ana Portföy',
+    user_id: user.id,
+    portfoy_id: data.portfoy_id,
+    varlik_grubu: data.varlik_grubu,
     fonKodu: data.fonKodu, fonTipi: data.fonTipi,
     islem_tipi: data.islem_tipi, adet: data.adet,
     fiyat: data.fiyat, tarih: data.tarih,

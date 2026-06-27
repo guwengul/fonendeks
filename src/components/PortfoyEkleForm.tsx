@@ -2,17 +2,36 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { portfoyIslemEkle } from '@/lib/auth-actions'
+import { portfoyIslemEkle, portfoyOlustur } from '@/lib/auth-actions'
 
+const VARLIK_GRUPLARI = [
+  'Hisse Senedi',
+  'Borçlanma Araçları',
+  'Para Piyasası',
+  'Kıymetli Maden',
+  'Döviz',
+  'Karma / Değişken',
+  'Diğer',
+]
+
+type Portfoy = { id: string; ad: string }
 type FonSonuc = { fonKodu: string; fonTipi: string; fonUnvan: string | null; fiyat: number | null; tarih: string }
 
-export function PortfoyEkleForm({ portfoyler }: { portfoyler: string[] }) {
+export function PortfoyEkleForm({ portfoyler }: { portfoyler: Portfoy[] }) {
   const [acik, setAcik] = useState(false)
+  const [mod, setMod] = useState<'fon' | 'yeniPortfoy'>('fon')
+
+  // Yeni portföy
+  const [yeniPortfoyAd, setYeniPortfoyAd] = useState('')
+  const [portfoyYukleniyor, setPortfoyYukleniyor] = useState(false)
+  const [portfoyHata, setPortfoyHata] = useState<string | null>(null)
+
+  // Fon ekleme
   const [aramaQ, setAramaQ] = useState('')
   const [sonuclar, setSonuclar] = useState<FonSonuc[]>([])
   const [seciliFon, setSeciliFon] = useState<FonSonuc | null>(null)
-  const [portfoyAdi, setPortfoyAdi] = useState(portfoyler[0] ?? 'Ana Portföy')
-  const [yeniPortfoy, setYeniPortfoy] = useState('')
+  const [seciliPortfoyId, setSeciliPortfoyId] = useState(portfoyler[0]?.id ?? '')
+  const [varlikGrubu, setVarlikGrubu] = useState(VARLIK_GRUPLARI[0])
   const [adet, setAdet] = useState('')
   const [tarih, setTarih] = useState(new Date().toISOString().slice(0, 10))
   const [fiyat, setFiyat] = useState('')
@@ -21,6 +40,13 @@ export function PortfoyEkleForm({ portfoyler }: { portfoyler: string[] }) {
   const [hata, setHata] = useState<string | null>(null)
   const aramaRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  // Portföy listesi değişince seçili portföyü güncelle
+  useEffect(() => {
+    if (portfoyler.length > 0 && !seciliPortfoyId) {
+      setSeciliPortfoyId(portfoyler[0].id)
+    }
+  }, [portfoyler])
 
   useEffect(() => {
     if (!aramaQ || aramaQ.length < 2) { setSonuclar([]); return }
@@ -48,16 +74,30 @@ export function PortfoyEkleForm({ portfoyler }: { portfoyler: string[] }) {
     setFiyatYukleniyor(false)
   }
 
+  async function handleYeniPortfoy(e: React.FormEvent) {
+    e.preventDefault()
+    const ad = yeniPortfoyAd.trim()
+    if (!ad) return
+    setPortfoyYukleniyor(true)
+    setPortfoyHata(null)
+    const sonuc = await portfoyOlustur(ad)
+    setPortfoyYukleniyor(false)
+    if (sonuc?.hata) { setPortfoyHata(sonuc.hata); return }
+    setYeniPortfoyAd('')
+    setMod('fon')
+    router.refresh()
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!seciliFon) { setHata('Lütfen bir fon seçin'); return }
+    if (!seciliPortfoyId) { setHata('Lütfen bir portföy seçin'); return }
     setYukleniyor(true)
     setHata(null)
-    const adSon = yeniPortfoy.trim() || portfoyAdi
     const sonuc = await portfoyIslemEkle({
       fonKodu: seciliFon.fonKodu, fonTipi: seciliFon.fonTipi,
       islem_tipi: 'AL', adet: Number(adet), fiyat: Number(fiyat),
-      tarih, portfoy_adi: adSon,
+      tarih, portfoy_id: seciliPortfoyId, varlik_grubu: varlikGrubu,
     })
     if (sonuc?.hata) { setHata(sonuc.hata); setYukleniyor(false); return }
     setAcik(false)
@@ -68,41 +108,79 @@ export function PortfoyEkleForm({ portfoyler }: { portfoyler: string[] }) {
   }
 
   function reset() {
-    setAcik(false); setSeciliFon(null); setAramaQ(''); setSonuclar([])
-    setAdet(''); setFiyat(''); setHata(null)
+    setAcik(false); setMod('fon'); setSeciliFon(null); setAramaQ(''); setSonuclar([])
+    setAdet(''); setFiyat(''); setHata(null); setPortfoyHata(null); setYeniPortfoyAd('')
   }
+
+  const canAddPortfoy = portfoyler.length < 3
 
   return (
     <div>
-      <button onClick={() => { setAcik(v => !v); setTimeout(() => aramaRef.current?.focus(), 50) }}
-        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        Fon Ekle
-      </button>
+      <div className="flex gap-2">
+        {canAddPortfoy && (
+          <button onClick={() => { setMod('yeniPortfoy'); setAcik(v => !v) }}
+            className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
+            </svg>
+            Yeni Portföy
+          </button>
+        )}
+        {portfoyler.length > 0 && (
+          <button onClick={() => { setMod('fon'); setAcik(v => !v); setTimeout(() => aramaRef.current?.focus(), 50) }}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Fon Ekle
+          </button>
+        )}
+      </div>
 
-      {acik && (
+      {acik && mod === 'yeniPortfoy' && (
+        <form onSubmit={handleYeniPortfoy}
+          className="mt-4 p-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4 max-w-sm">
+          <div>
+            <label className="text-xs text-slate-500 font-medium block mb-1.5">Portföy Adı</label>
+            <input value={yeniPortfoyAd} onChange={e => setYeniPortfoyAd(e.target.value)}
+              placeholder="Örn: Ana Portföy, Emeklilik, Deneme"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+            <p className="text-xs text-slate-400 mt-1">{portfoyler.length}/3 portföy kullanılıyor</p>
+          </div>
+          {portfoyHata && <p className="text-sm text-red-600">{portfoyHata}</p>}
+          <div className="flex gap-2">
+            <button type="submit" disabled={portfoyYukleniyor || !yeniPortfoyAd.trim()}
+              className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              {portfoyYukleniyor ? 'Oluşturuluyor...' : 'Oluştur'}
+            </button>
+            <button type="button" onClick={reset}
+              className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
+              İptal
+            </button>
+          </div>
+        </form>
+      )}
+
+      {acik && mod === 'fon' && (
         <form onSubmit={handleSubmit}
           className="mt-4 p-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4 max-w-lg">
 
-          {/* Portföy adı */}
+          {/* Portföy seçimi */}
           <div>
             <label className="text-xs text-slate-500 font-medium block mb-1.5">Portföy</label>
-            <div className="flex gap-2">
-              {portfoyler.length > 0 && (
-                <select value={portfoyAdi} onChange={e => setPortfoyAdi(e.target.value)}
-                  className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
-                  {portfoyler.map(p => <option key={p}>{p}</option>)}
-                  <option value="__yeni__">+ Yeni portföy</option>
-                </select>
-              )}
-              {(portfoyler.length === 0 || portfoyAdi === '__yeni__') && (
-                <input value={yeniPortfoy} onChange={e => setYeniPortfoy(e.target.value)}
-                  placeholder="Portföy adı" required={portfoyler.length === 0}
-                  className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
-              )}
-            </div>
+            <select value={seciliPortfoyId} onChange={e => setSeciliPortfoyId(e.target.value)}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+              {portfoyler.map(p => <option key={p.id} value={p.id}>{p.ad}</option>)}
+            </select>
+          </div>
+
+          {/* Varlık grubu */}
+          <div>
+            <label className="text-xs text-slate-500 font-medium block mb-1.5">Varlık Grubu</label>
+            <select value={varlikGrubu} onChange={e => setVarlikGrubu(e.target.value)}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+              {VARLIK_GRUPLARI.map(g => <option key={g}>{g}</option>)}
+            </select>
           </div>
 
           {/* Fon arama */}
@@ -139,15 +217,12 @@ export function PortfoyEkleForm({ portfoyler }: { portfoyler: string[] }) {
           </div>
 
           <div className="flex gap-3">
-            {/* Adet */}
             <div className="flex-1">
               <label className="text-xs text-slate-500 font-medium block mb-1.5">Adet</label>
               <input type="number" step="0.0001" min="0.0001" required
                 value={adet} onChange={e => setAdet(e.target.value)} placeholder="100"
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
             </div>
-
-            {/* Tarih */}
             <div className="flex-1">
               <label className="text-xs text-slate-500 font-medium block mb-1.5">Tarih</label>
               <input type="date" required value={tarih}
@@ -159,7 +234,6 @@ export function PortfoyEkleForm({ portfoyler }: { portfoyler: string[] }) {
             </div>
           </div>
 
-          {/* Fiyat */}
           <div>
             <label className="text-xs text-slate-500 font-medium block mb-1.5">
               Alış Fiyatı

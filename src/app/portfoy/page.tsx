@@ -11,22 +11,28 @@ export default async function PortfoyPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/giris')
 
+  const { data: portfoyler } = await supabase
+    .from('tefas_portfoy')
+    .select('id, ad')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true })
+
   const { data: islemler } = await supabase
     .from('tefas_portfoy_islem')
     .select('*')
     .eq('user_id', user.id)
     .order('tarih', { ascending: true })
 
-  const portfoyler = [...new Set((islemler ?? []).map((i: any) => i.portfoy_adi as string))].filter(Boolean)
+  const portfoyListesi = portfoyler ?? []
 
-  if (!islemler?.length) {
+  if (!portfoyListesi.length && !islemler?.length) {
     return (
       <div className="w-full px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-slate-900">Portföyüm</h1>
           <PortfoyEkleForm portfoyler={[]} />
         </div>
-        <p className="text-slate-400">Henüz fon eklemediniz.</p>
+        <p className="text-slate-400">Henüz portföy oluşturmadınız.</p>
       </div>
     )
   }
@@ -36,19 +42,20 @@ export default async function PortfoyPage() {
     .select('tarih').order('tarih', { ascending: false }).limit(1).single()
   const sonTarih = sonTarihRow?.tarih
 
-  const fonKodlari = [...new Set(islemler.map((i: any) => i.fonKodu))]
-  const { data: guncelFiyatlar } = await admin.from('tefas_fon_verileri')
+  const fonKodlari = [...new Set((islemler ?? []).map((i: any) => i.fonKodu))]
+  const guncelFiyatlar = fonKodlari.length ? (await admin.from('tefas_fon_verileri')
     .select('fonKodu, fonTipi, fonUnvan, fiyat')
     .eq('tarih', sonTarih)
-    .in('fonKodu', fonKodlari)
+    .in('fonKodu', fonKodlari)).data : []
 
   const fiyatMap = new Map((guncelFiyatlar ?? []).map((r: any) => [`${r.fonKodu}::${r.fonTipi}`, r]))
 
-  const islemlerZengin = islemler.map((i: any) => {
+  const islemlerZengin = (islemler ?? []).map((i: any) => {
     const g = fiyatMap.get(`${i.fonKodu}::${i.fonTipi}`) as any
     return {
       id: i.id,
-      portfoy_adi: i.portfoy_adi ?? 'Ana Portföy',
+      portfoy_id: i.portfoy_id ?? '',
+      varlik_grubu: i.varlik_grubu ?? 'Diğer',
       fonKodu: i.fonKodu,
       fonTipi: i.fonTipi,
       fonUnvan: g?.fonUnvan ?? null,
@@ -63,9 +70,9 @@ export default async function PortfoyPage() {
     <div className="w-full px-4 sm:px-6 py-8">
       <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
         <h1 className="text-2xl font-bold text-slate-900">Portföyüm</h1>
-        <PortfoyEkleForm portfoyler={portfoyler} />
+        <PortfoyEkleForm portfoyler={portfoyListesi} />
       </div>
-      <PortfoyGorunum islemler={islemlerZengin} />
+      <PortfoyGorunum portfoyler={portfoyListesi} islemler={islemlerZengin} />
     </div>
   )
 }

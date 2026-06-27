@@ -7,7 +7,8 @@ import { portfoyIslemSil, portfoyIslemGuncelle } from '@/lib/auth-actions'
 
 type Islem = {
   id: string
-  portfoy_adi: string
+  portfoy_id: string
+  varlik_grubu: string
   fonKodu: string
   fonTipi: string
   fonUnvan: string | null
@@ -16,6 +17,8 @@ type Islem = {
   adet: number
   guncelFiyat: number | null
 }
+
+type Portfoy = { id: string; ad: string }
 
 function fmt(n: number | null) {
   if (n == null) return '-'
@@ -153,73 +156,109 @@ function FonGrubu({ fonKodu, fonTipi, fonUnvan, islemler }: {
   )
 }
 
-export function PortfoyGorunum({ islemler }: { islemler: Islem[] }) {
-  // Portföy bazında grupla
-  const portfoyMap = new Map<string, Islem[]>()
+function VarlikGrubuSection({ ad, islemler }: { ad: string; islemler: Islem[] }) {
+  const maliyet = islemler.reduce((s, i) => s + i.fiyat * i.adet, 0)
+  const guncel = islemler.reduce((s, i) => s + (i.guncelFiyat ? i.guncelFiyat * i.adet : i.fiyat * i.adet), 0)
+  const kazanc = guncel - maliyet
+  const kazancPct = maliyet > 0 ? (kazanc / maliyet) * 100 : 0
+
+  const fonMap = new Map<string, Islem[]>()
   for (const i of islemler) {
-    if (!portfoyMap.has(i.portfoy_adi)) portfoyMap.set(i.portfoy_adi, [])
-    portfoyMap.get(i.portfoy_adi)!.push(i)
+    const key = `${i.fonKodu}::${i.fonTipi}`
+    if (!fonMap.has(key)) fonMap.set(key, [])
+    fonMap.get(key)!.push(i)
   }
 
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-2 px-1">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{ad}</span>
+        <div className="flex-1 h-px bg-slate-100" />
+        <span className="text-xs text-slate-400">{fmt(maliyet)} ₺</span>
+        <span className={`text-xs font-semibold ${kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+          {pct(kazancPct)}
+        </span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {[...fonMap.entries()].map(([key, fislemler]) => (
+          <FonGrubu key={key}
+            fonKodu={fislemler[0].fonKodu}
+            fonTipi={fislemler[0].fonTipi}
+            fonUnvan={fislemler[0].fonUnvan}
+            islemler={fislemler} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function PortfoyGorunum({ portfoyler, islemler }: { portfoyler: Portfoy[]; islemler: Islem[] }) {
   const toplamMaliyet = islemler.reduce((s, i) => s + i.fiyat * i.adet, 0)
   const toplamGuncel = islemler.reduce((s, i) => s + (i.guncelFiyat ? i.guncelFiyat * i.adet : i.fiyat * i.adet), 0)
   const toplamKazanc = toplamGuncel - toplamMaliyet
   const toplamPct = toplamMaliyet > 0 ? (toplamKazanc / toplamMaliyet) * 100 : 0
 
+  const islemMap = new Map<string, Islem[]>()
+  for (const i of islemler) {
+    if (!islemMap.has(i.portfoy_id)) islemMap.set(i.portfoy_id, [])
+    islemMap.get(i.portfoy_id)!.push(i)
+  }
+
   return (
     <div className="max-w-4xl flex flex-col gap-8">
-      {/* Genel özet */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <p className="text-xs text-slate-400 mb-1">Toplam Maliyet</p>
-          <p className="text-lg font-bold text-slate-900">{fmt(toplamMaliyet)} ₺</p>
+      {islemler.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <p className="text-xs text-slate-400 mb-1">Toplam Maliyet</p>
+            <p className="text-lg font-bold text-slate-900">{fmt(toplamMaliyet)} ₺</p>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <p className="text-xs text-slate-400 mb-1">Güncel Değer</p>
+            <p className="text-lg font-bold text-slate-900">{fmt(toplamGuncel)} ₺</p>
+          </div>
+          <div className={`rounded-xl border p-4 ${toplamKazanc >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+            <p className="text-xs text-slate-400 mb-1">Toplam Kazanç</p>
+            <p className={`text-lg font-bold ${toplamKazanc >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+              {fmt(toplamKazanc)} ₺
+              <span className="text-sm ml-1">({pct(toplamPct)})</span>
+            </p>
+          </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <p className="text-xs text-slate-400 mb-1">Güncel Değer</p>
-          <p className="text-lg font-bold text-slate-900">{fmt(toplamGuncel)} ₺</p>
-        </div>
-        <div className={`rounded-xl border p-4 ${toplamKazanc >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-          <p className="text-xs text-slate-400 mb-1">Toplam Kazanç</p>
-          <p className={`text-lg font-bold ${toplamKazanc >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-            {fmt(toplamKazanc)} ₺
-            <span className="text-sm ml-1">({pct(toplamPct)})</span>
-          </p>
-        </div>
-      </div>
+      )}
 
-      {/* Portföy grupları */}
-      {[...portfoyMap.entries()].map(([portfoyAdi, pislemler]) => {
+      {portfoyler.map(portfoy => {
+        const pislemler = islemMap.get(portfoy.id) ?? []
         const ptMaliyet = pislemler.reduce((s, i) => s + i.fiyat * i.adet, 0)
         const ptGuncel = pislemler.reduce((s, i) => s + (i.guncelFiyat ? i.guncelFiyat * i.adet : i.fiyat * i.adet), 0)
         const ptKazanc = ptGuncel - ptMaliyet
         const ptPct = ptMaliyet > 0 ? (ptKazanc / ptMaliyet) * 100 : 0
 
-        // Fon bazında grupla
-        const fonMap = new Map<string, Islem[]>()
+        const grupMap = new Map<string, Islem[]>()
         for (const i of pislemler) {
-          const key = `${i.fonKodu}::${i.fonTipi}`
-          if (!fonMap.has(key)) fonMap.set(key, [])
-          fonMap.get(key)!.push(i)
+          if (!grupMap.has(i.varlik_grubu)) grupMap.set(i.varlik_grubu, [])
+          grupMap.get(i.varlik_grubu)!.push(i)
         }
 
         return (
-          <div key={portfoyAdi}>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-slate-800">{portfoyAdi}</h2>
-              <div className="flex items-center gap-3 text-sm">
-                <span className="text-slate-400 text-xs">{fmt(ptMaliyet)} ₺ maliyet</span>
-                <span className={`font-bold ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</span>
+          <div key={portfoy.id}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-slate-800">{portfoy.ad}</h2>
+              {pislemler.length > 0 && (
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="text-slate-400 text-xs">{fmt(ptMaliyet)} ₺ maliyet</span>
+                  <span className={`font-bold ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</span>
+                </div>
+              )}
+            </div>
+            {pislemler.length === 0 ? (
+              <p className="text-slate-400 text-sm">Bu portföyde henüz fon yok.</p>
+            ) : (
+              <div className="flex flex-col gap-5">
+                {[...grupMap.entries()].map(([grupAd, gislemler]) => (
+                  <VarlikGrubuSection key={grupAd} ad={grupAd} islemler={gislemler} />
+                ))}
               </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              {[...fonMap.entries()].map(([key, fislemler]) => (
-                <FonGrubu key={key}
-                  fonKodu={fislemler[0].fonKodu}
-                  fonTipi={fislemler[0].fonTipi}
-                  fonUnvan={fislemler[0].fonUnvan}
-                  islemler={fislemler} />
-              ))}
-            </div>
+            )}
           </div>
         )
       })}
