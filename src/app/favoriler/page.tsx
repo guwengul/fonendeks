@@ -21,7 +21,7 @@ export default async function FavorilerPage() {
 
   if (!fonKodlari.length) {
     return (
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
+      <div className="w-full px-4 sm:px-6 py-8">
         <h1 className="text-2xl font-bold text-slate-900 mb-6">Favorilerim</h1>
         <p className="text-slate-400">Henüz favori fon eklemediniz. Ana sayfada yıldıza tıklayarak ekleyebilirsiniz.</p>
       </div>
@@ -92,7 +92,7 @@ export default async function FavorilerPage() {
   })
 
   return (
-    <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
+    <div className="w-full px-4 sm:px-6 py-8">
       <h1 className="text-2xl font-bold text-slate-900 mb-6">Favorilerim</h1>
       <FavoriKartlar kartlar={kartlar} />
     </div>
