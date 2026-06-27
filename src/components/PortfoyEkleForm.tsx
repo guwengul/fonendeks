@@ -89,7 +89,6 @@ export function FonEkleForm({
     setSeciliFon(null); setAramaQ(''); setAdet(''); setFiyat('')
     setYukleniyor(false)
     setEklendi(true)
-    router.refresh()
     setTimeout(() => { setEklendi(false); aramaRef.current?.focus() }, 2000)
   }
 
@@ -197,9 +196,9 @@ export function FonEkleForm({
           {yukleniyor ? 'Ekleniyor...' : eklendi ? '✓ Eklendi' : 'Ekle'}
         </button>
         {onKapat && (
-          <button type="button" onClick={onKapat}
+          <button type="button" onClick={() => { router.refresh(); onKapat() }}
             className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
-            Kapat
+            Bitti
           </button>
         )}
       </div>

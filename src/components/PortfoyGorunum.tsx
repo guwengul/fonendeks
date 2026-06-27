@@ -233,7 +233,7 @@ function PortfoySection({ portfoy, pislemler }: { portfoy: Portfoy; pislemler: I
         <div className="mb-5">
           <FonEkleForm
             portfoy={portfoy}
-            onKapat={() => setFonEkleAcik(false)}
+            onKapat={() => { setFonEkleAcik(false) }}
           />
         </div>
       )}
