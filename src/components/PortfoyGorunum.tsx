@@ -586,8 +586,8 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
 
                   {/* 2. Fon performans + Dağılım yan yana */}
                   <div className="flex gap-4 items-start">
-                    <div className="flex-1 min-w-0 bg-white rounded-xl border border-slate-200 overflow-hidden">
-                      <table className="w-full">
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shrink-0">
+                      <table>
                         <thead>
                           <tr className="border-b border-slate-100">
                             <th className="text-left px-4 py-2.5 text-xs text-slate-400 font-medium">Fon</th>
@@ -604,23 +604,23 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                                 <div className="flex items-center gap-2">
                                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: f.grupRengi }} />
                                   <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
-                                    className="font-mono font-bold text-indigo-600 hover:underline text-sm shrink-0">
+                                    title={f.fonUnvan ?? undefined}
+                                    className="font-mono font-bold text-indigo-600 hover:underline text-sm">
                                     {f.fonKodu}
                                   </Link>
-                                  {f.fonUnvan && <span className="text-xs text-slate-400 truncate max-w-[160px]">{f.fonUnvan}</span>}
                                 </div>
                               </td>
-                              <td className="px-4 py-2.5 text-right text-sm text-slate-700 font-medium">
+                              <td className="px-4 py-2.5 text-right text-sm text-slate-700 font-medium whitespace-nowrap">
                                 {f.guncelDeger != null ? fmt(f.guncelDeger) + ' ₺' : '—'}
                               </td>
-                              <td className="px-4 py-2.5 text-right">
+                              <td className="px-4 py-2.5 text-right whitespace-nowrap">
                                 {f.kazancPct != null && (
                                   <span className={`text-sm font-bold ${f.kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                                     {pct(f.kazancPct)}
                                   </span>
                                 )}
                               </td>
-                              <td className="px-4 py-2.5 text-right">
+                              <td className="px-4 py-2.5 text-right whitespace-nowrap">
                                 {f.gunluk != null && (
                                   <span className={`text-xs font-medium ${f.gunluk >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
                                     {f.gunluk >= 0 ? '+' : ''}{fmt(f.gunluk)} ₺
@@ -633,7 +633,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                       </table>
                     </div>
                     {grupMap.size > 1 && (
-                      <div className="w-80 shrink-0">
+                      <div className="flex-1 min-w-0">
                         <DagilimPanel grupMap={grupMap} />
                       </div>
                     )}
