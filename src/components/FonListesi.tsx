@@ -490,26 +490,26 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
                         className="font-semibold text-indigo-600 hover:text-indigo-800 transition-colors text-sm">
                         {f.fonKodu}
                       </Link>
-                      {f.fonUnvan && (
+                      {basit && f.fonUnvan && (
                         <p className="text-xs text-slate-400 truncate max-w-[160px] leading-tight mt-0.5">{f.fonUnvan}</p>
                       )}
                     </div>
                   </div>
                 </td>
-                <td className="px-3 py-2.5 text-right align-top">
+                <td className={`px-3 text-right ${basit ? 'py-2.5 align-top' : 'py-2'}`}>
                   <p className="text-sm text-slate-600">{f.fiyat != null ? f.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '-'}</p>
-                  {f.riskDegeri != null && <p className="text-xs text-slate-400 mt-0.5">Risk {f.riskDegeri}</p>}
+                  {basit && f.riskDegeri != null && <p className="text-xs text-slate-400 mt-0.5">Risk {f.riskDegeri}</p>}
                 </td>
-                <td className="px-3 py-2.5 text-right align-top">
+                <td className={`px-3 text-right ${basit ? 'py-2.5 align-top' : 'py-2'}`}>
                   <p className="text-sm text-slate-500">{fmt(f.portfoyBuyukluk)}</p>
-                  {f.yonetimUcreti != null && <p className="text-xs text-slate-400 mt-0.5">%{f.yonetimUcreti} ücret</p>}
+                  {basit && f.yonetimUcreti != null && <p className="text-xs text-slate-400 mt-0.5">%{f.yonetimUcreti} ücret</p>}
                 </td>
-                <td className="px-3 py-2.5 text-right align-top">
+                <td className={`px-3 text-right ${basit ? 'py-2.5 align-top' : 'py-2'}`}>
                   <p className="text-sm text-slate-500">{f.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}</p>
-                  {f.stopaj === 0 && <p className="text-xs text-emerald-500 mt-0.5">Vergisiz</p>}
+                  {basit && f.stopaj === 0 && <p className="text-xs text-emerald-500 mt-0.5">Vergisiz</p>}
                 </td>
                 {DONEMLER.map(d => (
-                  <td key={d.key} className="px-3 py-2.5 text-right align-top">
+                  <td key={d.key} className={`px-3 text-right ${basit ? 'py-2.5 align-top' : 'py-2'}`}>
                     <GetiriCell val={(paraBirimi === 'USD' ? f.getirilerUsd : f.getiriler)[d.key]} />
                   </td>
                 ))}
