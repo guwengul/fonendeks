@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { portfoyIslemSil, portfoyIslemGuncelle, portfoyGuncelle, portfoySil } from '@/lib/auth-actions'
@@ -361,6 +361,214 @@ function VarlikGrubuSection({ ad, islemler }: { ad: string; islemler: Islem[] })
   )
 }
 
+const GUN_SECENEKLERI = [
+  { label: '3A', gun: 90 },
+  { label: '6A', gun: 180 },
+  { label: '1Y', gun: 365 },
+]
+
+function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyRenk: string }) {
+  const [gun, setGun] = useState(90)
+  const [tarihce, setTarihce] = useState<{ tarih: string; deger: number }[]>([])
+  const [usdSeri, setUsdSeri] = useState<{ tarih: string; deger: number }[]>([])
+  const [yukleniyor, setYukleniyor] = useState(true)
+  const [hover, setHover] = useState<{ ix: number; svgX: number } | null>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+
+  useEffect(() => {
+    setYukleniyor(true)
+    fetch(`/api/kullanici/portfoy-tarihce?portfoy_id=${portfoyId}&gun=${gun}`)
+      .then(r => r.json())
+      .then(d => {
+        setTarihce(d.tarihce ?? [])
+        setUsdSeri(d.usd ?? [])
+        setYukleniyor(false)
+      })
+      .catch(() => setYukleniyor(false))
+  }, [portfoyId, gun])
+
+  if (yukleniyor) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 h-[180px] flex items-center justify-center">
+        <span className="text-xs text-slate-400">Yükleniyor...</span>
+      </div>
+    )
+  }
+
+  if (!tarihce.length) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 h-[180px] flex items-center justify-center">
+        <span className="text-xs text-slate-400">Geçmiş veri bulunamadı.</span>
+      </div>
+    )
+  }
+
+  // SVG dimensions
+  const W = 600, H = 160
+  const PAD = { top: 10, right: 12, bottom: 28, left: 56 }
+  const innerW = W - PAD.left - PAD.right
+  const innerH = H - PAD.top - PAD.bottom
+
+  // USD normalize: at first matching date, set equal to portfolio start
+  const usdMap = new Map(usdSeri.map(u => [u.tarih, u.deger]))
+  const ilkTarih = tarihce[0].tarih
+  const usdBaslangic = usdMap.get(ilkTarih) ?? (usdSeri[0]?.deger ?? null)
+  const ptBaslangic = tarihce[0].deger
+
+  // Normalized USD points aligned to tarihce dates
+  const usdPoints: ({ tarih: string; deger: number } | null)[] = tarihce.map(pt => {
+    const u = usdMap.get(pt.tarih)
+    if (!u || !usdBaslangic) return null
+    return { tarih: pt.tarih, deger: ptBaslangic * (u / usdBaslangic) }
+  })
+
+  const allValues = [
+    ...tarihce.map(p => p.deger),
+    ...usdPoints.filter(Boolean).map(p => p!.deger),
+  ]
+  const minVal = Math.min(...allValues)
+  const maxVal = Math.max(...allValues)
+  const range = maxVal - minVal || 1
+
+  function xOf(i: number) { return PAD.left + (i / Math.max(tarihce.length - 1, 1)) * innerW }
+  function yOf(v: number) { return PAD.top + (1 - (v - minVal) / range) * innerH }
+
+  const tlPts = tarihce.map((p, i) => `${xOf(i)},${yOf(p.deger)}`).join(' ')
+
+  const usdLineSegs: string[] = []
+  let curSeg: string[] = []
+  usdPoints.forEach((p, i) => {
+    if (p) {
+      curSeg.push(`${xOf(i)},${yOf(p.deger)}`)
+    } else if (curSeg.length) {
+      usdLineSegs.push(curSeg.join(' '))
+      curSeg = []
+    }
+  })
+  if (curSeg.length) usdLineSegs.push(curSeg.join(' '))
+
+  // Hover data
+  const hoverPt = hover != null ? tarihce[hover.ix] : null
+  const hoverUsd = hover != null ? usdPoints[hover.ix] : null
+  const hoverX = hover != null ? xOf(hover.ix) : null
+  const hoverY = hoverPt ? yOf(hoverPt.deger) : null
+
+  // Y axis labels
+  const yTicks = [minVal, minVal + range * 0.5, maxVal].map(v => ({
+    y: yOf(v),
+    label: Math.abs(v) >= 1_000_000 ? (v / 1_000_000).toFixed(1) + 'M' : Math.abs(v) >= 1_000 ? (v / 1_000).toFixed(0) + 'K' : v.toFixed(0),
+  }))
+
+  // X axis: first, middle, last
+  const xTicks = [0, Math.floor((tarihce.length - 1) / 2), tarihce.length - 1].filter((v, i, a) => a.indexOf(v) === i).map(i => ({
+    x: xOf(i), label: tarihce[i].tarih.slice(5),
+  }))
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const rect = svgRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const svgX = ((e.clientX - rect.left) / rect.width) * W
+    const relX = svgX - PAD.left
+    const ix = Math.round((relX / innerW) * (tarihce.length - 1))
+    const clamped = Math.max(0, Math.min(tarihce.length - 1, ix))
+    setHover({ ix: clamped, svgX: xOf(clamped) })
+  }
+
+  const son = tarihce[tarihce.length - 1]
+  const ilk = tarihce[0]
+  const toplamDegisim = ((son.deger - ilk.deger) / ilk.deger) * 100
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Performans</span>
+          <span className={`text-xs font-semibold ${toplamDegisim >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+            {toplamDegisim >= 0 ? '+' : ''}{toplamDegisim.toFixed(2)}%
+          </span>
+          {usdSeri.length > 0 && (
+            <span className="flex items-center gap-1 text-xs text-slate-400">
+              <span className="w-4 border-t-2 border-dashed border-slate-300 inline-block" />
+              USD
+            </span>
+          )}
+        </div>
+        <div className="flex gap-1">
+          {GUN_SECENEKLERI.map(s => (
+            <button key={s.gun} onClick={() => setGun(s.gun)}
+              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${gun === s.gun ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-700'}`}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <svg ref={svgRef} width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
+        onMouseMove={handleMouseMove} onMouseLeave={() => setHover(null)}
+        style={{ cursor: 'crosshair', display: 'block' }}>
+
+        {/* Y gridlines */}
+        {yTicks.map((t, i) => (
+          <line key={i} x1={PAD.left} y1={t.y} x2={W - PAD.right} y2={t.y}
+            stroke="#f1f5f9" strokeWidth={1} />
+        ))}
+
+        {/* USD dashed line */}
+        {usdLineSegs.map((pts, i) => (
+          <polyline key={i} points={pts} fill="none" stroke="#94a3b8" strokeWidth={1.5}
+            strokeDasharray="4 3" />
+        ))}
+
+        {/* TL line */}
+        <polyline points={tlPts} fill="none" stroke={portfoyRenk} strokeWidth={2} />
+
+        {/* Hover */}
+        {hover != null && hoverX != null && hoverY != null && hoverPt && (
+          <>
+            <line x1={hoverX} y1={PAD.top} x2={hoverX} y2={H - PAD.bottom}
+              stroke="#e2e8f0" strokeWidth={1} />
+            <circle cx={hoverX} cy={hoverY} r={4} fill={portfoyRenk} stroke="white" strokeWidth={2} />
+            {hoverUsd && (
+              <circle cx={hoverX} cy={yOf(hoverUsd.deger)} r={3} fill="#94a3b8" stroke="white" strokeWidth={1.5} />
+            )}
+            {/* Tooltip box */}
+            {(() => {
+              const tx = hoverX > W * 0.7 ? hoverX - 120 : hoverX + 10
+              const ty = Math.max(PAD.top, Math.min(H - PAD.bottom - 52, hoverY - 26))
+              const usdVal = usdMap.get(hoverPt.tarih)
+              return (
+                <g>
+                  <rect x={tx} y={ty} width={110} height={hoverUsd ? 52 : 38} rx={5}
+                    fill="white" stroke="#e2e8f0" strokeWidth={1} />
+                  <text x={tx + 7} y={ty + 13} fontSize={9} fill="#94a3b8">{hoverPt.tarih}</text>
+                  <text x={tx + 7} y={ty + 27} fontSize={10} fontWeight="600" fill="#1e293b">
+                    {hoverPt.deger >= 1_000_000 ? (hoverPt.deger / 1_000_000).toFixed(2) + 'M' : hoverPt.deger >= 1_000 ? (hoverPt.deger / 1_000).toFixed(1) + 'K' : hoverPt.deger.toFixed(0)} ₺
+                  </text>
+                  {hoverUsd && usdVal && (
+                    <text x={tx + 7} y={ty + 43} fontSize={9} fill="#64748b">
+                      {`USD/TRY: ${usdVal.toFixed(2)}`}
+                    </text>
+                  )}
+                </g>
+              )
+            })()}
+          </>
+        )}
+
+        {/* Y axis labels */}
+        {yTicks.map((t, i) => (
+          <text key={i} x={PAD.left - 4} y={t.y + 3} fontSize={8} fill="#94a3b8" textAnchor="end">{t.label}</text>
+        ))}
+
+        {/* X axis labels */}
+        {xTicks.map((t, i) => (
+          <text key={i} x={t.x} y={H - 6} fontSize={8} fill="#94a3b8" textAnchor="middle">{t.label}</text>
+        ))}
+      </svg>
+    </div>
+  )
+}
+
 // Portföy edit modal
 function PortfoyEditModal({ portfoy, onKapat }: { portfoy: Portfoy; onKapat: () => void }) {
   const [ad, setAd] = useState(portfoy.ad)
@@ -584,7 +792,10 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                     </div>
                   </div>
 
-                  {/* 2. Fon performans + Dağılım yan yana */}
+                  {/* 2. Performans grafiği */}
+                  <PortfoyGrafik portfoyId={portfoy.id} portfoyRenk={hex} />
+
+                  {/* 3. Fon performans + Dağılım yan yana */}
                   <div className="flex gap-4 items-start">
                     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shrink-0">
                       <table>
