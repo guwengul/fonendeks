@@ -221,7 +221,7 @@ function PortfoySection({ portfoy, pislemler }: { portfoy: Portfoy; pislemler: I
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
           <span className="font-semibold text-slate-800">{portfoy.ad}</span>
-          {pislemler.length > 0 && (
+          {pislemler.length > 0 && !acik && (
             <span className="flex items-center gap-3 ml-1">
               <span className="text-slate-400 text-xs">{fmt(ptMaliyet)} ₺</span>
               <span className={`text-sm font-bold ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</span>
@@ -240,6 +240,27 @@ function PortfoySection({ portfoy, pislemler }: { portfoy: Portfoy; pislemler: I
       {/* Accordion içerik */}
       {acik && (
         <div className="border-t border-slate-100 px-5 py-5 flex flex-col gap-5 bg-slate-50/40">
+
+          {/* Portföy özet kartları */}
+          {pislemler.length > 0 && (
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
+                <p className="text-xs text-slate-400 mb-0.5">Maliyet</p>
+                <p className="text-sm font-bold text-slate-900">{fmt(ptMaliyet)} ₺</p>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
+                <p className="text-xs text-slate-400 mb-0.5">Güncel</p>
+                <p className="text-sm font-bold text-slate-900">{fmt(ptGuncel)} ₺</p>
+              </div>
+              <div className={`rounded-xl border px-4 py-3 ${ptKazanc >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                <p className="text-xs text-slate-400 mb-0.5">Kazanç</p>
+                <p className={`text-sm font-bold ${ptKazanc >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                  {fmt(ptKazanc)} ₺ <span className="font-normal text-xs">({pct(ptPct)})</span>
+                </p>
+              </div>
+            </div>
+          )}
+
           {fonEkleAcik && (
             <FonEkleForm portfoy={portfoy} onKapat={() => setFonEkleAcik(false)} />
           )}
@@ -260,11 +281,6 @@ function PortfoySection({ portfoy, pislemler }: { portfoy: Portfoy; pislemler: I
 }
 
 export function PortfoyGorunum({ portfoyler, islemler }: { portfoyler: Portfoy[]; islemler: Islem[] }) {
-  const toplamMaliyet = islemler.reduce((s, i) => s + i.fiyat * i.adet, 0)
-  const toplamGuncel = islemler.reduce((s, i) => s + (i.guncelFiyat ? i.guncelFiyat * i.adet : i.fiyat * i.adet), 0)
-  const toplamKazanc = toplamGuncel - toplamMaliyet
-  const toplamPct = toplamMaliyet > 0 ? (toplamKazanc / toplamMaliyet) * 100 : 0
-
   const islemMap = new Map<string, Islem[]>()
   for (const i of islemler) {
     if (!islemMap.has(i.portfoy_id)) islemMap.set(i.portfoy_id, [])
@@ -272,27 +288,7 @@ export function PortfoyGorunum({ portfoyler, islemler }: { portfoyler: Portfoy[]
   }
 
   return (
-    <div className="max-w-4xl flex flex-col gap-8">
-      {islemler.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-400 mb-1">Toplam Maliyet</p>
-            <p className="text-lg font-bold text-slate-900">{fmt(toplamMaliyet)} ₺</p>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-400 mb-1">Güncel Değer</p>
-            <p className="text-lg font-bold text-slate-900">{fmt(toplamGuncel)} ₺</p>
-          </div>
-          <div className={`rounded-xl border p-4 ${toplamKazanc >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-            <p className="text-xs text-slate-400 mb-1">Toplam Kazanç</p>
-            <p className={`text-lg font-bold ${toplamKazanc >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-              {fmt(toplamKazanc)} ₺
-              <span className="text-sm ml-1">({pct(toplamPct)})</span>
-            </p>
-          </div>
-        </div>
-      )}
-
+    <div className="flex flex-col gap-4">
       {portfoyler.map(portfoy => {
         const pislemler = islemMap.get(portfoy.id) ?? []
         const ptMaliyet = pislemler.reduce((s, i) => s + i.fiyat * i.adet, 0)

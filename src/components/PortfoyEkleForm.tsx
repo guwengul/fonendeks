@@ -38,6 +38,7 @@ export function FonEkleForm({
   const [favoriler, setFavoriler] = useState<FavoriSonuc[]>([])
   const [favorilerYukleniyor, setFavorilerYukleniyor] = useState(false)
   const [adet, setAdet] = useState('')
+  const [tutar, setTutar] = useState('')
   const [tarih, setTarih] = useState(new Date().toISOString().slice(0, 10))
   const [fiyat, setFiyat] = useState('')
   const [fiyatYukleniyor, setFiyatYukleniyor] = useState(false)
@@ -96,15 +97,25 @@ export function FonEkleForm({
       tarih, portfoy_id: portfoy.id,
     })
     if (sonuc?.hata) { setHata(sonuc.hata); setYukleniyor(false); return }
-    setSeciliFon(null); setAramaQ(''); setAdet(''); setFiyat('')
+    setSeciliFon(null); setAramaQ(''); setAdet(''); setFiyat(''); setTutar('')
     setYukleniyor(false)
     setEklendi(true)
     setTimeout(() => { setEklendi(false); aramaRef.current?.focus() }, 2000)
   }
 
-  const toplam = fiyat && adet && Number(fiyat) > 0 && Number(adet) > 0
-    ? (Number(fiyat) * Number(adet)).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : null
+  function handleAdetChange(v: string) {
+    setAdet(v)
+    const a = parseInt(v); const f = Number(fiyat)
+    if (a > 0 && f > 0) setTutar((a * f).toFixed(2))
+    else setTutar('')
+  }
+
+  function handleTutarChange(v: string) {
+    setTutar(v)
+    const t = Number(v); const f = Number(fiyat)
+    if (t > 0 && f > 0) setAdet(String(Math.round(t / f)))
+    else setAdet('')
+  }
 
   const r = renkBul(portfoy.renk ?? 'blue')
 
@@ -186,30 +197,24 @@ export function FonEkleForm({
         )}
       </div>
 
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <label className="text-xs text-slate-500 font-medium block mb-1.5">Adet</label>
-          <input type="number" step="0.0001" min="0.0001" required
-            value={adet} onChange={e => setAdet(e.target.value)} placeholder="100"
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
-        </div>
-        <div className="flex-1">
-          <label className="text-xs text-slate-500 font-medium block mb-1.5">Tarih</label>
-          <input type="date" required value={tarih}
-            onChange={async e => {
-              setTarih(e.target.value)
-              if (seciliFon) {
-                setFiyatYukleniyor(true)
-                try {
-                  const res = await fetch(`/api/kullanici/fon-fiyat?kod=${seciliFon.fonKodu}&tip=${seciliFon.fonTipi}&tarih=${e.target.value}`)
-                  const d = await res.json()
-                  setFiyat(d.fiyat ? String(d.fiyat) : '')
-                } catch { setFiyat('') }
-                setFiyatYukleniyor(false)
-              }
-            }}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
-        </div>
+      <div>
+        <label className="text-xs text-slate-500 font-medium block mb-1.5">Tarih</label>
+        <input type="date" required value={tarih}
+          onChange={async e => {
+            setTarih(e.target.value)
+            if (seciliFon) {
+              setFiyatYukleniyor(true)
+              try {
+                const res = await fetch(`/api/kullanici/fon-fiyat?kod=${seciliFon.fonKodu}&tip=${seciliFon.fonTipi}&tarih=${e.target.value}`)
+                const d = await res.json()
+                const yeniFiyat = d.fiyat ? String(d.fiyat) : ''
+                setFiyat(yeniFiyat)
+                if (yeniFiyat && adet) setTutar((parseInt(adet) * Number(yeniFiyat)).toFixed(2))
+              } catch { setFiyat('') }
+              setFiyatYukleniyor(false)
+            }
+          }}
+          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
       </div>
 
       <div>
@@ -218,11 +223,28 @@ export function FonEkleForm({
           {fiyatYukleniyor && <span className="text-slate-400 font-normal ml-1">yükleniyor...</span>}
         </label>
         <input type="number" step="0.000001" min="0" required
-          value={fiyat} onChange={e => setFiyat(e.target.value)} placeholder="otomatik"
+          value={fiyat} onChange={e => {
+            setFiyat(e.target.value)
+            const f = Number(e.target.value); const a = parseInt(adet)
+            if (f > 0 && a > 0) setTutar((a * f).toFixed(2))
+          }}
+          placeholder="otomatik"
           className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
-        {toplam && (
-          <p className="text-xs text-slate-500 mt-1.5">Toplam: <span className="font-semibold text-slate-700">{toplam} ₺</span></p>
-        )}
+      </div>
+
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="text-xs text-slate-500 font-medium block mb-1.5">Adet</label>
+          <input type="number" step="1" min="1" required
+            value={adet} onChange={e => handleAdetChange(e.target.value)} placeholder="100"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+        </div>
+        <div className="flex-1">
+          <label className="text-xs text-slate-500 font-medium block mb-1.5">veya Toplam Tutar ₺</label>
+          <input type="number" step="0.01" min="0"
+            value={tutar} onChange={e => handleTutarChange(e.target.value)} placeholder="10.000"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+        </div>
       </div>
 
       {hata && <p className="text-sm text-red-600">{hata}</p>}
@@ -285,7 +307,7 @@ export function PortfoyEkleForm({
       <div className="flex flex-col items-center gap-4 w-full max-w-sm">
         <FonEkleForm
           portfoy={lokalPortfoy}
-          onKapat={() => { router.refresh() }}
+          onKapat={() => {}}
         />
       </div>
     )
