@@ -91,13 +91,11 @@ function DonutChart({ segments, size = 80 }: {
   )
 }
 
-// Dumbbell chart — allocation drift görselleştirmesi
 function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
   const [mod, setMod] = useState<'grup' | 'fon'>('grup')
 
   const grupRows = [...grupMap.entries()].map(([ad, islemler]) => ({
-    label: ad,
-    color: grupRenk(ad),
+    label: ad, color: grupRenk(ad),
     maliyet: islemler.reduce((s, i) => s + i.fiyat * i.adet, 0),
     guncel: islemler.reduce((s, i) => s + (i.guncelFiyat ?? i.fiyat) * i.adet, 0),
   })).filter(r => r.maliyet > 0)
@@ -118,104 +116,46 @@ function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
   const totalMaliyet = rows.reduce((s, r) => s + r.maliyet, 0)
   const totalGuncel = rows.reduce((s, r) => s + r.guncel, 0)
 
-  const data = rows.map(r => ({
-    label: r.label,
-    color: r.color,
-    mp: totalMaliyet > 0 ? r.maliyet / totalMaliyet * 100 : 0,
-    gp: totalGuncel > 0 ? r.guncel / totalGuncel * 100 : 0,
-  }))
-
-  // SVG dumbbell chart
-  const W = 280
-  const ROW_H = 20
-  const LABEL_W = 88
-  const CHART_W = W - LABEL_W - 36
-  const H = data.length * ROW_H + 16
-  const maxPct = Math.ceil(Math.max(...data.map(d => Math.max(d.mp, d.gp))) / 10) * 10 || 100
-
-  function xPos(pct: number) {
-    return LABEL_W + (pct / maxPct) * CHART_W
-  }
-
   return (
     <div className="bg-white rounded-xl border border-slate-200 px-4 py-4 h-full">
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Dağılım Kayması</p>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3 text-xs text-slate-400">
-            <span className="flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-slate-300 bg-white" />
-              Alış
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-700" />
-              Güncel
-            </span>
-          </div>
-          <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
-            <button onClick={() => setMod('grup')}
-              className={`px-2.5 py-1 transition-colors ${mod === 'grup' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-              Grup
-            </button>
-            <button onClick={() => setMod('fon')}
-              className={`px-2.5 py-1 transition-colors ${mod === 'fon' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-              Fon
-            </button>
-          </div>
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
+          <button onClick={() => setMod('grup')}
+            className={`px-2.5 py-1 transition-colors ${mod === 'grup' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+            Grup
+          </button>
+          <button onClick={() => setMod('fon')}
+            className={`px-2.5 py-1 transition-colors ${mod === 'fon' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+            Fon
+          </button>
         </div>
       </div>
 
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
-        {/* Axis gridlines */}
-        {[0, 25, 50, 75, 100].filter(v => v <= maxPct).map(v => (
-          <g key={v}>
-            <line x1={xPos(v)} y1={0} x2={xPos(v)} y2={H - 14}
-              stroke="#f1f5f9" strokeWidth={1} />
-            <text x={xPos(v)} y={H - 4} textAnchor="middle" fontSize="7" fill="#cbd5e1">{v}%</text>
-          </g>
-        ))}
-
-        {/* Rows */}
-        {data.map((d, i) => {
-          const y = i * ROW_H + ROW_H / 2
-          const x1 = xPos(d.mp)
-          const x2 = xPos(d.gp)
-          const diff = d.gp - d.mp
-          const lineColor = Math.abs(diff) < 0.5 ? '#e2e8f0' : diff > 0 ? '#10b981' : '#f87171'
-          const moved = Math.abs(diff) >= 0.5
-
+      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-2 items-center">
+        <span className="text-xs text-slate-400"></span>
+        <span className="text-xs text-slate-400 text-right">Alış</span>
+        <span className="text-xs text-slate-400 text-right">Güncel</span>
+        <span className="text-xs text-slate-400 text-right">Fark</span>
+        {rows.map(r => {
+          const mp = totalMaliyet > 0 ? r.maliyet / totalMaliyet * 100 : 0
+          const gp = totalGuncel > 0 ? r.guncel / totalGuncel * 100 : 0
+          const diff = gp - mp
           return (
-            <g key={d.label}>
-              {/* Label */}
-              <text x={LABEL_W - 6} y={y + 1} textAnchor="end" dominantBaseline="middle"
-                fontSize="9" fill="#475569">
-                {d.label.length > 12 ? d.label.slice(0, 11) + '…' : d.label}
-              </text>
-
-              {/* Connecting line */}
-              {moved && (
-                <line x1={x1} y1={y} x2={x2} y2={y}
-                  stroke={lineColor} strokeWidth={2} strokeLinecap="round" />
-              )}
-
-              {/* Alış dot (hollow) */}
-              <circle cx={x1} cy={y} r={5} fill="white" stroke={d.color} strokeWidth={2} opacity={0.7} />
-
-              {/* Güncel dot (filled) */}
-              <circle cx={x2} cy={y} r={5.5} fill={d.color} />
-
-              {/* Delta label */}
-              {moved && (
-                <text x={W - 2} y={y + 1} textAnchor="end" dominantBaseline="middle"
-                  fontSize="9" fontWeight="600"
-                  fill={diff > 0 ? '#10b981' : '#f87171'}>
-                  {diff > 0 ? '+' : ''}{diff.toFixed(1)}pp
-                </text>
-              )}
-            </g>
+            <>
+              <div key={r.label + '-n'} className="flex items-center gap-1.5 min-w-0">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+                <span className="text-xs text-slate-700 truncate">{r.label}</span>
+              </div>
+              <span key={r.label + '-m'} className="text-xs text-slate-400 text-right">{mp.toFixed(1)}%</span>
+              <span key={r.label + '-g'} className="text-xs font-semibold text-slate-700 text-right">{gp.toFixed(1)}%</span>
+              <span key={r.label + '-d'} className={`text-xs font-semibold text-right ${Math.abs(diff) < 0.5 ? 'text-slate-300' : diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                {Math.abs(diff) < 0.5 ? '—' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp`}
+              </span>
+            </>
           )
         })}
-      </svg>
+      </div>
     </div>
   )
 }
