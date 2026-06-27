@@ -91,21 +91,69 @@ function DonutChart({ segments, size = 80 }: {
   )
 }
 
-// Dağılım paneli: güncel dağılım donut + maliyet→güncel karşılaştırma tablosu
+function buildDonut(rows: { label: string; value: number; color: string }[], centerLabel: string) {
+  const SIZE = 130
+  const R = 48
+  const CX = SIZE / 2
+  const CY = SIZE / 2
+  const circumference = 2 * Math.PI * R
+  const GAP = 1.5
+  const total = rows.reduce((s, r) => s + r.value, 0)
+
+  let offset = 0
+  const paths: React.ReactNode[] = []
+  const labels: React.ReactNode[] = []
+
+  for (const seg of rows) {
+    const pctVal = total > 0 ? seg.value / total : 0
+    const dash = Math.max(0, circumference * pctVal - GAP)
+    const midAngle = (offset + circumference * pctVal / 2) / circumference * 2 * Math.PI - Math.PI / 2
+    const lx = CX + (R + 13) * Math.cos(midAngle)
+    const ly = CY + (R + 13) * Math.sin(midAngle)
+
+    paths.push(
+      <circle key={seg.label} cx={CX} cy={CY} r={R}
+        fill="none" stroke={seg.color} strokeWidth={15}
+        strokeDasharray={`${dash} ${circumference - dash}`}
+        strokeDashoffset={-(offset - circumference / 4)} />
+    )
+    if (pctVal >= 0.07) {
+      labels.push(
+        <text key={seg.label + '-l'} x={lx} y={ly}
+          textAnchor="middle" dominantBaseline="middle"
+          fontSize="8" fontWeight="700" fill={seg.color}>
+          {(pctVal * 100).toFixed(0)}%
+        </text>
+      )
+    }
+    offset += circumference * pctVal
+  }
+
+  return (
+    <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+      {paths}
+      {labels}
+      <text x={CX} y={CY} textAnchor="middle" dominantBaseline="middle" fontSize="9" fill="#94a3b8">
+        {centerLabel}
+      </text>
+    </svg>
+  )
+}
+
+// Dağılım paneli: grup ve fon donutları yan yana, maliyet→güncel tablo
 function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
-  const [mod, setMod] = useState<'grup' | 'fon'>('grup')
+  const grupRows = [...grupMap.entries()].map(([ad, islemler]) => ({
+    label: ad,
+    color: grupRenk(ad),
+    maliyet: islemler.reduce((s, i) => s + i.fiyat * i.adet, 0),
+    guncel: islemler.reduce((s, i) => s + (i.guncelFiyat ?? i.fiyat) * i.adet, 0),
+  })).filter(r => r.maliyet > 0)
 
-  const grupRows = [...grupMap.entries()].map(([ad, islemler]) => {
-    const maliyet = islemler.reduce((s, i) => s + i.fiyat * i.adet, 0)
-    const guncel = islemler.reduce((s, i) => s + (i.guncelFiyat ?? i.fiyat) * i.adet, 0)
-    return { label: ad, shortLabel: ad.split(' ')[0], color: grupRenk(ad), maliyet, guncel }
-  }).filter(r => r.maliyet > 0)
-
-  const fonMap = new Map<string, { label: string; shortLabel: string; maliyet: number; guncel: number; color: string }>()
+  const fonMap = new Map<string, { label: string; maliyet: number; guncel: number; color: string }>()
   for (const [grupAd, islemler] of grupMap.entries()) {
     for (const i of islemler) {
       const key = `${i.fonKodu}::${i.fonTipi}`
-      if (!fonMap.has(key)) fonMap.set(key, { label: i.fonKodu, shortLabel: i.fonKodu, maliyet: 0, guncel: 0, color: grupRenk(grupAd) })
+      if (!fonMap.has(key)) fonMap.set(key, { label: i.fonKodu, maliyet: 0, guncel: 0, color: grupRenk(grupAd) })
       const e = fonMap.get(key)!
       e.maliyet += i.fiyat * i.adet
       e.guncel += (i.guncelFiyat ?? i.fiyat) * i.adet
@@ -113,99 +161,51 @@ function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
   }
   const fonRows = [...fonMap.values()].filter(r => r.maliyet > 0)
 
-  const rows = mod === 'grup' ? grupRows : fonRows
-  const totalMaliyet = rows.reduce((s, r) => s + r.maliyet, 0)
-  const totalGuncel = rows.reduce((s, r) => s + r.guncel, 0)
+  const totalGrupGuncel = grupRows.reduce((s, r) => s + r.guncel, 0)
+  const totalGrupMaliyet = grupRows.reduce((s, r) => s + r.maliyet, 0)
+  const totalFonGuncel = fonRows.reduce((s, r) => s + r.guncel, 0)
 
-  // Donut: güncel dağılım
-  const guncelSegments = rows.map(r => ({ label: r.shortLabel, value: r.guncel, color: r.color }))
-
-  // Donut SVG with labels
-  const SIZE = 140
-  const R = 52
-  const INNER_R = 34
-  const CX = SIZE / 2
-  const CY = SIZE / 2
-  const circumference = 2 * Math.PI * R
-  const GAP = 1.5
-
-  let offset = 0
-  const donutPaths: React.ReactNode[] = []
-  const labelEls: React.ReactNode[] = []
-  const total = guncelSegments.reduce((s, g) => s + g.value, 0)
-
-  for (const seg of guncelSegments) {
-    const pctVal = total > 0 ? seg.value / total : 0
-    const dash = Math.max(0, circumference * pctVal - GAP)
-    const angle = offset / circumference * 2 * Math.PI - Math.PI / 2
-    const midAngle = (offset + circumference * pctVal / 2) / circumference * 2 * Math.PI - Math.PI / 2
-    const labelR = R + 14
-    const lx = CX + labelR * Math.cos(midAngle)
-    const ly = CY + labelR * Math.sin(midAngle)
-
-    donutPaths.push(
-      <circle key={seg.label} cx={CX} cy={CY} r={R}
-        fill="none" stroke={seg.color} strokeWidth={16}
-        strokeDasharray={`${dash} ${circumference - dash}`}
-        strokeDashoffset={-(offset - circumference / 4)} />
-    )
-
-    if (pctVal >= 0.07) {
-      labelEls.push(
-        <text key={seg.label + '-label'} x={lx} y={ly}
-          textAnchor="middle" dominantBaseline="middle"
-          fontSize="8" fontWeight="600" fill={seg.color}>
-          {(pctVal * 100).toFixed(0)}%
-        </text>
-      )
-    }
-
-    offset += circumference * pctVal
-    void angle
-  }
+  const grupSegments = grupRows.map(r => ({ label: r.label, value: r.guncel, color: r.color }))
+  const fonSegments = fonRows.map(r => ({ label: r.label, value: r.guncel, color: r.color }))
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 px-4 py-4 h-full">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Dağılım</p>
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
-          <button onClick={() => setMod('grup')}
-            className={`px-2.5 py-1 transition-colors ${mod === 'grup' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-            Grup
-          </button>
-          <button onClick={() => setMod('fon')}
-            className={`px-2.5 py-1 transition-colors ${mod === 'fon' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-            Fon
-          </button>
-        </div>
-      </div>
-
-      <div className="flex gap-4 items-center">
-        {/* Donut güncel dağılım */}
-        <div className="shrink-0">
-          <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-            {donutPaths}
-            {labelEls}
-            <text x={CX} y={CY - 5} textAnchor="middle" fontSize="9" fill="#94a3b8">güncel</text>
-            <text x={CX} y={CY + 7} textAnchor="middle" fontSize="9" fill="#94a3b8">dağılım</text>
-          </svg>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Dağılım</p>
+      <div className="flex gap-4 items-start">
+        {/* Grup donut */}
+        <div className="flex flex-col items-center gap-0.5 shrink-0">
+          {buildDonut(grupSegments, 'grup')}
+          <p className="text-xs text-slate-400">Varlık Grubu</p>
         </div>
 
-        {/* Tablo: maliyet → güncel karşılaştırma */}
-        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-          {rows.map(r => {
-            const mp = totalMaliyet > 0 ? r.maliyet / totalMaliyet * 100 : 0
-            const gp = totalGuncel > 0 ? r.guncel / totalGuncel * 100 : 0
+        {/* Fon donut */}
+        <div className="flex flex-col items-center gap-0.5 shrink-0">
+          {buildDonut(fonSegments, 'fon')}
+          <p className="text-xs text-slate-400">Fon</p>
+        </div>
+
+        {/* Grup karşılaştırma tablosu */}
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5 self-center">
+          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 mb-1">
+            <span className="text-xs text-slate-400">Grup</span>
+            <span className="text-xs text-slate-400 text-right">Alış</span>
+            <span className="text-xs text-slate-400 text-right">Güncel</span>
+            <span className="text-xs text-slate-400 text-right">Δ</span>
+          </div>
+          {grupRows.map(r => {
+            const mp = totalGrupMaliyet > 0 ? r.maliyet / totalGrupMaliyet * 100 : 0
+            const gp = totalGrupGuncel > 0 ? r.guncel / totalGrupGuncel * 100 : 0
             const diff = gp - mp
             return (
-              <div key={r.label} className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-                <span className="text-xs text-slate-600 truncate w-28">{r.label}</span>
-                <span className="text-xs text-slate-400 w-10 text-right shrink-0">{mp.toFixed(1)}%</span>
-                <span className="text-slate-300 text-xs shrink-0">→</span>
-                <span className="text-xs font-semibold text-slate-700 w-10 text-right shrink-0">{gp.toFixed(1)}%</span>
-                <span className={`text-xs font-medium w-12 text-right shrink-0 ${Math.abs(diff) < 0.5 ? 'text-slate-300' : diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                  {Math.abs(diff) < 0.5 ? '' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp`}
+              <div key={r.label} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 items-center">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+                  <span className="text-xs text-slate-600 truncate">{r.label}</span>
+                </div>
+                <span className="text-xs text-slate-400 text-right">{mp.toFixed(1)}%</span>
+                <span className="text-xs font-semibold text-slate-700 text-right">{gp.toFixed(1)}%</span>
+                <span className={`text-xs font-medium text-right ${Math.abs(diff) < 0.5 ? 'text-slate-300' : diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                  {Math.abs(diff) < 0.5 ? '—' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp`}
                 </span>
               </div>
             )
@@ -214,6 +214,8 @@ function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
       </div>
     </div>
   )
+
+  void totalFonGuncel
 }
 
 function IslemSatir({ islem }: { islem: Islem }) {
@@ -597,7 +599,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                     <p className={`text-xs ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</p>
                   </div>
                   <div className={`rounded-xl border px-4 py-3 ${ptGunlukKazanc >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
-                    <p className="text-xs text-slate-400 mb-0.5">Bugün</p>
+                    <p className="text-xs text-slate-400 mb-0.5">Günlük Getiri</p>
                     <p className={`text-sm font-bold ${ptGunlukKazanc >= 0 ? 'text-blue-700' : 'text-orange-600'}`}>
                       {ptGunlukKazanc >= 0 ? '+' : ''}{fmt(ptGunlukKazanc)} ₺
                     </p>
