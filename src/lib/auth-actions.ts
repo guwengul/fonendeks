@@ -57,6 +57,16 @@ export async function portfoyIslemEkle(data: {
   return error ? { hata: error.message } : { ok: true }
 }
 
+export async function portfoyIslemGuncelle(id: string, adet: number) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Giriş gerekli' }
+  if (adet <= 0) return { hata: 'Adet sıfırdan büyük olmalı' }
+  const { error } = await supabase.from('tefas_portfoy_islem')
+    .update({ adet }).eq('id', id).eq('user_id', user.id)
+  return error ? { hata: error.message } : { ok: true }
+}
+
 export async function portfoyIslemSil(id: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
