@@ -493,7 +493,8 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
                   </td>
                 ))}
               </tr>
-            ))}
+          )
+        })}
           </tbody>
         </table>
       </div>
