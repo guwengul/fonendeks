@@ -355,7 +355,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
           {(['TL', 'USD'] as const).map(pb => (
             <button key={pb} onClick={() => setParaBirimi(pb)}
               className={`px-4 py-2.5 font-medium transition-colors ${paraBirimi === pb ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
-              {pb}
+              Getiri {pb}
             </button>
           ))}
         </div>
