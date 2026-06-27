@@ -208,7 +208,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
   const [dovizMod, setDovizMod] = useState<'tumu' | 'haric' | 'sadece'>('tumu')
   const [filtrePaneli, setFiltrePaneli] = useState(false)
   const [paraBirimi, setParaBirimi] = useState<'TL' | 'USD'>('TL')
-  const [siraKey, setSiraKey] = useState<SiraKey>('portfoyBuyukluk')
+  const [siraKey, setSiraKey] = useState<SiraKey>('favori')
   const [siraAsc, setSiraAsc] = useState(false)
 
   const kurucuAdMap = new Map<string, string>()
@@ -311,10 +311,13 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
     }
     return true
   }).sort((a, b) => {
-    if (siraKey === 'portfoyBuyukluk' && !siraAsc) {
+    if (siraKey === 'favori') {
       const aFav = favoriler.has(`${a.fonKodu}::${a.fonTipi}`) ? 0 : 1
       const bFav = favoriler.has(`${b.fonKodu}::${b.fonTipi}`) ? 0 : 1
-      if (aFav !== bFav) return aFav - bFav
+      if (aFav !== bFav) return siraAsc ? bFav - aFav : aFav - bFav
+      // Aynı grup içinde portföy büyüklüğüne göre
+      const ap = a.portfoyBuyukluk ?? -1; const bp = b.portfoyBuyukluk ?? -1
+      return bp - ap
     }
 
     let av: number | null, bv: number | null
@@ -463,7 +466,14 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-20 bg-slate-50">
             <tr className="border-b border-slate-100 text-slate-500 text-left">
-              <th className="px-4 py-2 font-medium sticky left-0 bg-slate-50 z-30 w-[90px]">Kod</th>
+              <th className="px-4 py-2 font-medium sticky left-0 bg-slate-50 z-30 w-[90px]">
+                <button onClick={() => handleSira('favori')} title="Favorilere göre sırala"
+                  className={`transition-colors ${siraKey === 'favori' ? 'text-amber-400' : 'text-slate-300 hover:text-amber-300'}`}>
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                </button>
+              </th>
               <ThBtn col="fiyat" label="Fiyat" title="Birim pay fiyatı (son işlem günü)" />
               <ThBtn col="portfoyBuyukluk" label="Portföy" title="Portföy büyüklüğü (₺)" />
               <ThBtn col="kisiSayisi" label="Yatırımcı" title="Yatırımcı sayısı" />
