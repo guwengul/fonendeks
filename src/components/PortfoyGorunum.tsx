@@ -520,7 +520,6 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
             <span className="font-semibold text-slate-800">{portfoy.ad}</span>
             {pislemler.length > 0 && !acik && (
               <span className="flex items-center gap-3 ml-1">
-                <span className="text-slate-600 text-xs font-medium">{fmt(ptGuncel)} ₺</span>
                 <span className={`text-sm font-bold ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</span>
               </span>
             )}
