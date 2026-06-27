@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { fetchFonlar } from '@/lib/fon-data'
 import { FavoriKartlar } from '@/components/FavoriKartlar'
@@ -30,11 +31,43 @@ export default async function FavorilerPage() {
   const { fonlar } = await fetchFonlar({ fonKodlari })
   const fonMap = new Map(fonlar.map((f: any) => [`${f.fonKodu}::${f.fonTipi}`, f]))
 
+  // 1 ay önceki yatırımcı sayılarını çek
+  const admin = createAdminClient()
+  const sonTarih: string = (fonlar[0] as any)?.tarih ?? ''
+  const birAyOnce = sonTarih ? (() => {
+    const d = new Date(sonTarih); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10)
+  })() : ''
+
+  const kisiEskiMap = new Map<string, number>()
+  if (birAyOnce && fonKodlari.length) {
+    const { data: eskiVeriler } = await admin
+      .from('tefas_fon_verileri')
+      .select('fonKodu, fonTipi, kisiSayisi')
+      .in('fonKodu', fonKodlari)
+      .lte('tarih', birAyOnce)
+      .order('tarih', { ascending: false })
+
+    // Her fon için en yakın tarihi al
+    const goruldu = new Set<string>()
+    for (const r of eskiVeriler ?? []) {
+      const key = `${r.fonKodu}::${r.fonTipi}`
+      if (!goruldu.has(key) && r.kisiSayisi != null) {
+        kisiEskiMap.set(key, r.kisiSayisi)
+        goruldu.add(key)
+      }
+    }
+  }
+
   const kartlar = (favoriler ?? []).map((fav: any) => {
-    const fon = fonMap.get(`${fav.fonKodu}::${fav.fonTipi}`) as any
+    const key = `${fav.fonKodu}::${fav.fonTipi}`
+    const fon = fonMap.get(key) as any
     const eklemeFiyati = fav.ekleme_fiyati ?? null
     const degisim = eklemeFiyati && fon?.fiyat
       ? ((fon.fiyat - eklemeFiyati) / eklemeFiyati) * 100 : null
+    const kisiSon = fon?.kisiSayisi ?? null
+    const kisiEski = kisiEskiMap.get(key) ?? null
+    const kisiDegisim = kisiSon != null && kisiEski != null ? kisiSon - kisiEski : null
+
     return {
       fonKodu: fav.fonKodu,
       fonTipi: fav.fonTipi,
@@ -47,6 +80,8 @@ export default async function FavorilerPage() {
       yonetimUcreti: fon?.yonetimUcreti ?? null,
       stopaj: fon?.stopaj ?? null,
       portfoyBuyukluk: fon?.portfoyBuyukluk ?? null,
+      kisiSayisi: kisiSon,
+      kisiDegisim1a: kisiDegisim,
       getiriler: fon?.getiriler ?? {},
     }
   })
