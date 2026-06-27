@@ -15,14 +15,14 @@ const VARLIK_GRUPLARI = [
 ]
 
 export const RENKLER = [
-  { key: 'blue',    ring: 'ring-blue-400',    dot: 'bg-blue-400' },
-  { key: 'emerald', ring: 'ring-emerald-400',  dot: 'bg-emerald-400' },
-  { key: 'violet',  ring: 'ring-violet-400',   dot: 'bg-violet-400' },
-  { key: 'orange',  ring: 'ring-orange-400',   dot: 'bg-orange-400' },
-  { key: 'pink',    ring: 'ring-pink-400',     dot: 'bg-pink-400' },
-  { key: 'amber',   ring: 'ring-amber-400',    dot: 'bg-amber-400' },
-  { key: 'teal',    ring: 'ring-teal-400',     dot: 'bg-teal-400' },
-  { key: 'rose',    ring: 'ring-rose-400',     dot: 'bg-rose-400' },
+  { key: 'blue',    hex: '#60a5fa' },
+  { key: 'emerald', hex: '#34d399' },
+  { key: 'violet',  hex: '#a78bfa' },
+  { key: 'orange',  hex: '#fb923c' },
+  { key: 'pink',    hex: '#f472b6' },
+  { key: 'amber',   hex: '#fbbf24' },
+  { key: 'teal',    hex: '#2dd4bf' },
+  { key: 'rose',    hex: '#fb7185' },
 ]
 
 export function renkBul(key: string) {
@@ -104,7 +104,7 @@ export function FonEkleForm({
 
       {/* Portföy — bilgi olarak */}
       <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${r.dot}`} />
+        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: r.hex }} />
         <span className="text-sm font-semibold text-slate-700">{portfoy.ad}</span>
       </div>
 
@@ -271,7 +271,8 @@ export function PortfoyEkleForm({
           <div className="flex gap-2">
             {RENKLER.map(r => (
               <button key={r.key} type="button" onClick={() => setRenk(r.key)}
-                className={`w-7 h-7 rounded-full ${r.dot} transition-all ${renk === r.key ? `ring-2 ring-offset-2 ${r.ring}` : 'opacity-50 hover:opacity-80'}`} />
+                style={{ backgroundColor: r.hex, outline: renk === r.key ? `3px solid ${r.hex}` : 'none', outlineOffset: '3px', opacity: renk === r.key ? 1 : 0.4 }}
+                  className="w-7 h-7 rounded-full transition-all hover:opacity-100" />
             ))}
           </div>
         </div>
@@ -309,7 +310,8 @@ export function PortfoyEkleForm({
             <div className="flex gap-2">
               {RENKLER.map(r => (
                 <button key={r.key} type="button" onClick={() => setRenk(r.key)}
-                  className={`w-7 h-7 rounded-full ${r.dot} transition-all ${renk === r.key ? `ring-2 ring-offset-2 ${r.ring}` : 'opacity-50 hover:opacity-80'}`} />
+                  style={{ backgroundColor: r.hex, outline: renk === r.key ? `3px solid ${r.hex}` : 'none', outlineOffset: '3px', opacity: renk === r.key ? 1 : 0.4 }}
+                  className="w-7 h-7 rounded-full transition-all hover:opacity-100" />
               ))}
             </div>
           </div>

@@ -211,7 +211,7 @@ function PortfoySection({ portfoy, pislemler }: { portfoy: Portfoy; pislemler: I
     <div>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
-          <span className={`w-3 h-3 rounded-full shrink-0 ${renkBul(portfoy.renk ?? 'blue').dot}`} />
+          <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: renkBul(portfoy.renk ?? 'blue').hex }} />
           <h2 className="text-lg font-bold text-slate-800">{portfoy.ad}</h2>
           {pislemler.length > 0 && (
             <div className="flex items-center gap-3 ml-2">
