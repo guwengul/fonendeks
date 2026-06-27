@@ -372,8 +372,20 @@ function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyR
   const [tarihce, setTarihce] = useState<{ tarih: string; deger: number }[]>([])
   const [usdSeri, setUsdSeri] = useState<{ tarih: string; deger: number }[]>([])
   const [yukleniyor, setYukleniyor] = useState(true)
-  const [hover, setHover] = useState<{ ix: number; svgX: number } | null>(null)
-  const svgRef = useRef<SVGSVGElement>(null)
+  const [hoverIx, setHoverIx] = useState<number | null>(null)
+  const [svgW, setSvgW] = useState(600)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+    const obs = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width
+      if (w) setSvgW(Math.floor(w))
+    })
+    obs.observe(containerRef.current)
+    setSvgW(Math.floor(containerRef.current.clientWidth))
+    return () => obs.disconnect()
+  }, [])
 
   useEffect(() => {
     setYukleniyor(true)
@@ -387,184 +399,193 @@ function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyR
       .catch(() => setYukleniyor(false))
   }, [portfoyId, gun])
 
-  if (yukleniyor) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 h-[180px] flex items-center justify-center">
-        <span className="text-xs text-slate-400">Yükleniyor...</span>
-      </div>
-    )
-  }
+  const H = 160
+  const PAD = { top: 12, right: 12, bottom: 24, left: 54 }
 
-  if (!tarihce.length) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 h-[180px] flex items-center justify-center">
-        <span className="text-xs text-slate-400">Geçmiş veri bulunamadı.</span>
-      </div>
-    )
-  }
+  const inner = { w: svgW - PAD.left - PAD.right, h: H - PAD.top - PAD.bottom }
 
-  // SVG dimensions
-  const W = 600, H = 160
-  const PAD = { top: 10, right: 12, bottom: 28, left: 56 }
-  const innerW = W - PAD.left - PAD.right
-  const innerH = H - PAD.top - PAD.bottom
-
-  // USD normalize: at first matching date, set equal to portfolio start
   const usdMap = new Map(usdSeri.map(u => [u.tarih, u.deger]))
-  const ilkTarih = tarihce[0].tarih
-  const usdBaslangic = usdMap.get(ilkTarih) ?? (usdSeri[0]?.deger ?? null)
-  const ptBaslangic = tarihce[0].deger
+  const ptBaslangic = tarihce[0]?.deger ?? 0
+  const usdBaslangic = tarihce[0] ? (usdMap.get(tarihce[0].tarih) ?? usdSeri[0]?.deger ?? null) : null
 
-  // Normalized USD points aligned to tarihce dates
-  const usdPoints: ({ tarih: string; deger: number } | null)[] = tarihce.map(pt => {
+  const usdPoints: (number | null)[] = tarihce.map(pt => {
     const u = usdMap.get(pt.tarih)
-    if (!u || !usdBaslangic) return null
-    return { tarih: pt.tarih, deger: ptBaslangic * (u / usdBaslangic) }
+    if (!u || !usdBaslangic || ptBaslangic === 0) return null
+    return ptBaslangic * (u / usdBaslangic)
   })
 
-  const allValues = [
-    ...tarihce.map(p => p.deger),
-    ...usdPoints.filter(Boolean).map(p => p!.deger),
-  ]
+  const allValues = tarihce.length
+    ? [...tarihce.map(p => p.deger), ...usdPoints.filter((v): v is number => v !== null)]
+    : [0]
   const minVal = Math.min(...allValues)
   const maxVal = Math.max(...allValues)
   const range = maxVal - minVal || 1
 
-  function xOf(i: number) { return PAD.left + (i / Math.max(tarihce.length - 1, 1)) * innerW }
-  function yOf(v: number) { return PAD.top + (1 - (v - minVal) / range) * innerH }
-
-  const tlPts = tarihce.map((p, i) => `${xOf(i)},${yOf(p.deger)}`).join(' ')
-
-  const usdLineSegs: string[] = []
-  let curSeg: string[] = []
-  usdPoints.forEach((p, i) => {
-    if (p) {
-      curSeg.push(`${xOf(i)},${yOf(p.deger)}`)
-    } else if (curSeg.length) {
-      usdLineSegs.push(curSeg.join(' '))
-      curSeg = []
-    }
-  })
-  if (curSeg.length) usdLineSegs.push(curSeg.join(' '))
-
-  // Hover data
-  const hoverPt = hover != null ? tarihce[hover.ix] : null
-  const hoverUsd = hover != null ? usdPoints[hover.ix] : null
-  const hoverX = hover != null ? xOf(hover.ix) : null
-  const hoverY = hoverPt ? yOf(hoverPt.deger) : null
-
-  // Y axis labels
-  const yTicks = [minVal, minVal + range * 0.5, maxVal].map(v => ({
-    y: yOf(v),
-    label: Math.abs(v) >= 1_000_000 ? (v / 1_000_000).toFixed(1) + 'M' : Math.abs(v) >= 1_000 ? (v / 1_000).toFixed(0) + 'K' : v.toFixed(0),
-  }))
-
-  // X axis: first, middle, last
-  const xTicks = [0, Math.floor((tarihce.length - 1) / 2), tarihce.length - 1].filter((v, i, a) => a.indexOf(v) === i).map(i => ({
-    x: xOf(i), label: tarihce[i].tarih.slice(5),
-  }))
-
-  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
-    const rect = svgRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const svgX = ((e.clientX - rect.left) / rect.width) * W
-    const relX = svgX - PAD.left
-    const ix = Math.round((relX / innerW) * (tarihce.length - 1))
-    const clamped = Math.max(0, Math.min(tarihce.length - 1, ix))
-    setHover({ ix: clamped, svgX: xOf(clamped) })
-  }
+  function xOf(i: number) { return PAD.left + (i / Math.max(tarihce.length - 1, 1)) * inner.w }
+  function yOf(v: number) { return PAD.top + (1 - (v - minVal) / range) * inner.h }
 
   const son = tarihce[tarihce.length - 1]
   const ilk = tarihce[0]
-  const toplamDegisim = ((son.deger - ilk.deger) / ilk.deger) * 100
+  const toplamDegisim = ilk && son ? ((son.deger - ilk.deger) / ilk.deger) * 100 : 0
+
+  const tlPts = tarihce.map((p, i) => `${xOf(i).toFixed(1)},${yOf(p.deger).toFixed(1)}`).join(' ')
+
+  // Build USD segments (skip nulls)
+  const usdSegs: string[][] = []
+  let curSeg: string[] = []
+  usdPoints.forEach((v, i) => {
+    if (v !== null) {
+      curSeg.push(`${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`)
+    } else if (curSeg.length) {
+      usdSegs.push(curSeg); curSeg = []
+    }
+  })
+  if (curSeg.length) usdSegs.push(curSeg)
+
+  const yTicks = [minVal, minVal + range / 2, maxVal].map(v => {
+    const label = Math.abs(v) >= 1_000_000 ? (v / 1_000_000).toFixed(1) + 'M'
+      : Math.abs(v) >= 1_000 ? (v / 1_000).toFixed(0) + 'K'
+      : v.toFixed(0)
+    return { y: yOf(v), label }
+  })
+
+  const xTickIdxs = tarihce.length > 2
+    ? [0, Math.floor((tarihce.length - 1) / 2), tarihce.length - 1]
+    : [0, tarihce.length - 1].filter(i => i < tarihce.length)
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const px = e.clientX - rect.left - PAD.left
+    const ix = Math.round((px / inner.w) * (tarihce.length - 1))
+    setHoverIx(Math.max(0, Math.min(tarihce.length - 1, ix)))
+  }
+
+  const hPt = hoverIx != null ? tarihce[hoverIx] : null
+  const hUsdV = hoverIx != null ? usdPoints[hoverIx] : null
+  const hX = hoverIx != null ? xOf(hoverIx) : null
+  const hY = hPt ? yOf(hPt.deger) : null
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Performans</span>
-          <span className={`text-xs font-semibold ${toplamDegisim >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {toplamDegisim >= 0 ? '+' : ''}{toplamDegisim.toFixed(2)}%
-          </span>
+          {!yukleniyor && tarihce.length > 0 && (
+            <span className={`text-xs font-bold ${toplamDegisim >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              {toplamDegisim >= 0 ? '+' : ''}{toplamDegisim.toFixed(2)}%
+            </span>
+          )}
           {usdSeri.length > 0 && (
-            <span className="flex items-center gap-1 text-xs text-slate-400">
-              <span className="w-4 border-t-2 border-dashed border-slate-300 inline-block" />
-              USD
+            <span className="flex items-center gap-1.5 text-xs text-slate-400">
+              <svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 2" /></svg>
+              USD karşılaştırma
             </span>
           )}
         </div>
         <div className="flex gap-1">
           {GUN_SECENEKLERI.map(s => (
             <button key={s.gun} onClick={() => setGun(s.gun)}
-              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${gun === s.gun ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-700'}`}>
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${gun === s.gun ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'}`}>
               {s.label}
             </button>
           ))}
         </div>
       </div>
 
-      <svg ref={svgRef} width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
-        onMouseMove={handleMouseMove} onMouseLeave={() => setHover(null)}
-        style={{ cursor: 'crosshair', display: 'block' }}>
+      <div ref={containerRef} style={{ width: '100%' }}>
+        {yukleniyor ? (
+          <div style={{ height: H }} className="flex items-center justify-center">
+            <span className="text-xs text-slate-400">Yükleniyor...</span>
+          </div>
+        ) : !tarihce.length ? (
+          <div style={{ height: H }} className="flex items-center justify-center">
+            <span className="text-xs text-slate-400">Geçmiş veri bulunamadı.</span>
+          </div>
+        ) : (
+          <svg width={svgW} height={H}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setHoverIx(null)}
+            style={{ cursor: 'crosshair', display: 'block', overflow: 'visible' }}>
 
-        {/* Y gridlines */}
-        {yTicks.map((t, i) => (
-          <line key={i} x1={PAD.left} y1={t.y} x2={W - PAD.right} y2={t.y}
-            stroke="#f1f5f9" strokeWidth={1} />
-        ))}
+            {/* Gridlines */}
+            {yTicks.map((t, i) => (
+              <line key={i} x1={PAD.left} y1={t.y} x2={svgW - PAD.right} y2={t.y}
+                stroke="#f1f5f9" strokeWidth={1} />
+            ))}
 
-        {/* USD dashed line */}
-        {usdLineSegs.map((pts, i) => (
-          <polyline key={i} points={pts} fill="none" stroke="#94a3b8" strokeWidth={1.5}
-            strokeDasharray="4 3" />
-        ))}
+            {/* USD dashed overlay */}
+            {usdSegs.map((seg, i) => (
+              <polyline key={i} points={seg.join(' ')} fill="none" stroke="#cbd5e1"
+                strokeWidth={1.5} strokeDasharray="4 3" />
+            ))}
 
-        {/* TL line */}
-        <polyline points={tlPts} fill="none" stroke={portfoyRenk} strokeWidth={2} />
-
-        {/* Hover */}
-        {hover != null && hoverX != null && hoverY != null && hoverPt && (
-          <>
-            <line x1={hoverX} y1={PAD.top} x2={hoverX} y2={H - PAD.bottom}
-              stroke="#e2e8f0" strokeWidth={1} />
-            <circle cx={hoverX} cy={hoverY} r={4} fill={portfoyRenk} stroke="white" strokeWidth={2} />
-            {hoverUsd && (
-              <circle cx={hoverX} cy={yOf(hoverUsd.deger)} r={3} fill="#94a3b8" stroke="white" strokeWidth={1.5} />
-            )}
-            {/* Tooltip box */}
-            {(() => {
-              const tx = hoverX > W * 0.7 ? hoverX - 120 : hoverX + 10
-              const ty = Math.max(PAD.top, Math.min(H - PAD.bottom - 52, hoverY - 26))
-              const usdVal = usdMap.get(hoverPt.tarih)
-              return (
-                <g>
-                  <rect x={tx} y={ty} width={110} height={hoverUsd ? 52 : 38} rx={5}
-                    fill="white" stroke="#e2e8f0" strokeWidth={1} />
-                  <text x={tx + 7} y={ty + 13} fontSize={9} fill="#94a3b8">{hoverPt.tarih}</text>
-                  <text x={tx + 7} y={ty + 27} fontSize={10} fontWeight="600" fill="#1e293b">
-                    {hoverPt.deger >= 1_000_000 ? (hoverPt.deger / 1_000_000).toFixed(2) + 'M' : hoverPt.deger >= 1_000 ? (hoverPt.deger / 1_000).toFixed(1) + 'K' : hoverPt.deger.toFixed(0)} ₺
-                  </text>
-                  {hoverUsd && usdVal && (
-                    <text x={tx + 7} y={ty + 43} fontSize={9} fill="#64748b">
-                      {`USD/TRY: ${usdVal.toFixed(2)}`}
-                    </text>
-                  )}
-                </g>
-              )
+            {/* TL area fill */}
+            {tarihce.length > 1 && (() => {
+              const bottom = PAD.top + inner.h
+              const areaPath = `M${xOf(0)},${bottom} ` +
+                tarihce.map((p, i) => `L${xOf(i).toFixed(1)},${yOf(p.deger).toFixed(1)}`).join(' ') +
+                ` L${xOf(tarihce.length - 1)},${bottom} Z`
+              return <path d={areaPath} fill={portfoyRenk} fillOpacity={0.07} />
             })()}
-          </>
+
+            {/* TL line */}
+            <polyline points={tlPts} fill="none" stroke={portfoyRenk} strokeWidth={2} />
+
+            {/* Y labels */}
+            {yTicks.map((t, i) => (
+              <text key={i} x={PAD.left - 6} y={t.y + 4} fontSize={10} fill="#94a3b8" textAnchor="end"
+                fontFamily="system-ui, sans-serif">
+                {t.label}
+              </text>
+            ))}
+
+            {/* X labels */}
+            {xTickIdxs.map(i => (
+              <text key={i} x={xOf(i)} y={H - 6} fontSize={10} fill="#94a3b8" textAnchor="middle"
+                fontFamily="system-ui, sans-serif">
+                {tarihce[i].tarih.slice(5)}
+              </text>
+            ))}
+
+            {/* Hover */}
+            {hoverIx != null && hX != null && hY != null && hPt && (
+              <>
+                <line x1={hX} y1={PAD.top} x2={hX} y2={PAD.top + inner.h}
+                  stroke="#e2e8f0" strokeWidth={1} />
+                <circle cx={hX} cy={hY} r={4} fill={portfoyRenk} stroke="white" strokeWidth={2} />
+                {hUsdV !== null && (
+                  <circle cx={hX} cy={yOf(hUsdV)} r={3} fill="#94a3b8" stroke="white" strokeWidth={1.5} />
+                )}
+                {(() => {
+                  const bx = hX > svgW * 0.65 ? hX - 126 : hX + 10
+                  const by = Math.max(PAD.top, Math.min(PAD.top + inner.h - 56, hY - 28))
+                  const boxH = hUsdV !== null ? 56 : 42
+                  const fmtV = (v: number) => v >= 1_000_000 ? (v / 1_000_000).toFixed(2) + 'M'
+                    : v >= 1_000 ? (v / 1_000).toFixed(1) + 'K'
+                    : v.toFixed(0)
+                  return (
+                    <g>
+                      <rect x={bx} y={by} width={116} height={boxH} rx={6}
+                        fill="white" stroke="#e2e8f0" strokeWidth={1}
+                        style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.08))' }} />
+                      <text x={bx + 8} y={by + 14} fontSize={10} fill="#94a3b8"
+                        fontFamily="system-ui, sans-serif">{hPt.tarih}</text>
+                      <text x={bx + 8} y={by + 30} fontSize={11} fontWeight="600" fill="#0f172a"
+                        fontFamily="system-ui, sans-serif">{fmtV(hPt.deger)} ₺</text>
+                      {hUsdV !== null && (
+                        <text x={bx + 8} y={by + 46} fontSize={10} fill="#64748b"
+                          fontFamily="system-ui, sans-serif">
+                          {`USD ref: ${fmtV(hUsdV)} ₺`}
+                        </text>
+                      )}
+                    </g>
+                  )
+                })()}
+              </>
+            )}
+          </svg>
         )}
-
-        {/* Y axis labels */}
-        {yTicks.map((t, i) => (
-          <text key={i} x={PAD.left - 4} y={t.y + 3} fontSize={8} fill="#94a3b8" textAnchor="end">{t.label}</text>
-        ))}
-
-        {/* X axis labels */}
-        {xTicks.map((t, i) => (
-          <text key={i} x={t.x} y={H - 6} fontSize={8} fill="#94a3b8" textAnchor="middle">{t.label}</text>
-        ))}
-      </svg>
+      </div>
     </div>
   )
 }
