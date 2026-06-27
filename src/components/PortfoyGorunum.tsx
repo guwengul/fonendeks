@@ -126,11 +126,11 @@ function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
   }))
 
   // SVG dumbbell chart
-  const W = 340
-  const ROW_H = 28
-  const LABEL_W = 100
-  const CHART_W = W - LABEL_W - 40 // 40 = sağ taraf delta metni
-  const H = data.length * ROW_H + 24 // +24 axis
+  const W = 280
+  const ROW_H = 20
+  const LABEL_W = 88
+  const CHART_W = W - LABEL_W - 36
+  const H = data.length * ROW_H + 16
   const maxPct = Math.ceil(Math.max(...data.map(d => Math.max(d.mp, d.gp))) / 10) * 10 || 100
 
   function xPos(pct: number) {
@@ -169,9 +169,9 @@ function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
         {/* Axis gridlines */}
         {[0, 25, 50, 75, 100].filter(v => v <= maxPct).map(v => (
           <g key={v}>
-            <line x1={xPos(v)} y1={0} x2={xPos(v)} y2={H - 20}
+            <line x1={xPos(v)} y1={0} x2={xPos(v)} y2={H - 14}
               stroke="#f1f5f9" strokeWidth={1} />
-            <text x={xPos(v)} y={H - 6} textAnchor="middle" fontSize="8" fill="#cbd5e1">{v}%</text>
+            <text x={xPos(v)} y={H - 4} textAnchor="middle" fontSize="7" fill="#cbd5e1">{v}%</text>
           </g>
         ))}
 
@@ -188,7 +188,7 @@ function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
             <g key={d.label}>
               {/* Label */}
               <text x={LABEL_W - 6} y={y + 1} textAnchor="end" dominantBaseline="middle"
-                fontSize="10" fill="#475569">
+                fontSize="9" fill="#475569">
                 {d.label.length > 12 ? d.label.slice(0, 11) + '…' : d.label}
               </text>
 
