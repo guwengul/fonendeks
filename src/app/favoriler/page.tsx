@@ -12,7 +12,7 @@ export default async function FavorilerPage() {
 
   const { data: favoriler } = await supabase
     .from('tefas_favoriler')
-    .select('fonKodu')
+    .select('fonKodu, fonTipi, ekleme_fiyati, ekleme_tarihi')
     .eq('user_id', user.id)
 
   const fonKodlari = (favoriler ?? []).map((f: any) => f.fonKodu)
@@ -26,12 +26,20 @@ export default async function FavorilerPage() {
     )
   }
 
+  const favoriMeta: Record<string, { eklemeFiyati: number | null; eklemeTarihi: string | null }> = {}
+  for (const f of favoriler ?? []) {
+    favoriMeta[`${f.fonKodu}::${f.fonTipi}`] = {
+      eklemeFiyati: f.ekleme_fiyati ?? null,
+      eklemeTarihi: f.ekleme_tarihi ?? null,
+    }
+  }
+
   const { fonlar, kurucular, fonTurleri } = await fetchFonlar({ fonKodlari })
 
   return (
     <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
       <h1 className="text-2xl font-bold text-slate-900 mb-6">Favorilerim</h1>
-      <FonListesi fonlar={fonlar} kurucular={kurucular} fonTurleri={fonTurleri} girisYapildi={true} basit={true} />
+      <FonListesi fonlar={fonlar} kurucular={kurucular} fonTurleri={fonTurleri} girisYapildi={true} basit={true} favoriMeta={favoriMeta} />
     </div>
   )
 }

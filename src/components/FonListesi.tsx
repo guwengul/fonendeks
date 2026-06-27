@@ -161,8 +161,10 @@ function toggle(set: Set<string>, val: string): Set<string> {
 
 type SiraKey = 'portfoyBuyukluk' | 'kisiSayisi' | 'fiyat' | string
 
-export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi = false, basit = false }: {
-  fonlar: Fon[]; kurucular: string[]; fonTurleri: string[]; girisYapildi?: boolean; basit?: boolean
+type FavoriMeta = Record<string, { eklemeFiyati: number | null; eklemeTarihi: string | null }>
+
+export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi = false, basit = false, favoriMeta }: {
+  fonlar: Fon[]; kurucular: string[]; fonTurleri: string[]; girisYapildi?: boolean; basit?: boolean; favoriMeta?: FavoriMeta
 }) {
   const [arama, setArama] = useState('')
   const [favoriler, setFavoriler] = useState<Set<string>>(new Set())
@@ -498,15 +500,30 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
                 </td>
                 <td className={`px-3 text-right ${basit ? 'py-2.5 align-top' : 'py-2'}`}>
                   <p className="text-sm text-slate-600">{f.fiyat != null ? f.fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '-'}</p>
-                  {basit && f.riskDegeri != null && <p className="text-xs text-slate-400 mt-0.5">Risk {f.riskDegeri}</p>}
+                  {basit && (() => {
+                    const meta = favoriMeta?.[`${f.fonKodu}::${f.fonTipi}`]
+                    if (!meta?.eklemeFiyati || !f.fiyat) return null
+                    const degisim = ((f.fiyat - meta.eklemeFiyati) / meta.eklemeFiyati) * 100
+                    return (
+                      <p className={`text-xs mt-0.5 font-medium ${degisim >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {degisim >= 0 ? '+' : ''}{degisim.toFixed(2)}% eklemeden
+                      </p>
+                    )
+                  })()}
                 </td>
                 <td className={`px-3 text-right ${basit ? 'py-2.5 align-top' : 'py-2'}`}>
                   <p className="text-sm text-slate-500">{fmt(f.portfoyBuyukluk)}</p>
-                  {basit && f.yonetimUcreti != null && <p className="text-xs text-slate-400 mt-0.5">%{f.yonetimUcreti} ücret</p>}
+                  {basit && (() => {
+                    const meta = favoriMeta?.[`${f.fonKodu}::${f.fonTipi}`]
+                    if (!meta?.eklemeTarihi) return null
+                    return <p className="text-xs text-slate-400 mt-0.5">{new Date(meta.eklemeTarihi).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  })()}
                 </td>
                 <td className={`px-3 text-right ${basit ? 'py-2.5 align-top' : 'py-2'}`}>
                   <p className="text-sm text-slate-500">{f.kisiSayisi?.toLocaleString('tr-TR') ?? '-'}</p>
-                  {basit && f.stopaj === 0 && <p className="text-xs text-emerald-500 mt-0.5">Vergisiz</p>}
+                  {basit && favoriMeta?.[`${f.fonKodu}::${f.fonTipi}`]?.eklemeFiyati != null && (
+                    <p className="text-xs text-slate-400 mt-0.5">{favoriMeta[`${f.fonKodu}::${f.fonTipi}`].eklemeFiyati?.toFixed(4)} alış</p>
+                  )}
                 </td>
                 {DONEMLER.map(d => (
                   <td key={d.key} className={`px-3 text-right ${basit ? 'py-2.5 align-top' : 'py-2'}`}>
