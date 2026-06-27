@@ -309,6 +309,10 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
     }
     return true
   }).sort((a, b) => {
+    const aFav = favoriler.has(`${a.fonKodu}::${a.fonTipi}`) ? 0 : 1
+    const bFav = favoriler.has(`${b.fonKodu}::${b.fonTipi}`) ? 0 : 1
+    if (aFav !== bFav) return aFav - bFav
+
     let av: number | null, bv: number | null
     if (DONEMLER.find(d => d.key === siraKey)) {
       const src = paraBirimi === 'USD' ? 'getirilerUsd' : 'getiriler'
