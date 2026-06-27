@@ -91,57 +91,10 @@ function DonutChart({ segments, size = 80 }: {
   )
 }
 
-function buildDonut(rows: { label: string; value: number; color: string }[], centerLabel: string) {
-  const SIZE = 130
-  const R = 48
-  const CX = SIZE / 2
-  const CY = SIZE / 2
-  const circumference = 2 * Math.PI * R
-  const GAP = 1.5
-  const total = rows.reduce((s, r) => s + r.value, 0)
-
-  let offset = 0
-  const paths: React.ReactNode[] = []
-  const labels: React.ReactNode[] = []
-
-  for (const seg of rows) {
-    const pctVal = total > 0 ? seg.value / total : 0
-    const dash = Math.max(0, circumference * pctVal - GAP)
-    const midAngle = (offset + circumference * pctVal / 2) / circumference * 2 * Math.PI - Math.PI / 2
-    const lx = CX + (R + 13) * Math.cos(midAngle)
-    const ly = CY + (R + 13) * Math.sin(midAngle)
-
-    paths.push(
-      <circle key={seg.label} cx={CX} cy={CY} r={R}
-        fill="none" stroke={seg.color} strokeWidth={15}
-        strokeDasharray={`${dash} ${circumference - dash}`}
-        strokeDashoffset={-(offset - circumference / 4)} />
-    )
-    if (pctVal >= 0.07) {
-      labels.push(
-        <text key={seg.label + '-l'} x={lx} y={ly}
-          textAnchor="middle" dominantBaseline="middle"
-          fontSize="8" fontWeight="700" fill={seg.color}>
-          {(pctVal * 100).toFixed(0)}%
-        </text>
-      )
-    }
-    offset += circumference * pctVal
-  }
-
-  return (
-    <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-      {paths}
-      {labels}
-      <text x={CX} y={CY} textAnchor="middle" dominantBaseline="middle" fontSize="9" fill="#94a3b8">
-        {centerLabel}
-      </text>
-    </svg>
-  )
-}
-
-// Dağılım paneli: grup ve fon donutları yan yana, maliyet→güncel tablo
+// Dumbbell chart — allocation drift görselleştirmesi
 function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
+  const [mod, setMod] = useState<'grup' | 'fon'>('grup')
+
   const grupRows = [...grupMap.entries()].map(([ad, islemler]) => ({
     label: ad,
     color: grupRenk(ad),
@@ -149,73 +102,122 @@ function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
     guncel: islemler.reduce((s, i) => s + (i.guncelFiyat ?? i.fiyat) * i.adet, 0),
   })).filter(r => r.maliyet > 0)
 
-  const fonMap = new Map<string, { label: string; maliyet: number; guncel: number; color: string }>()
+  const fonAcc = new Map<string, { label: string; maliyet: number; guncel: number; color: string }>()
   for (const [grupAd, islemler] of grupMap.entries()) {
     for (const i of islemler) {
       const key = `${i.fonKodu}::${i.fonTipi}`
-      if (!fonMap.has(key)) fonMap.set(key, { label: i.fonKodu, maliyet: 0, guncel: 0, color: grupRenk(grupAd) })
-      const e = fonMap.get(key)!
+      if (!fonAcc.has(key)) fonAcc.set(key, { label: i.fonKodu, maliyet: 0, guncel: 0, color: grupRenk(grupAd) })
+      const e = fonAcc.get(key)!
       e.maliyet += i.fiyat * i.adet
       e.guncel += (i.guncelFiyat ?? i.fiyat) * i.adet
     }
   }
-  const fonRows = [...fonMap.values()].filter(r => r.maliyet > 0)
+  const fonRows = [...fonAcc.values()].filter(r => r.maliyet > 0)
 
-  const totalGrupGuncel = grupRows.reduce((s, r) => s + r.guncel, 0)
-  const totalGrupMaliyet = grupRows.reduce((s, r) => s + r.maliyet, 0)
-  const totalFonGuncel = fonRows.reduce((s, r) => s + r.guncel, 0)
+  const rows = mod === 'grup' ? grupRows : fonRows
+  const totalMaliyet = rows.reduce((s, r) => s + r.maliyet, 0)
+  const totalGuncel = rows.reduce((s, r) => s + r.guncel, 0)
 
-  const grupSegments = grupRows.map(r => ({ label: r.label, value: r.guncel, color: r.color }))
-  const fonSegments = fonRows.map(r => ({ label: r.label, value: r.guncel, color: r.color }))
+  const data = rows.map(r => ({
+    label: r.label,
+    color: r.color,
+    mp: totalMaliyet > 0 ? r.maliyet / totalMaliyet * 100 : 0,
+    gp: totalGuncel > 0 ? r.guncel / totalGuncel * 100 : 0,
+  }))
+
+  // SVG dumbbell chart
+  const W = 340
+  const ROW_H = 28
+  const LABEL_W = 100
+  const CHART_W = W - LABEL_W - 40 // 40 = sağ taraf delta metni
+  const H = data.length * ROW_H + 24 // +24 axis
+  const maxPct = Math.ceil(Math.max(...data.map(d => Math.max(d.mp, d.gp))) / 10) * 10 || 100
+
+  function xPos(pct: number) {
+    return LABEL_W + (pct / maxPct) * CHART_W
+  }
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 px-4 py-4 h-full">
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Dağılım</p>
-      <div className="flex gap-4 items-start">
-        {/* Grup donut */}
-        <div className="flex flex-col items-center gap-0.5 shrink-0">
-          {buildDonut(grupSegments, 'grup')}
-          <p className="text-xs text-slate-400">Varlık Grubu</p>
-        </div>
-
-        {/* Fon donut */}
-        <div className="flex flex-col items-center gap-0.5 shrink-0">
-          {buildDonut(fonSegments, 'fon')}
-          <p className="text-xs text-slate-400">Fon</p>
-        </div>
-
-        {/* Grup karşılaştırma tablosu */}
-        <div className="flex-1 min-w-0 flex flex-col gap-1.5 self-center">
-          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 mb-1">
-            <span className="text-xs text-slate-400">Grup</span>
-            <span className="text-xs text-slate-400 text-right">Alış</span>
-            <span className="text-xs text-slate-400 text-right">Güncel</span>
-            <span className="text-xs text-slate-400 text-right">Δ</span>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Dağılım Kayması</p>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 text-xs text-slate-400">
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-slate-300 bg-white" />
+              Alış
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-700" />
+              Güncel
+            </span>
           </div>
-          {grupRows.map(r => {
-            const mp = totalGrupMaliyet > 0 ? r.maliyet / totalGrupMaliyet * 100 : 0
-            const gp = totalGrupGuncel > 0 ? r.guncel / totalGrupGuncel * 100 : 0
-            const diff = gp - mp
-            return (
-              <div key={r.label} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 items-center">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-                  <span className="text-xs text-slate-600 truncate">{r.label}</span>
-                </div>
-                <span className="text-xs text-slate-400 text-right">{mp.toFixed(1)}%</span>
-                <span className="text-xs font-semibold text-slate-700 text-right">{gp.toFixed(1)}%</span>
-                <span className={`text-xs font-medium text-right ${Math.abs(diff) < 0.5 ? 'text-slate-300' : diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                  {Math.abs(diff) < 0.5 ? '—' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp`}
-                </span>
-              </div>
-            )
-          })}
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
+            <button onClick={() => setMod('grup')}
+              className={`px-2.5 py-1 transition-colors ${mod === 'grup' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+              Grup
+            </button>
+            <button onClick={() => setMod('fon')}
+              className={`px-2.5 py-1 transition-colors ${mod === 'fon' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+              Fon
+            </button>
+          </div>
         </div>
       </div>
+
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
+        {/* Axis gridlines */}
+        {[0, 25, 50, 75, 100].filter(v => v <= maxPct).map(v => (
+          <g key={v}>
+            <line x1={xPos(v)} y1={0} x2={xPos(v)} y2={H - 20}
+              stroke="#f1f5f9" strokeWidth={1} />
+            <text x={xPos(v)} y={H - 6} textAnchor="middle" fontSize="8" fill="#cbd5e1">{v}%</text>
+          </g>
+        ))}
+
+        {/* Rows */}
+        {data.map((d, i) => {
+          const y = i * ROW_H + ROW_H / 2
+          const x1 = xPos(d.mp)
+          const x2 = xPos(d.gp)
+          const diff = d.gp - d.mp
+          const lineColor = Math.abs(diff) < 0.5 ? '#e2e8f0' : diff > 0 ? '#10b981' : '#f87171'
+          const moved = Math.abs(diff) >= 0.5
+
+          return (
+            <g key={d.label}>
+              {/* Label */}
+              <text x={LABEL_W - 6} y={y + 1} textAnchor="end" dominantBaseline="middle"
+                fontSize="10" fill="#475569">
+                {d.label.length > 12 ? d.label.slice(0, 11) + '…' : d.label}
+              </text>
+
+              {/* Connecting line */}
+              {moved && (
+                <line x1={x1} y1={y} x2={x2} y2={y}
+                  stroke={lineColor} strokeWidth={2} strokeLinecap="round" />
+              )}
+
+              {/* Alış dot (hollow) */}
+              <circle cx={x1} cy={y} r={5} fill="white" stroke={d.color} strokeWidth={2} opacity={0.7} />
+
+              {/* Güncel dot (filled) */}
+              <circle cx={x2} cy={y} r={5.5} fill={d.color} />
+
+              {/* Delta label */}
+              {moved && (
+                <text x={W - 2} y={y + 1} textAnchor="end" dominantBaseline="middle"
+                  fontSize="9" fontWeight="600"
+                  fill={diff > 0 ? '#10b981' : '#f87171'}>
+                  {diff > 0 ? '+' : ''}{diff.toFixed(1)}pp
+                </text>
+              )}
+            </g>
+          )
+        })}
+      </svg>
     </div>
   )
-
-  void totalFonGuncel
 }
 
 function IslemSatir({ islem }: { islem: Islem }) {
