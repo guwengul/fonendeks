@@ -73,12 +73,14 @@ export default async function PortfoyPage() {
   })
 
   return (
-    <div className="w-full px-4 sm:px-6 py-8">
-      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-        <h1 className="text-2xl font-bold text-slate-900">Portföyüm</h1>
-        <PortfoyEkleForm portfoyler={portfoyListesi} />
-      </div>
+    <div className="w-full px-4 sm:px-6 py-8 max-w-3xl mx-auto">
+      <h1 className="text-2xl font-bold text-slate-900 mb-8">Portföyüm</h1>
       <PortfoyGorunum portfoyler={portfoyListesi} islemler={islemlerZengin} />
+      {portfoyListesi.length < 3 && (
+        <div className="mt-8 flex justify-center">
+          <PortfoyEkleForm portfoyler={portfoyListesi} />
+        </div>
+      )}
     </div>
   )
 }

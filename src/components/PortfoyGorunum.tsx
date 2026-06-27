@@ -194,12 +194,14 @@ function VarlikGrubuSection({ ad, islemler }: { ad: string; islemler: Islem[] })
 }
 
 function PortfoySection({ portfoy, pislemler }: { portfoy: Portfoy; pislemler: Islem[] }) {
+  const [acik, setAcik] = useState(true)
   const [fonEkleAcik, setFonEkleAcik] = useState(false)
 
   const ptMaliyet = pislemler.reduce((s, i) => s + i.fiyat * i.adet, 0)
   const ptGuncel = pislemler.reduce((s, i) => s + (i.guncelFiyat ? i.guncelFiyat * i.adet : i.fiyat * i.adet), 0)
   const ptKazanc = ptGuncel - ptMaliyet
   const ptPct = ptMaliyet > 0 ? (ptKazanc / ptMaliyet) * 100 : 0
+  const hex = renkBul(portfoy.renk ?? 'blue').hex
 
   const grupMap = new Map<string, Islem[]>()
   for (const i of pislemler) {
@@ -208,20 +210,26 @@ function PortfoySection({ portfoy, pislemler }: { portfoy: Portfoy; pislemler: I
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: renkBul(portfoy.renk ?? 'blue').hex }} />
-          <h2 className="text-lg font-bold text-slate-800">{portfoy.ad}</h2>
+    <div className="rounded-2xl border border-slate-200 overflow-hidden"
+      style={{ borderLeftColor: hex, borderLeftWidth: 4 }}>
+
+      {/* Accordion başlık */}
+      <div className="flex items-center gap-3 px-5 py-4 bg-white">
+        <button onClick={() => setAcik(v => !v)} className="flex items-center gap-3 flex-1 text-left min-w-0">
+          <svg className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${acik ? 'rotate-90' : ''}`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="font-semibold text-slate-800">{portfoy.ad}</span>
           {pislemler.length > 0 && (
-            <div className="flex items-center gap-3 ml-2">
+            <span className="flex items-center gap-3 ml-1">
               <span className="text-slate-400 text-xs">{fmt(ptMaliyet)} ₺</span>
               <span className={`text-sm font-bold ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</span>
-            </div>
+            </span>
           )}
-        </div>
-        <button onClick={() => setFonEkleAcik(v => !v)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors">
+        </button>
+        <button onClick={() => { setFonEkleAcik(v => !v); if (!acik) setAcik(true) }}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors shrink-0">
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -229,24 +237,22 @@ function PortfoySection({ portfoy, pislemler }: { portfoy: Portfoy; pislemler: I
         </button>
       </div>
 
-      {fonEkleAcik && (
-        <div className="mb-5">
-          <FonEkleForm
-            portfoy={portfoy}
-            onKapat={() => { setFonEkleAcik(false) }}
-          />
-        </div>
-      )}
-
-      {pislemler.length === 0 && !fonEkleAcik && (
-        <p className="text-slate-400 text-sm">Bu portföyde henüz fon yok.</p>
-      )}
-
-      {pislemler.length > 0 && (
-        <div className="flex flex-col gap-5">
-          {[...grupMap.entries()].map(([grupAd, gislemler]) => (
-            <VarlikGrubuSection key={grupAd} ad={grupAd} islemler={gislemler} />
-          ))}
+      {/* Accordion içerik */}
+      {acik && (
+        <div className="border-t border-slate-100 px-5 py-5 flex flex-col gap-5 bg-slate-50/40">
+          {fonEkleAcik && (
+            <FonEkleForm portfoy={portfoy} onKapat={() => setFonEkleAcik(false)} />
+          )}
+          {pislemler.length === 0 && !fonEkleAcik && (
+            <p className="text-slate-400 text-sm">Henüz fon eklenmedi.</p>
+          )}
+          {pislemler.length > 0 && (
+            <div className="flex flex-col gap-5">
+              {[...grupMap.entries()].map(([grupAd, gislemler]) => (
+                <VarlikGrubuSection key={grupAd} ad={grupAd} islemler={gislemler} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
