@@ -105,9 +105,7 @@ export function FonEkleForm({
 
   function handleAdetChange(v: string) {
     setAdet(v)
-    const a = parseInt(v); const f = Number(fiyat)
-    if (a > 0 && f > 0) setTutar((a * f).toFixed(2))
-    else setTutar('')
+    setTutar('')
   }
 
   function handleTutarChange(v: string) {
@@ -116,6 +114,12 @@ export function FonEkleForm({
     if (t > 0 && f > 0) setAdet(String(Math.round(t / f)))
     else setAdet('')
   }
+
+  const gercekToplam = (() => {
+    const a = parseInt(adet); const f = Number(fiyat)
+    if (a > 0 && f > 0) return a * f
+    return null
+  })()
 
   const r = renkBul(portfoy.renk ?? 'blue')
 
@@ -240,12 +244,24 @@ export function FonEkleForm({
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
         </div>
         <div className="flex-1">
-          <label className="text-xs text-slate-500 font-medium block mb-1.5">veya Toplam Tutar ₺</label>
+          <label className="text-xs text-slate-500 font-medium block mb-1.5">veya Bütçe ₺</label>
           <input type="number" step="0.01" min="0"
             value={tutar} onChange={e => handleTutarChange(e.target.value)} placeholder="10.000"
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
         </div>
       </div>
+      {gercekToplam != null && (
+        <p className="text-xs text-slate-400 -mt-2">
+          {parseInt(adet).toLocaleString('tr-TR')} adet × {Number(fiyat).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} ₺
+          {' = '}
+          <span className="font-semibold text-slate-600">
+            {gercekToplam.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+          </span>
+          {tutar && Number(tutar) !== gercekToplam && (
+            <span className="text-slate-300 ml-1">({Number(tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ girildi)</span>
+          )}
+        </p>
+      )}
 
       {hata && <p className="text-sm text-red-600">{hata}</p>}
 
