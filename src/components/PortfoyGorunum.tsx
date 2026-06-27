@@ -524,58 +524,132 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
         {acik && (
           <div className="border-t border-slate-100 px-5 py-5 flex flex-col gap-5 bg-slate-50/40">
 
-            {/* Özet kartlar + dağılım grafikleri yan yana */}
-            {pislemler.length > 0 && (
-              <div className="flex gap-4 items-start">
-                {/* Sol: özet kartlar 2x2 */}
-                <div className="grid grid-cols-2 gap-3 shrink-0 w-72">
-                  <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
-                    <p className="text-xs text-slate-400 mb-0.5">Maliyet</p>
-                    <p className="text-sm font-bold text-slate-900">{fmt(ptMaliyet)} ₺</p>
-                    {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptMaliyet, usdKuru)}</p>}
-                  </div>
-                  <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
-                    <p className="text-xs text-slate-400 mb-0.5">Güncel</p>
-                    <p className="text-sm font-bold text-slate-900">{fmt(ptGuncel)} ₺</p>
-                    {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptGuncel, usdKuru)}</p>}
-                  </div>
-                  <div className={`rounded-xl border px-4 py-3 ${ptKazanc >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-                    <p className="text-xs text-slate-400 mb-0.5">Toplam Kazanç</p>
-                    <p className={`text-sm font-bold ${ptKazanc >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                      {fmt(ptKazanc)} ₺
-                    </p>
-                    <p className={`text-xs ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</p>
-                  </div>
-                  <div className={`rounded-xl border px-4 py-3 ${ptGunlukKazanc >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
-                    <p className="text-xs text-slate-400 mb-0.5">Günlük Getiri</p>
-                    <p className={`text-sm font-bold ${ptGunlukKazanc >= 0 ? 'text-blue-700' : 'text-orange-600'}`}>
-                      {ptGunlukKazanc >= 0 ? '+' : ''}{fmt(ptGunlukKazanc)} ₺
-                    </p>
-                    {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptGunlukKazanc, usdKuru)}</p>}
-                  </div>
-                </div>
-
-                {/* Sağ: dağılım grafikleri */}
-                {grupMap.size > 1 && (
-                  <div className="flex-1 min-w-0">
-                    <DagilimPanel grupMap={grupMap} />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {fonEkleAcik && (
-              <FonEkleForm portfoy={portfoy} onKapat={() => setFonEkleAcik(false)} />
-            )}
             {pislemler.length === 0 && !fonEkleAcik && (
               <p className="text-slate-400 text-sm">Henüz fon eklenmedi.</p>
             )}
-            {pislemler.length > 0 && (
-              <div className="flex flex-col gap-5">
-                {[...grupMap.entries()].map(([grupAd, gislemler]) => (
-                  <VarlikGrubuSection key={grupAd} ad={grupAd} islemler={gislemler} />
-                ))}
-              </div>
+
+            {pislemler.length > 0 && (() => {
+              // Fon bazlı aggregasyon
+              const fonAgg = new Map<string, {
+                fonKodu: string; fonTipi: string; fonUnvan: string | null
+                grupRengi: string; toplamMaliyet: number; toplamAdet: number
+                guncelFiyat: number | null; getiri1g: number | null
+              }>()
+              for (const i of pislemler) {
+                const key = `${i.fonKodu}::${i.fonTipi}`
+                if (!fonAgg.has(key)) fonAgg.set(key, {
+                  fonKodu: i.fonKodu, fonTipi: i.fonTipi, fonUnvan: i.fonUnvan,
+                  grupRengi: grupRenk(i.varlik_grubu),
+                  toplamMaliyet: 0, toplamAdet: 0,
+                  guncelFiyat: i.guncelFiyat, getiri1g: i.getiri1g,
+                })
+                const e = fonAgg.get(key)!
+                e.toplamMaliyet += i.fiyat * i.adet
+                e.toplamAdet += i.adet
+              }
+              const fonlar = [...fonAgg.values()].map(f => {
+                const guncelDeger = f.guncelFiyat ? f.guncelFiyat * f.toplamAdet : null
+                const kazanc = guncelDeger != null ? guncelDeger - f.toplamMaliyet : null
+                const kazancPct = kazanc != null && f.toplamMaliyet > 0 ? (kazanc / f.toplamMaliyet) * 100 : null
+                const gunluk = guncelDeger != null && f.getiri1g != null
+                  ? guncelDeger * f.getiri1g / 100 / (1 + f.getiri1g / 100) : null
+                return { ...f, guncelDeger, kazanc, kazancPct, gunluk }
+              }).sort((a, b) => (b.kazancPct ?? -Infinity) - (a.kazancPct ?? -Infinity))
+
+              return (
+                <>
+                  {/* 1. Özet kartlar — tek satır */}
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
+                      <p className="text-xs text-slate-400 mb-0.5">Maliyet</p>
+                      <p className="text-base font-bold text-slate-900">{fmt(ptMaliyet)} ₺</p>
+                      {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptMaliyet, usdKuru)}</p>}
+                    </div>
+                    <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
+                      <p className="text-xs text-slate-400 mb-0.5">Güncel Değer</p>
+                      <p className="text-base font-bold text-slate-900">{fmt(ptGuncel)} ₺</p>
+                      {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptGuncel, usdKuru)}</p>}
+                    </div>
+                    <div className={`rounded-xl border px-4 py-3 ${ptKazanc >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                      <p className="text-xs text-slate-400 mb-0.5">Toplam Kazanç</p>
+                      <p className={`text-base font-bold ${ptKazanc >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{fmt(ptKazanc)} ₺</p>
+                      <p className={`text-xs ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</p>
+                    </div>
+                    <div className={`rounded-xl border px-4 py-3 ${ptGunlukKazanc >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
+                      <p className="text-xs text-slate-400 mb-0.5">Günlük Getiri</p>
+                      <p className={`text-base font-bold ${ptGunlukKazanc >= 0 ? 'text-blue-700' : 'text-orange-600'}`}>
+                        {ptGunlukKazanc >= 0 ? '+' : ''}{fmt(ptGunlukKazanc)} ₺
+                      </p>
+                      {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptGunlukKazanc, usdKuru)}</p>}
+                    </div>
+                  </div>
+
+                  {/* 2. Fon performans tablosu */}
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-100">
+                          <th className="text-left px-4 py-2.5 text-xs text-slate-400 font-medium">Fon</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Güncel Değer</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Kazanç</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Günlük</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fonlar.map(f => (
+                          <tr key={`${f.fonKodu}::${f.fonTipi}`}
+                            className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors">
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: f.grupRengi }} />
+                                <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
+                                  className="font-mono font-bold text-indigo-600 hover:underline text-sm shrink-0">
+                                  {f.fonKodu}
+                                </Link>
+                                {f.fonUnvan && <span className="text-xs text-slate-400 truncate max-w-[240px]">{f.fonUnvan}</span>}
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 text-right text-sm text-slate-700 font-medium">
+                              {f.guncelDeger != null ? fmt(f.guncelDeger) + ' ₺' : '—'}
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              {f.kazancPct != null && (
+                                <span className={`text-sm font-bold ${f.kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                  {pct(f.kazancPct)}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              {f.gunluk != null && (
+                                <span className={`text-xs font-medium ${f.gunluk >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
+                                  {f.gunluk >= 0 ? '+' : ''}{fmt(f.gunluk)} ₺
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 3. Dağılım kayması */}
+                  {grupMap.size > 1 && <DagilimPanel grupMap={grupMap} />}
+
+                  {/* 4. Fon ekle formu */}
+                  {fonEkleAcik && <FonEkleForm portfoy={portfoy} onKapat={() => setFonEkleAcik(false)} />}
+
+                  {/* 5. Grup accordion'ları — detay */}
+                  <div className="flex flex-col gap-4">
+                    {[...grupMap.entries()].map(([grupAd, gislemler]) => (
+                      <VarlikGrubuSection key={grupAd} ad={grupAd} islemler={gislemler} />
+                    ))}
+                  </div>
+                </>
+              )
+            })()}
+
+            {fonEkleAcik && pislemler.length === 0 && (
+              <FonEkleForm portfoy={portfoy} onKapat={() => setFonEkleAcik(false)} />
             )}
           </div>
         )}
