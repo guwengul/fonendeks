@@ -91,23 +91,21 @@ function DonutChart({ segments, size = 80 }: {
   )
 }
 
-// Dağılım paneli: maliyet vs güncel — grup + fon bazında karşılaştırma
+// Dağılım paneli: güncel dağılım donut + maliyet→güncel karşılaştırma tablosu
 function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
   const [mod, setMod] = useState<'grup' | 'fon'>('grup')
 
-  // Grup bazlı
   const grupRows = [...grupMap.entries()].map(([ad, islemler]) => {
     const maliyet = islemler.reduce((s, i) => s + i.fiyat * i.adet, 0)
     const guncel = islemler.reduce((s, i) => s + (i.guncelFiyat ?? i.fiyat) * i.adet, 0)
-    return { label: ad, color: grupRenk(ad), maliyet, guncel }
+    return { label: ad, shortLabel: ad.split(' ')[0], color: grupRenk(ad), maliyet, guncel }
   }).filter(r => r.maliyet > 0)
 
-  // Fon bazlı
-  const fonMap = new Map<string, { label: string; unvan: string | null; maliyet: number; guncel: number; color: string }>()
+  const fonMap = new Map<string, { label: string; shortLabel: string; maliyet: number; guncel: number; color: string }>()
   for (const [grupAd, islemler] of grupMap.entries()) {
     for (const i of islemler) {
       const key = `${i.fonKodu}::${i.fonTipi}`
-      if (!fonMap.has(key)) fonMap.set(key, { label: i.fonKodu, unvan: i.fonUnvan, maliyet: 0, guncel: 0, color: grupRenk(grupAd) })
+      if (!fonMap.has(key)) fonMap.set(key, { label: i.fonKodu, shortLabel: i.fonKodu, maliyet: 0, guncel: 0, color: grupRenk(grupAd) })
       const e = fonMap.get(key)!
       e.maliyet += i.fiyat * i.adet
       e.guncel += (i.guncelFiyat ?? i.fiyat) * i.adet
@@ -116,17 +114,60 @@ function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
   const fonRows = [...fonMap.values()].filter(r => r.maliyet > 0)
 
   const rows = mod === 'grup' ? grupRows : fonRows
-
   const totalMaliyet = rows.reduce((s, r) => s + r.maliyet, 0)
   const totalGuncel = rows.reduce((s, r) => s + r.guncel, 0)
 
-  const maliyetSegments = rows.map(r => ({ label: r.label, value: r.maliyet, color: r.color }))
-  const guncelSegments = rows.map(r => ({ label: r.label, value: r.guncel, color: r.color }))
+  // Donut: güncel dağılım
+  const guncelSegments = rows.map(r => ({ label: r.shortLabel, value: r.guncel, color: r.color }))
+
+  // Donut SVG with labels
+  const SIZE = 140
+  const R = 52
+  const INNER_R = 34
+  const CX = SIZE / 2
+  const CY = SIZE / 2
+  const circumference = 2 * Math.PI * R
+  const GAP = 1.5
+
+  let offset = 0
+  const donutPaths: React.ReactNode[] = []
+  const labelEls: React.ReactNode[] = []
+  const total = guncelSegments.reduce((s, g) => s + g.value, 0)
+
+  for (const seg of guncelSegments) {
+    const pctVal = total > 0 ? seg.value / total : 0
+    const dash = Math.max(0, circumference * pctVal - GAP)
+    const angle = offset / circumference * 2 * Math.PI - Math.PI / 2
+    const midAngle = (offset + circumference * pctVal / 2) / circumference * 2 * Math.PI - Math.PI / 2
+    const labelR = R + 14
+    const lx = CX + labelR * Math.cos(midAngle)
+    const ly = CY + labelR * Math.sin(midAngle)
+
+    donutPaths.push(
+      <circle key={seg.label} cx={CX} cy={CY} r={R}
+        fill="none" stroke={seg.color} strokeWidth={16}
+        strokeDasharray={`${dash} ${circumference - dash}`}
+        strokeDashoffset={-(offset - circumference / 4)} />
+    )
+
+    if (pctVal >= 0.07) {
+      labelEls.push(
+        <text key={seg.label + '-label'} x={lx} y={ly}
+          textAnchor="middle" dominantBaseline="middle"
+          fontSize="8" fontWeight="600" fill={seg.color}>
+          {(pctVal * 100).toFixed(0)}%
+        </text>
+      )
+    }
+
+    offset += circumference * pctVal
+    void angle
+  }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 px-4 py-4">
+    <div className="bg-white rounded-xl border border-slate-200 px-4 py-4 h-full">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Dağılım: Nereden → Nereye</p>
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Dağılım</p>
         <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
           <button onClick={() => setMod('grup')}
             className={`px-2.5 py-1 transition-colors ${mod === 'grup' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
@@ -139,52 +180,36 @@ function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
         </div>
       </div>
 
-      <div className="flex gap-5 items-start">
-        {/* Donut'lar */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="flex flex-col items-center gap-1">
-            <DonutChart segments={maliyetSegments} size={68} />
-            <p className="text-xs text-slate-400">Maliyet</p>
-          </div>
-          <span className="text-slate-300 text-sm">→</span>
-          <div className="flex flex-col items-center gap-1">
-            <DonutChart segments={guncelSegments} size={68} />
-            <p className="text-xs text-slate-400">Güncel</p>
-          </div>
+      <div className="flex gap-4 items-center">
+        {/* Donut güncel dağılım */}
+        <div className="shrink-0">
+          <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+            {donutPaths}
+            {labelEls}
+            <text x={CX} y={CY - 5} textAnchor="middle" fontSize="9" fill="#94a3b8">güncel</text>
+            <text x={CX} y={CY + 7} textAnchor="middle" fontSize="9" fill="#94a3b8">dağılım</text>
+          </svg>
         </div>
 
-        {/* Tablo */}
-        <div className="flex-1 min-w-0">
-          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 gap-y-1.5 items-center">
-            <span className="text-xs text-slate-400">Ad</span>
-            <span className="text-xs text-slate-400 text-right">Maliyet %</span>
-            <span className="text-xs text-slate-400 text-right">Güncel %</span>
-            <span className="text-xs text-slate-400 text-right">Δ</span>
-            {rows.map(r => {
-              const mp = totalMaliyet > 0 ? r.maliyet / totalMaliyet * 100 : 0
-              const gp = totalGuncel > 0 ? r.guncel / totalGuncel * 100 : 0
-              const diff = gp - mp
-              const barW = Math.round(gp)
-              return (
-                <>
-                  <div key={r.label + '-label'} className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-                    <span className="text-xs text-slate-600 truncate">{r.label}</span>
-                  </div>
-                  <span className="text-xs text-slate-400 text-right">{mp.toFixed(1)}%</span>
-                  <div className="flex items-center gap-1 justify-end">
-                    <div className="w-12 bg-slate-100 rounded-full h-1.5">
-                      <div className="h-1.5 rounded-full" style={{ width: `${barW}%`, backgroundColor: r.color }} />
-                    </div>
-                    <span className="text-xs font-semibold text-slate-700 w-8 text-right">{gp.toFixed(1)}%</span>
-                  </div>
-                  <span className={`text-xs font-medium text-right ${Math.abs(diff) < 0.5 ? 'text-slate-300' : diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                    {Math.abs(diff) < 0.5 ? '—' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp`}
-                  </span>
-                </>
-              )
-            })}
-          </div>
+        {/* Tablo: maliyet → güncel karşılaştırma */}
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+          {rows.map(r => {
+            const mp = totalMaliyet > 0 ? r.maliyet / totalMaliyet * 100 : 0
+            const gp = totalGuncel > 0 ? r.guncel / totalGuncel * 100 : 0
+            const diff = gp - mp
+            return (
+              <div key={r.label} className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+                <span className="text-xs text-slate-600 truncate w-28">{r.label}</span>
+                <span className="text-xs text-slate-400 w-10 text-right shrink-0">{mp.toFixed(1)}%</span>
+                <span className="text-slate-300 text-xs shrink-0">→</span>
+                <span className="text-xs font-semibold text-slate-700 w-10 text-right shrink-0">{gp.toFixed(1)}%</span>
+                <span className={`text-xs font-medium w-12 text-right shrink-0 ${Math.abs(diff) < 0.5 ? 'text-slate-300' : diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                  {Math.abs(diff) < 0.5 ? '' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp`}
+                </span>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
@@ -520,6 +545,9 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
             <span className="font-semibold text-slate-800">{portfoy.ad}</span>
             {pislemler.length > 0 && !acik && (
               <span className="flex items-center gap-3 ml-1">
+                <span className="text-slate-400 text-xs">{fmt(ptMaliyet)} ₺</span>
+                <span className="text-slate-300 text-xs">→</span>
+                <span className="text-slate-600 text-xs font-medium">{fmt(ptGuncel)} ₺</span>
                 <span className={`text-sm font-bold ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</span>
               </span>
             )}
@@ -546,39 +574,44 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
         {acik && (
           <div className="border-t border-slate-100 px-5 py-5 flex flex-col gap-5 bg-slate-50/40">
 
-            {/* Portföy özet kartları */}
+            {/* Özet kartlar + dağılım grafikleri yan yana */}
             {pislemler.length > 0 && (
-              <div className="grid grid-cols-4 gap-3">
-                <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
-                  <p className="text-xs text-slate-400 mb-0.5">Maliyet</p>
-                  <p className="text-sm font-bold text-slate-900">{fmt(ptMaliyet)} ₺</p>
-                  {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptMaliyet, usdKuru)}</p>}
+              <div className="flex gap-4 items-start">
+                {/* Sol: özet kartlar 2x2 */}
+                <div className="grid grid-cols-2 gap-3 shrink-0 w-72">
+                  <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
+                    <p className="text-xs text-slate-400 mb-0.5">Maliyet</p>
+                    <p className="text-sm font-bold text-slate-900">{fmt(ptMaliyet)} ₺</p>
+                    {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptMaliyet, usdKuru)}</p>}
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
+                    <p className="text-xs text-slate-400 mb-0.5">Güncel</p>
+                    <p className="text-sm font-bold text-slate-900">{fmt(ptGuncel)} ₺</p>
+                    {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptGuncel, usdKuru)}</p>}
+                  </div>
+                  <div className={`rounded-xl border px-4 py-3 ${ptKazanc >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                    <p className="text-xs text-slate-400 mb-0.5">Toplam Kazanç</p>
+                    <p className={`text-sm font-bold ${ptKazanc >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                      {fmt(ptKazanc)} ₺
+                    </p>
+                    <p className={`text-xs ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</p>
+                  </div>
+                  <div className={`rounded-xl border px-4 py-3 ${ptGunlukKazanc >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
+                    <p className="text-xs text-slate-400 mb-0.5">Bugün</p>
+                    <p className={`text-sm font-bold ${ptGunlukKazanc >= 0 ? 'text-blue-700' : 'text-orange-600'}`}>
+                      {ptGunlukKazanc >= 0 ? '+' : ''}{fmt(ptGunlukKazanc)} ₺
+                    </p>
+                    {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptGunlukKazanc, usdKuru)}</p>}
+                  </div>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
-                  <p className="text-xs text-slate-400 mb-0.5">Güncel</p>
-                  <p className="text-sm font-bold text-slate-900">{fmt(ptGuncel)} ₺</p>
-                  {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptGuncel, usdKuru)}</p>}
-                </div>
-                <div className={`rounded-xl border px-4 py-3 ${ptKazanc >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-                  <p className="text-xs text-slate-400 mb-0.5">Toplam Kazanç</p>
-                  <p className={`text-sm font-bold ${ptKazanc >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                    {fmt(ptKazanc)} ₺ <span className="font-normal text-xs">({pct(ptPct)})</span>
-                  </p>
-                  {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptKazanc, usdKuru)}</p>}
-                </div>
-                <div className={`rounded-xl border px-4 py-3 ${ptGunlukKazanc >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
-                  <p className="text-xs text-slate-400 mb-0.5">Bugün</p>
-                  <p className={`text-sm font-bold ${ptGunlukKazanc >= 0 ? 'text-blue-700' : 'text-orange-600'}`}>
-                    {ptGunlukKazanc >= 0 ? '+' : ''}{fmt(ptGunlukKazanc)} ₺
-                  </p>
-                  {usdKuru && <p className="text-xs text-slate-400 mt-0.5">{fmtUsd(ptGunlukKazanc, usdKuru)}</p>}
-                </div>
-              </div>
-            )}
 
-            {/* Dağılım grafikleri */}
-            {pislemler.length > 0 && grupMap.size > 1 && (
-              <DagilimPanel grupMap={grupMap} />
+                {/* Sağ: dağılım grafikleri */}
+                {grupMap.size > 1 && (
+                  <div className="flex-1 min-w-0">
+                    <DagilimPanel grupMap={grupMap} />
+                  </div>
+                )}
+              </div>
             )}
 
             {fonEkleAcik && (
