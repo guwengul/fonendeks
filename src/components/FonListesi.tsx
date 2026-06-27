@@ -168,6 +168,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
 }) {
   const [arama, setArama] = useState('')
   const [favoriler, setFavoriler] = useState<Set<string>>(new Set())
+  const [favoriHata, setFavoriHata] = useState<string | null>(null)
   const [, startTransition] = useTransition()
   const router = useRouter()
 
@@ -191,8 +192,16 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
       return next
     })
     startTransition(async () => {
-      if (zatenVar) await favoriKaldir(fon.fonKodu, fon.fonTipi)
-      else await favoriEkle(fon.fonKodu, fon.fonTipi, fon.fiyat ?? 0, fon.tarih)
+      if (zatenVar) {
+        await favoriKaldir(fon.fonKodu, fon.fonTipi)
+      } else {
+        const sonuc = await favoriEkle(fon.fonKodu, fon.fonTipi, fon.fiyat ?? 0, fon.tarih)
+        if (sonuc?.hata) {
+          setFavoriler(prev => { const next = new Set(prev); next.delete(key); return next })
+          setFavoriHata(sonuc.hata)
+          setTimeout(() => setFavoriHata(null), 3000)
+        }
+      }
     })
   }
   // Yatırım Fonu default seçili; diğer gruplar hepsi seçili
@@ -345,6 +354,12 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
 
   return (
     <div>
+      {favoriHata && (
+        <div className="mb-3 px-4 py-2.5 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+          {favoriHata}
+        </div>
+      )}
+
       <div className="flex gap-2 mb-4">
         {!basit && (
           <input type="text" placeholder="Fon kodu, kurucu şirket veya fon adı ile arayın..."
