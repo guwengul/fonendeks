@@ -165,7 +165,7 @@ function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
         </div>
       </div>
 
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
         {/* Axis gridlines */}
         {[0, 25, 50, 75, 100].filter(v => v <= maxPct).map(v => (
           <g key={v}>
