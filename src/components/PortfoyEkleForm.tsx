@@ -4,15 +4,6 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { portfoyIslemEkle, portfoyOlustur } from '@/lib/auth-actions'
 
-const VARLIK_GRUPLARI = [
-  'Hisse Senedi',
-  'Borçlanma Araçları',
-  'Para Piyasası',
-  'Kıymetli Maden',
-  'Döviz',
-  'Karma / Değişken',
-  'Diğer',
-]
 
 export const RENKLER = [
   { key: 'blue',    hex: '#60a5fa' },
@@ -46,7 +37,6 @@ export function FonEkleForm({
   const [favorilerAcik, setFavorilerAcik] = useState(false)
   const [favoriler, setFavoriler] = useState<FavoriSonuc[]>([])
   const [favorilerYukleniyor, setFavorilerYukleniyor] = useState(false)
-  const [varlikGrubu, setVarlikGrubu] = useState(VARLIK_GRUPLARI[0])
   const [adet, setAdet] = useState('')
   const [tarih, setTarih] = useState(new Date().toISOString().slice(0, 10))
   const [fiyat, setFiyat] = useState('')
@@ -103,7 +93,7 @@ export function FonEkleForm({
     const sonuc = await portfoyIslemEkle({
       fonKodu: seciliFon.fonKodu, fonTipi: seciliFon.fonTipi,
       islem_tipi: 'AL', adet: Number(adet), fiyat: Number(fiyat),
-      tarih, portfoy_id: portfoy.id, varlik_grubu: varlikGrubu,
+      tarih, portfoy_id: portfoy.id,
     })
     if (sonuc?.hata) { setHata(sonuc.hata); setYukleniyor(false); return }
     setSeciliFon(null); setAramaQ(''); setAdet(''); setFiyat('')
@@ -126,15 +116,6 @@ export function FonEkleForm({
       <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: r.hex }} />
         <span className="text-sm font-semibold text-slate-700">{portfoy.ad}</span>
-      </div>
-
-      {/* Varlık grubu */}
-      <div>
-        <label className="text-xs text-slate-500 font-medium block mb-1.5">Varlık Grubu</label>
-        <select value={varlikGrubu} onChange={e => setVarlikGrubu(e.target.value)}
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
-          {VARLIK_GRUPLARI.map(g => <option key={g}>{g}</option>)}
-        </select>
       </div>
 
       {/* Fon arama */}

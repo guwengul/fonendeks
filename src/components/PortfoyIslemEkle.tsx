@@ -38,7 +38,6 @@ export function PortfoyIslemEkle({ fonKoduDefault = '', fonTipiDefault = 'YAT', 
       fiyat: Number(fd.get('fiyat')),
       tarih: fd.get('tarih') as string,
       portfoy_id: (fd.get('portfoy_id') as string) || '',
-      varlik_grubu: (fd.get('varlik_grubu') as string) || 'Diğer',
     })
     if (sonuc?.hata) { setHata(sonuc.hata); setYukleniyor(false); return }
     setAcik(false)

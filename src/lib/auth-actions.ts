@@ -53,18 +53,47 @@ export async function portfoyOlustur(ad: string, renk: string) {
   return error ? { hata: error.message } : { ok: true, id: data.id }
 }
 
+const KATEGORI_GRUP: Record<string, string> = {
+  'Hisse Senedi Fonu': 'Hisse Senedi',
+  'Hisse Senedi Yoğun': 'Hisse Senedi',
+  'Endeks Fon': 'Hisse Senedi',
+  'Yabancı Hisse Senedi Fonu ': 'Hisse Senedi',
+  'Yabancı Hisse Senedi Fonu': 'Hisse Senedi',
+  'Katılım Hisse Senedi Fonu': 'Hisse Senedi',
+  'Borçlanma Araçları Fonu': 'Borçlanma Araçları',
+  'Kamu Borçlanma Araçları Fonu': 'Borçlanma Araçları',
+  'Özel Sektör Borçlanma Araçları Fonu': 'Borçlanma Araçları',
+  'Dış Borçlanma Araçları Fonu': 'Borçlanma Araçları',
+  'Standart Fon': 'Borçlanma Araçları',
+  'Kamu Yabancı Para (Döviz) Cinsinden Borçlanma Araç': 'Borçlanma Araçları',
+  'Kira Sertifikası Fonu': 'Borçlanma Araçları',
+  'Para Piyasası Fonu': 'Para Piyasası',
+  'Kisa Vadeli Kira Sertifikalari Katilim Fonu': 'Para Piyasası',
+  'Altın Fonu': 'Kıymetli Maden',
+  'Altın Katılım Fonu': 'Kıymetli Maden',
+  'Altın Ve Diğer Kıymetli Madenler Fonu': 'Kıymetli Maden',
+  'Kıymetli Madenler': 'Kıymetli Maden',
+  'Gümüş Fonu': 'Kıymetli Maden',
+}
+
 export async function portfoyIslemEkle(data: {
   fonKodu: string; fonTipi: string; islem_tipi: 'AL' | 'SAT'
-  adet: number; fiyat: number; tarih: string
-  portfoy_id: string; varlik_grubu: string
+  adet: number; fiyat: number; tarih: string; portfoy_id: string
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { hata: 'Giriş gerekli' }
+
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  const admin = createAdminClient()
+  const { data: meta } = await admin.from('tefas_fon_meta')
+    .select('fonKategori').eq('fonKodu', data.fonKodu).eq('fonTipi', data.fonTipi).single()
+  const varlik_grubu = KATEGORI_GRUP[meta?.fonKategori ?? ''] ?? 'Karma / Değişken'
+
   const { error } = await supabase.from('tefas_portfoy_islem').insert({
     user_id: user.id,
     portfoy_id: data.portfoy_id,
-    varlik_grubu: data.varlik_grubu,
+    varlik_grubu,
     fonKodu: data.fonKodu, fonTipi: data.fonTipi,
     islem_tipi: data.islem_tipi, adet: data.adet,
     fiyat: data.fiyat, tarih: data.tarih,
