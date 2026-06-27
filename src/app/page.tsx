@@ -1,8 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import FonListesi from '@/components/FonListesi'
 import { FavorilerSerit } from '@/components/FavorilerSerit'
 
-export const revalidate = 1800
+export const dynamic = 'force-dynamic'
 
 const DONEM_KEYS = ['1g', '1h', '1a', '3a', '6a', 'yb', '1y', '3y', '5y'] as const
 
@@ -28,6 +29,9 @@ function usdAyarli(tlGetiri: number | null, usdYeni: number | null, usdEski: num
 
 export default async function Home() {
   const supabase = createAdminClient()
+  const authClient = await createClient()
+  const { data: { user } } = await authClient.auth.getUser()
+  const girisYapildi = !!user
 
   const [ozetResult, metaResult] = await Promise.all([
     (async () => {
@@ -121,7 +125,7 @@ export default async function Home() {
         <p className="text-slate-400 text-sm mt-1">TEFAS verilerine göre güncellendi: {sonGuncelleme}</p>
       </div>
       <FavorilerSerit />
-      <FonListesi fonlar={fonlar} kurucular={kurucular} fonTurleri={fonTurleri} />
+      <FonListesi fonlar={fonlar} kurucular={kurucular} fonTurleri={fonTurleri} girisYapildi={girisYapildi} />
     </div>
   )
 }

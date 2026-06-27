@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { favoriEkle, favoriKaldir } from '@/lib/auth-actions'
 
 type Fon = {
   fonKodu: string
@@ -159,20 +161,38 @@ function toggle(set: Set<string>, val: string): Set<string> {
 
 type SiraKey = 'portfoyBuyukluk' | 'kisiSayisi' | 'fiyat' | string
 
-export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
-  fonlar: Fon[]; kurucular: string[]; fonTurleri: string[]
+export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi = false }: {
+  fonlar: Fon[]; kurucular: string[]; fonTurleri: string[]; girisYapildi?: boolean
 }) {
   const [arama, setArama] = useState('')
   const [favoriler, setFavoriler] = useState<Set<string>>(new Set())
+  const [, startTransition] = useTransition()
+  const router = useRouter()
 
   useEffect(() => {
+    if (!girisYapildi) return
     fetch('/api/kullanici/favoriler')
       .then(r => r.json())
       .then((d: { fonKodu: string; fonTipi: string }[]) => {
         if (Array.isArray(d)) setFavoriler(new Set(d.map(f => `${f.fonKodu}::${f.fonTipi}`)))
       })
       .catch(() => {})
-  }, [])
+  }, [girisYapildi])
+
+  function toggleFavori(fon: Fon) {
+    if (!girisYapildi) { router.push('/giris'); return }
+    const key = `${fon.fonKodu}::${fon.fonTipi}`
+    const zatenVar = favoriler.has(key)
+    setFavoriler(prev => {
+      const next = new Set(prev)
+      zatenVar ? next.delete(key) : next.add(key)
+      return next
+    })
+    startTransition(async () => {
+      if (zatenVar) await favoriKaldir(fon.fonKodu, fon.fonTipi)
+      else await favoriEkle(fon.fonKodu, fon.fonTipi, fon.fiyat ?? 0, fon.tarih)
+    })
+  }
   // Yatırım Fonu default seçili; diğer gruplar hepsi seçili
   const [tipler, setTipler] = useState(new Set(['YAT']))
   const [riskler, setRiskler] = useState(new Set(RISK_OPTIONS))
@@ -444,13 +464,17 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri }: {
             {filtrelenmis.map(f => (
               <tr key={`${f.fonKodu}-${f.fonTipi}`}
                 className="border-b border-slate-50 hover:bg-indigo-50/40 transition-colors">
-                <td className="px-4 py-2 sticky left-0 bg-white">
+                <td className="px-4 py-2 sticky left-0 bg-white group/row">
                   <div className="flex items-center gap-1.5">
-                    {favoriler.has(`${f.fonKodu}::${f.fonTipi}`) && (
-                      <svg className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    <button
+                      onClick={() => toggleFavori(f)}
+                      title={favoriler.has(`${f.fonKodu}::${f.fonTipi}`) ? 'Favorilerden çıkar' : 'Favorilere ekle'}
+                      className="shrink-0 transition-opacity opacity-30 group-hover/row:opacity-100 focus:opacity-100">
+                      <svg className={`w-3.5 h-3.5 ${favoriler.has(`${f.fonKodu}::${f.fonTipi}`) ? 'text-amber-400 fill-current' : 'text-slate-400 fill-none stroke-current'}`}
+                        strokeWidth={1.5} viewBox="0 0 20 20">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                       </svg>
-                    )}
+                    </button>
                     <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
                       title={f.fonUnvan ?? undefined}
                       className="font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
