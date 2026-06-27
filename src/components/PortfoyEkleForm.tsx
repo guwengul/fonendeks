@@ -30,6 +30,7 @@ export function renkBul(key: string) {
 }
 
 type FonSonuc = { fonKodu: string; fonTipi: string; fonUnvan: string | null; fiyat: number | null; tarih: string }
+type FavoriSonuc = { fonKodu: string; fonTipi: string; fonUnvan: string | null; guncelFiyat: number | null; degisim: number | null }
 
 // --- Fon ekleme formu (portföy dışarıdan gelir, bilgi olarak gösterilir) ---
 export function FonEkleForm({
@@ -42,6 +43,9 @@ export function FonEkleForm({
   const [aramaQ, setAramaQ] = useState('')
   const [sonuclar, setSonuclar] = useState<FonSonuc[]>([])
   const [seciliFon, setSeciliFon] = useState<FonSonuc | null>(null)
+  const [favorilerAcik, setFavorilerAcik] = useState(false)
+  const [favoriler, setFavoriler] = useState<FavoriSonuc[]>([])
+  const [favorilerYukleniyor, setFavorilerYukleniyor] = useState(false)
   const [varlikGrubu, setVarlikGrubu] = useState(VARLIK_GRUPLARI[0])
   const [adet, setAdet] = useState('')
   const [tarih, setTarih] = useState(new Date().toISOString().slice(0, 10))
@@ -66,6 +70,7 @@ export function FonEkleForm({
     setSeciliFon(fon)
     setAramaQ('')
     setSonuclar([])
+    setFavorilerAcik(false)
     setFiyatYukleniyor(true)
     try {
       const r = await fetch(`/api/kullanici/fon-fiyat?kod=${fon.fonKodu}&tip=${fon.fonTipi}&tarih=${tarih}`)
@@ -73,6 +78,21 @@ export function FonEkleForm({
       setFiyat(d.fiyat ? String(d.fiyat) : '')
     } catch { setFiyat('') }
     setFiyatYukleniyor(false)
+  }
+
+  async function favorilerAc() {
+    if (favorilerAcik) { setFavorilerAcik(false); return }
+    setFavorilerYukleniyor(true)
+    try {
+      const r = await fetch('/api/kullanici/favoriler')
+      setFavoriler(await r.json())
+    } catch { setFavoriler([]) }
+    setFavorilerYukleniyor(false)
+    setFavorilerAcik(true)
+  }
+
+  function favoridentSec(f: FavoriSonuc) {
+    fonSec({ fonKodu: f.fonKodu, fonTipi: f.fonTipi, fonUnvan: f.fonUnvan, fiyat: f.guncelFiyat, tarih: '' })
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -119,7 +139,43 @@ export function FonEkleForm({
 
       {/* Fon arama */}
       <div>
-        <label className="text-xs text-slate-500 font-medium block mb-1.5">Fon</label>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-xs text-slate-500 font-medium">Fon</label>
+          {!seciliFon && (
+            <button type="button" onClick={favorilerAc}
+              className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 transition-colors">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+              </svg>
+              {favorilerYukleniyor ? 'Yükleniyor...' : 'Favorilerden seç'}
+            </button>
+          )}
+        </div>
+
+        {favorilerAcik && !seciliFon && (
+          <div className="mb-2 border border-slate-200 rounded-xl overflow-hidden">
+            {favoriler.length === 0 ? (
+              <p className="text-xs text-slate-400 px-4 py-3">Favori fon bulunamadı.</p>
+            ) : (
+              favoriler.map(f => (
+                <button key={`${f.fonKodu}-${f.fonTipi}`} type="button"
+                  onClick={() => favoridentSec(f)}
+                  className="w-full text-left px-4 py-2.5 hover:bg-indigo-50 transition-colors border-b border-slate-50 last:border-0 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="font-mono font-bold text-indigo-600 text-sm">{f.fonKodu}</span>
+                    {f.fonUnvan && <p className="text-xs text-slate-400 truncate">{f.fonUnvan}</p>}
+                  </div>
+                  {f.degisim != null && (
+                    <span className={`text-xs font-semibold shrink-0 ${f.degisim >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {f.degisim >= 0 ? '+' : ''}{f.degisim.toFixed(2)}%
+                    </span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        )}
+
         {seciliFon ? (
           <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
             <div>
