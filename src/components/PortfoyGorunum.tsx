@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { portfoyIslemSil, portfoyIslemGuncelle } from '@/lib/auth-actions'
-import { renkBul } from './PortfoyEkleForm'
+import { renkBul, FonEkleForm } from './PortfoyEkleForm'
 
 type Islem = {
   id: string
@@ -193,6 +193,66 @@ function VarlikGrubuSection({ ad, islemler }: { ad: string; islemler: Islem[] })
   )
 }
 
+function PortfoySection({ portfoy, pislemler }: { portfoy: Portfoy; pislemler: Islem[] }) {
+  const [fonEkleAcik, setFonEkleAcik] = useState(false)
+
+  const ptMaliyet = pislemler.reduce((s, i) => s + i.fiyat * i.adet, 0)
+  const ptGuncel = pislemler.reduce((s, i) => s + (i.guncelFiyat ? i.guncelFiyat * i.adet : i.fiyat * i.adet), 0)
+  const ptKazanc = ptGuncel - ptMaliyet
+  const ptPct = ptMaliyet > 0 ? (ptKazanc / ptMaliyet) * 100 : 0
+
+  const grupMap = new Map<string, Islem[]>()
+  for (const i of pislemler) {
+    if (!grupMap.has(i.varlik_grubu)) grupMap.set(i.varlik_grubu, [])
+    grupMap.get(i.varlik_grubu)!.push(i)
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2.5">
+          <span className={`w-3 h-3 rounded-full shrink-0 ${renkBul(portfoy.renk ?? 'blue').dot}`} />
+          <h2 className="text-lg font-bold text-slate-800">{portfoy.ad}</h2>
+          {pislemler.length > 0 && (
+            <div className="flex items-center gap-3 ml-2">
+              <span className="text-slate-400 text-xs">{fmt(ptMaliyet)} ₺</span>
+              <span className={`text-sm font-bold ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</span>
+            </div>
+          )}
+        </div>
+        <button onClick={() => setFonEkleAcik(v => !v)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Fon Ekle
+        </button>
+      </div>
+
+      {fonEkleAcik && (
+        <div className="mb-5">
+          <FonEkleForm
+            portfoy={portfoy}
+            onKapat={() => setFonEkleAcik(false)}
+          />
+        </div>
+      )}
+
+      {pislemler.length === 0 && !fonEkleAcik && (
+        <p className="text-slate-400 text-sm">Bu portföyde henüz fon yok.</p>
+      )}
+
+      {pislemler.length > 0 && (
+        <div className="flex flex-col gap-5">
+          {[...grupMap.entries()].map(([grupAd, gislemler]) => (
+            <VarlikGrubuSection key={grupAd} ad={grupAd} islemler={gislemler} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function PortfoyGorunum({ portfoyler, islemler }: { portfoyler: Portfoy[]; islemler: Islem[] }) {
   const toplamMaliyet = islemler.reduce((s, i) => s + i.fiyat * i.adet, 0)
   const toplamGuncel = islemler.reduce((s, i) => s + (i.guncelFiyat ? i.guncelFiyat * i.adet : i.fiyat * i.adet), 0)
@@ -241,29 +301,7 @@ export function PortfoyGorunum({ portfoyler, islemler }: { portfoyler: Portfoy[]
         }
 
         return (
-          <div key={portfoy.id}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2.5">
-                <span className={`w-3 h-3 rounded-full shrink-0 ${renkBul(portfoy.renk ?? 'blue').dot}`} />
-                <h2 className="text-lg font-bold text-slate-800">{portfoy.ad}</h2>
-              </div>
-              {pislemler.length > 0 && (
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="text-slate-400 text-xs">{fmt(ptMaliyet)} ₺ maliyet</span>
-                  <span className={`font-bold ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</span>
-                </div>
-              )}
-            </div>
-            {pislemler.length === 0 ? (
-              <p className="text-slate-400 text-sm">Bu portföyde henüz fon yok.</p>
-            ) : (
-              <div className="flex flex-col gap-5">
-                {[...grupMap.entries()].map(([grupAd, gislemler]) => (
-                  <VarlikGrubuSection key={grupAd} ad={grupAd} islemler={gislemler} />
-                ))}
-              </div>
-            )}
-          </div>
+          <PortfoySection key={portfoy.id} portfoy={portfoy} pislemler={pislemler} />
         )
       })}
     </div>
