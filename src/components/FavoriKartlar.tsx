@@ -145,7 +145,7 @@ function FavoriKart({ k }: { k: Kart }) {
             <span className="text-xs text-slate-400">Portföy</span>
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-600 font-medium">{fmt(k.portfoyBuyukluk)}</span>
-              <DegisimBadge val={k.portfoyDegisim1a} fmt={n => `${n >= 0 ? '+' : ''}${fmt(Math.abs(n))} / ay`} />
+              <DegisimBadge val={k.portfoyDegisim1a} fmt={n => `${fmt(Math.abs(n))} / ay`} />
             </div>
           </div>
         )}
