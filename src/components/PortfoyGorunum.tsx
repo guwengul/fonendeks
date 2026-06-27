@@ -91,9 +91,40 @@ function DonutChart({ segments, size = 80 }: {
   )
 }
 
-function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
-  const [mod, setMod] = useState<'grup' | 'fon'>('grup')
+function DagilimTablo({ rows, totalMaliyet, totalGuncel }: {
+  rows: { label: string; color: string; maliyet: number; guncel: number }[]
+  totalMaliyet: number
+  totalGuncel: number
+}) {
+  return (
+    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-1.5 items-center">
+      <span className="text-xs text-slate-400"></span>
+      <span className="text-xs text-slate-400 text-right">Alış</span>
+      <span className="text-xs text-slate-400 text-right">Güncel</span>
+      <span className="text-xs text-slate-400 text-right">Fark</span>
+      {rows.map(r => {
+        const mp = totalMaliyet > 0 ? r.maliyet / totalMaliyet * 100 : 0
+        const gp = totalGuncel > 0 ? r.guncel / totalGuncel * 100 : 0
+        const diff = gp - mp
+        return (
+          <>
+            <div key={r.label + '-n'} className="flex items-center gap-1.5 min-w-0">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+              <span className="text-xs text-slate-700 truncate">{r.label}</span>
+            </div>
+            <span key={r.label + '-m'} className="text-xs text-slate-400 text-right">{mp.toFixed(1)}%</span>
+            <span key={r.label + '-g'} className="text-xs font-semibold text-slate-700 text-right">{gp.toFixed(1)}%</span>
+            <span key={r.label + '-d'} className={`text-xs font-semibold text-right ${Math.abs(diff) < 0.5 ? 'text-slate-300' : diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+              {Math.abs(diff) < 0.5 ? '—' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp`}
+            </span>
+          </>
+        )
+      })}
+    </div>
+  )
+}
 
+function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
   const grupRows = [...grupMap.entries()].map(([ad, islemler]) => ({
     label: ad, color: grupRenk(ad),
     maliyet: islemler.reduce((s, i) => s + i.fiyat * i.adet, 0),
@@ -112,49 +143,24 @@ function DagilimPanel({ grupMap }: { grupMap: Map<string, Islem[]> }) {
   }
   const fonRows = [...fonAcc.values()].filter(r => r.maliyet > 0)
 
-  const rows = mod === 'grup' ? grupRows : fonRows
-  const totalMaliyet = rows.reduce((s, r) => s + r.maliyet, 0)
-  const totalGuncel = rows.reduce((s, r) => s + r.guncel, 0)
+  const gTotalM = grupRows.reduce((s, r) => s + r.maliyet, 0)
+  const gTotalG = grupRows.reduce((s, r) => s + r.guncel, 0)
+  const fTotalM = fonRows.reduce((s, r) => s + r.maliyet, 0)
+  const fTotalG = fonRows.reduce((s, r) => s + r.guncel, 0)
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 px-4 py-4 h-full">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Dağılım Kayması</p>
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
-          <button onClick={() => setMod('grup')}
-            className={`px-2.5 py-1 transition-colors ${mod === 'grup' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-            Grup
-          </button>
-          <button onClick={() => setMod('fon')}
-            className={`px-2.5 py-1 transition-colors ${mod === 'fon' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-            Fon
-          </button>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Dağılım Kayması</p>
+      <div className="flex gap-6">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-slate-400 mb-2">Varlık Grubu</p>
+          <DagilimTablo rows={grupRows} totalMaliyet={gTotalM} totalGuncel={gTotalG} />
         </div>
-      </div>
-
-      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-2 items-center">
-        <span className="text-xs text-slate-400"></span>
-        <span className="text-xs text-slate-400 text-right">Alış</span>
-        <span className="text-xs text-slate-400 text-right">Güncel</span>
-        <span className="text-xs text-slate-400 text-right">Fark</span>
-        {rows.map(r => {
-          const mp = totalMaliyet > 0 ? r.maliyet / totalMaliyet * 100 : 0
-          const gp = totalGuncel > 0 ? r.guncel / totalGuncel * 100 : 0
-          const diff = gp - mp
-          return (
-            <>
-              <div key={r.label + '-n'} className="flex items-center gap-1.5 min-w-0">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-                <span className="text-xs text-slate-700 truncate">{r.label}</span>
-              </div>
-              <span key={r.label + '-m'} className="text-xs text-slate-400 text-right">{mp.toFixed(1)}%</span>
-              <span key={r.label + '-g'} className="text-xs font-semibold text-slate-700 text-right">{gp.toFixed(1)}%</span>
-              <span key={r.label + '-d'} className={`text-xs font-semibold text-right ${Math.abs(diff) < 0.5 ? 'text-slate-300' : diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                {Math.abs(diff) < 0.5 ? '—' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp`}
-              </span>
-            </>
-          )
-        })}
+        <div className="w-px bg-slate-100 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-slate-400 mb-2">Fon</p>
+          <DagilimTablo rows={fonRows} totalMaliyet={fTotalM} totalGuncel={fTotalG} />
+        </div>
       </div>
     </div>
   )
