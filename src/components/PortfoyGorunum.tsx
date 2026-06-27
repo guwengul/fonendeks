@@ -97,11 +97,11 @@ function DagilimTablo({ rows, totalMaliyet, totalGuncel }: {
   totalGuncel: number
 }) {
   return (
-    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-1.5 items-center">
+    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 gap-y-2 items-center">
       <span className="text-xs text-slate-400"></span>
       <span className="text-xs text-slate-400 text-right">Alış</span>
       <span className="text-xs text-slate-400 text-right">Güncel</span>
-      <span className="text-xs text-slate-400 text-right">Fark</span>
+      <span className="text-xs text-slate-400 text-right">Δ</span>
       {rows.map(r => {
         const mp = totalMaliyet > 0 ? r.maliyet / totalMaliyet * 100 : 0
         const gp = totalGuncel > 0 ? r.guncel / totalGuncel * 100 : 0
@@ -110,11 +110,11 @@ function DagilimTablo({ rows, totalMaliyet, totalGuncel }: {
           <>
             <div key={r.label + '-n'} className="flex items-center gap-1.5 min-w-0">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-              <span className="text-xs text-slate-700 truncate">{r.label}</span>
+              <span className="text-sm text-slate-700 truncate">{r.label}</span>
             </div>
-            <span key={r.label + '-m'} className="text-xs text-slate-400 text-right">{mp.toFixed(1)}%</span>
-            <span key={r.label + '-g'} className="text-xs font-semibold text-slate-700 text-right">{gp.toFixed(1)}%</span>
-            <span key={r.label + '-d'} className={`text-xs font-semibold text-right ${Math.abs(diff) < 0.5 ? 'text-slate-300' : diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+            <span key={r.label + '-m'} className="text-sm text-slate-400 text-right">{mp.toFixed(1)}%</span>
+            <span key={r.label + '-g'} className="text-sm font-semibold text-slate-800 text-right">{gp.toFixed(1)}%</span>
+            <span key={r.label + '-d'} className={`text-sm font-semibold text-right ${Math.abs(diff) < 0.5 ? 'text-slate-300' : diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
               {Math.abs(diff) < 0.5 ? '—' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp`}
             </span>
           </>
@@ -591,8 +591,10 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                         <thead>
                           <tr className="border-b border-slate-100">
                             <th className="text-left px-4 py-2.5 text-xs text-slate-400 font-medium">Fon</th>
-                            <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Güncel</th>
-                            <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Kazanç</th>
+                            <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">İlk</th>
+                            <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Son</th>
+                            <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Δ₺</th>
+                            <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Δ%</th>
                             <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Günlük</th>
                           </tr>
                         </thead>
@@ -610,8 +612,23 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                                   </Link>
                                 </div>
                               </td>
-                              <td className="px-4 py-2.5 text-right text-sm text-slate-700 font-medium whitespace-nowrap">
-                                {f.guncelDeger != null ? fmt(f.guncelDeger) + ' ₺' : '—'}
+                              <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                                <p className="text-sm text-slate-600">{fmt(f.toplamMaliyet)} ₺</p>
+                                {usdKuru && <p className="text-xs text-slate-400">{fmtUsd(f.toplamMaliyet, usdKuru)}</p>}
+                              </td>
+                              <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                                <p className="text-sm font-semibold text-slate-800">{f.guncelDeger != null ? fmt(f.guncelDeger) + ' ₺' : '—'}</p>
+                                {usdKuru && f.guncelDeger != null && <p className="text-xs text-slate-400">{fmtUsd(f.guncelDeger, usdKuru)}</p>}
+                              </td>
+                              <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                                {f.kazanc != null && (
+                                  <p className={`text-sm font-medium ${f.kazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                    {f.kazanc >= 0 ? '+' : ''}{fmt(f.kazanc)} ₺
+                                  </p>
+                                )}
+                                {usdKuru && f.kazanc != null && (
+                                  <p className="text-xs text-slate-400">{fmtUsd(f.kazanc, usdKuru)}</p>
+                                )}
                               </td>
                               <td className="px-4 py-2.5 text-right whitespace-nowrap">
                                 {f.kazancPct != null && (
@@ -622,9 +639,12 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                               </td>
                               <td className="px-4 py-2.5 text-right whitespace-nowrap">
                                 {f.gunluk != null && (
-                                  <span className={`text-xs font-medium ${f.gunluk >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
+                                  <p className={`text-sm font-medium ${f.gunluk >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
                                     {f.gunluk >= 0 ? '+' : ''}{fmt(f.gunluk)} ₺
-                                  </span>
+                                  </p>
+                                )}
+                                {usdKuru && f.gunluk != null && (
+                                  <p className="text-xs text-slate-400">{fmtUsd(f.gunluk, usdKuru)}</p>
                                 )}
                               </td>
                             </tr>
