@@ -39,20 +39,21 @@ export default async function FavorilerPage() {
   })() : ''
 
   const kisiEskiMap = new Map<string, number>()
+  const portfoyEskiMap = new Map<string, number>()
   if (birAyOnce && fonKodlari.length) {
     const { data: eskiVeriler } = await admin
       .from('tefas_fon_verileri')
-      .select('fonKodu, fonTipi, kisiSayisi')
+      .select('fonKodu, fonTipi, kisiSayisi, portfoyBuyukluk')
       .in('fonKodu', fonKodlari)
       .lte('tarih', birAyOnce)
       .order('tarih', { ascending: false })
 
-    // Her fon için en yakın tarihi al
     const goruldu = new Set<string>()
     for (const r of eskiVeriler ?? []) {
       const key = `${r.fonKodu}::${r.fonTipi}`
-      if (!goruldu.has(key) && r.kisiSayisi != null) {
-        kisiEskiMap.set(key, r.kisiSayisi)
+      if (!goruldu.has(key)) {
+        if (r.kisiSayisi != null) kisiEskiMap.set(key, r.kisiSayisi)
+        if (r.portfoyBuyukluk != null) portfoyEskiMap.set(key, Number(r.portfoyBuyukluk))
         goruldu.add(key)
       }
     }
@@ -67,6 +68,9 @@ export default async function FavorilerPage() {
     const kisiSon = fon?.kisiSayisi ?? null
     const kisiEski = kisiEskiMap.get(key) ?? null
     const kisiDegisim = kisiSon != null && kisiEski != null ? kisiSon - kisiEski : null
+    const portfoySon = fon?.portfoyBuyukluk ? Number(fon.portfoyBuyukluk) : null
+    const portfoyEski = portfoyEskiMap.get(key) ?? null
+    const portfoyDegisim = portfoySon != null && portfoyEski != null ? portfoySon - portfoyEski : null
 
     return {
       fonKodu: fav.fonKodu,
@@ -79,7 +83,8 @@ export default async function FavorilerPage() {
       riskDegeri: fon?.riskDegeri ?? null,
       yonetimUcreti: fon?.yonetimUcreti ?? null,
       stopaj: fon?.stopaj ?? null,
-      portfoyBuyukluk: fon?.portfoyBuyukluk ?? null,
+      portfoyBuyukluk: portfoySon,
+      portfoyDegisim1a: portfoyDegisim,
       kisiSayisi: kisiSon,
       kisiDegisim1a: kisiDegisim,
       getiriler: fon?.getiriler ?? {},
