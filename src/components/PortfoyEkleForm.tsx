@@ -23,13 +23,17 @@ export function renkBul(key: string) {
 type FonSonuc = { fonKodu: string; fonTipi: string; fonUnvan: string | null; fiyat: number | null; tarih: string }
 type FavoriSonuc = { fonKodu: string; fonTipi: string; fonUnvan: string | null; guncelFiyat: number | null; degisim: number | null }
 
-// --- Fon ekleme formu (portföy dışarıdan gelir, bilgi olarak gösterilir) ---
+// --- Fon ekleme formu ---
+// portfoy.id boşsa yeniPortfoy ile önce portföy oluşturulur (atomic)
 export function FonEkleForm({
   portfoy,
   onKapat,
+  yeniPortfoy,
 }: {
   portfoy: { id: string; ad: string; renk?: string }
   onKapat?: () => void
+  // Eğer portfoy.id yoksa, ilk fon eklenince bu datadan portföy oluşturulur
+  yeniPortfoy?: { ad: string; renk: string }
 }) {
   const [aramaQ, setAramaQ] = useState('')
   const [sonuclar, setSonuclar] = useState<FonSonuc[]>([])
@@ -91,10 +95,20 @@ export function FonEkleForm({
     if (!seciliFon) { setHata('Lütfen bir fon seçin'); return }
     setYukleniyor(true)
     setHata(null)
+
+    // Portföy henüz DB'de yoksa (yeni portföy akışı), önce oluştur
+    let portfoyId = portfoy.id
+    if (!portfoyId && yeniPortfoy) {
+      const ySonuc = await portfoyOlustur(yeniPortfoy.ad, yeniPortfoy.renk)
+      if (ySonuc?.hata) { setHata(ySonuc.hata); setYukleniyor(false); return }
+      if (!ySonuc?.id) { setHata('Portföy oluşturulamadı'); setYukleniyor(false); return }
+      portfoyId = ySonuc.id
+    }
+
     const sonuc = await portfoyIslemEkle({
       fonKodu: seciliFon.fonKodu, fonTipi: seciliFon.fonTipi,
       islem_tipi: 'AL', adet: Number(adet), fiyat: Number(fiyat),
-      tarih, portfoy_id: portfoy.id,
+      tarih, portfoy_id: portfoyId,
     })
     if (sonuc?.hata) { setHata(sonuc.hata); setYukleniyor(false); return }
     setSeciliFon(null); setAramaQ(''); setAdet(''); setFiyat(''); setTutar('')
@@ -294,39 +308,38 @@ export function PortfoyEkleForm({
   const [renk, setRenk] = useState('blue')
   const [yukleniyor, setYukleniyor] = useState(false)
   const [hata, setHata] = useState<string | null>(null)
-  // bosEkran: oluşturulan portföyü refresh beklemeden lokal tut → FonEkleForm'a ver
   const [lokalPortfoy, setLokalPortfoy] = useState<{ id: string; ad: string; renk: string } | null>(null)
   const router = useRouter()
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const adSon = ad.trim()
     if (!adSon) return
-    setYukleniyor(true)
-    setHata(null)
-    const sonuc = await portfoyOlustur(adSon, renk)
-    setYukleniyor(false)
-    if (sonuc?.hata) { setHata(sonuc.hata); return }
-    if (bosEkran && sonuc?.id) {
-      setLokalPortfoy({ id: sonuc.id, ad: adSon, renk })
-      setAcik(false)
-    } else {
-      router.refresh()
-      setAcik(false)
-    }
+    // Portföyü DB'ye yazmadan sadece state'e al; ilk fon eklenince atomik olarak oluşturulacak
+    setLokalPortfoy({ id: '', ad: adSon, renk })
     setAd('')
   }
 
-  // bosEkran: portföy oluşturuldu, fon ekleme formunu göster
-  if (bosEkran && lokalPortfoy) {
-    return (
-      <div className="flex flex-col items-center gap-4 w-full max-w-sm">
-        <FonEkleForm
-          portfoy={lokalPortfoy}
-          onKapat={() => {}}
-        />
-      </div>
+  // portföy adı alındı → fon ekle formunu göster
+  if (lokalPortfoy) {
+    const kapatHandler = () => {
+      router.refresh()
+      setLokalPortfoy(null)
+      if (!bosEkran) setAcik(false)
+    }
+
+    const fonEkleForm = (
+      <FonEkleForm
+        portfoy={lokalPortfoy}
+        yeniPortfoy={lokalPortfoy.id === '' ? { ad: lokalPortfoy.ad, renk: lokalPortfoy.renk } : undefined}
+        onKapat={kapatHandler}
+      />
     )
+
+    if (bosEkran) {
+      return <div className="flex flex-col items-center gap-4 w-full max-w-sm">{fonEkleForm}</div>
+    }
+    return <div className="mt-4">{fonEkleForm}</div>
   }
 
   // bosEkran: henüz portföy yok, oluşturma formu
@@ -360,7 +373,7 @@ export function PortfoyEkleForm({
     )
   }
 
-  // Normal mod: "Yeni Portföy" butonu + form (üstte sağda)
+  // Normal mod: "Yeni Portföy" butonu + form
   return (
     <div>
       {!acik && portfoyler.length < 3 && (
@@ -394,7 +407,7 @@ export function PortfoyEkleForm({
           <div className="flex gap-2">
             <button type="submit" disabled={yukleniyor || !ad.trim()}
               className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
-              {yukleniyor ? 'Oluşturuluyor...' : 'Oluştur'}
+              {yukleniyor ? 'Oluşturuluyor...' : 'Oluştur →'}
             </button>
             <button type="button" onClick={() => { setAcik(false); setAd(''); setHata(null) }}
               className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">

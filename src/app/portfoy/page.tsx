@@ -44,20 +44,28 @@ export default async function PortfoyPage() {
   }
 
   const admin = createAdminClient()
-  const { data: sonTarihRow } = await admin.from('tefas_fon_verileri')
-    .select('tarih').order('tarih', { ascending: false }).limit(1).single()
-  const sonTarih = sonTarihRow?.tarih
+
+  const [sonTarihResult, usdResult] = await Promise.all([
+    admin.from('tefas_fon_verileri').select('tarih').order('tarih', { ascending: false }).limit(1).single(),
+    admin.from('tefas_benchmark_fiyatlari').select('deger').eq('gosterge', 'USD').order('tarih', { ascending: false }).limit(1).maybeSingle(),
+  ])
+
+  const sonTarih = sonTarihResult.data?.tarih
+  const usdKuru = usdResult.data ? Number(usdResult.data.deger) : null
 
   const fonKodlari = [...new Set((islemler ?? []).map((i: any) => i.fonKodu))]
-  const guncelFiyatlar = fonKodlari.length ? (await admin.from('tefas_fon_verileri')
-    .select('fonKodu, fonTipi, fonUnvan, fiyat')
-    .eq('tarih', sonTarih)
-    .in('fonKodu', fonKodlari)).data : []
 
-  const fiyatMap = new Map((guncelFiyatlar ?? []).map((r: any) => [`${r.fonKodu}::${r.fonTipi}`, r]))
+  const [guncelFiyatlarResult, ozetResult] = fonKodlari.length ? await Promise.all([
+    admin.from('tefas_fon_verileri').select('fonKodu, fonTipi, fonUnvan, fiyat').eq('tarih', sonTarih).in('fonKodu', fonKodlari),
+    admin.from('tefas_fon_ozet').select('fonKodu, fonTipi, getiri1g').in('fonKodu', fonKodlari),
+  ]) : [{ data: [] }, { data: [] }]
+
+  const fiyatMap = new Map((guncelFiyatlarResult.data ?? []).map((r: any) => [`${r.fonKodu}::${r.fonTipi}`, r]))
+  const ozetMap = new Map((ozetResult.data ?? []).map((r: any) => [`${r.fonKodu}::${r.fonTipi}`, r]))
 
   const islemlerZengin = (islemler ?? []).map((i: any) => {
     const g = fiyatMap.get(`${i.fonKodu}::${i.fonTipi}`) as any
+    const oz = ozetMap.get(`${i.fonKodu}::${i.fonTipi}`) as any
     return {
       id: i.id,
       portfoy_id: i.portfoy_id ?? '',
@@ -69,13 +77,14 @@ export default async function PortfoyPage() {
       fiyat: Number(i.fiyat),
       adet: Number(i.adet),
       guncelFiyat: g?.fiyat ? Number(g.fiyat) : null,
+      getiri1g: oz?.getiri1g != null ? Number(oz.getiri1g) : null,
     }
   })
 
   return (
     <div className="w-full px-4 sm:px-6 py-8">
       <h1 className="text-2xl font-bold text-slate-900 mb-8">Portföyüm</h1>
-      <PortfoyGorunum portfoyler={portfoyListesi} islemler={islemlerZengin} />
+      <PortfoyGorunum portfoyler={portfoyListesi} islemler={islemlerZengin} usdKuru={usdKuru} />
       {portfoyListesi.length < 3 && (
         <div className="mt-8 flex justify-center">
           <PortfoyEkleForm portfoyler={portfoyListesi} />

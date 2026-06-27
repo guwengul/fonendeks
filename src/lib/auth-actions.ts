@@ -119,3 +119,21 @@ export async function portfoyIslemSil(id: string) {
     .delete().eq('id', id).eq('user_id', user.id)
   return error ? { hata: error.message } : { ok: true }
 }
+
+export async function portfoyGuncelle(id: string, ad: string, renk: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Giriş gerekli' }
+  const { error } = await supabase.from('tefas_portfoy')
+    .update({ ad, renk }).eq('id', id).eq('user_id', user.id)
+  return error ? { hata: error.message } : { ok: true }
+}
+
+export async function portfoySil(id: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Giriş gerekli' }
+  await supabase.from('tefas_portfoy_islem').delete().eq('portfoy_id', id).eq('user_id', user.id)
+  const { error } = await supabase.from('tefas_portfoy').delete().eq('id', id).eq('user_id', user.id)
+  return error ? { hata: error.message } : { ok: true }
+}
