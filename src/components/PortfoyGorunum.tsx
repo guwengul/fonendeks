@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { portfoyIslemSil, portfoyIslemGuncelle } from '@/lib/auth-actions'
+import { renkBul } from './PortfoyEkleForm'
 
 type Islem = {
   id: string
@@ -18,7 +19,7 @@ type Islem = {
   guncelFiyat: number | null
 }
 
-type Portfoy = { id: string; ad: string }
+type Portfoy = { id: string; ad: string; renk?: string }
 
 function fmt(n: number | null) {
   if (n == null) return '-'
@@ -242,7 +243,10 @@ export function PortfoyGorunum({ portfoyler, islemler }: { portfoyler: Portfoy[]
         return (
           <div key={portfoy.id}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-800">{portfoy.ad}</h2>
+              <div className="flex items-center gap-2.5">
+                <span className={`w-3 h-3 rounded-full shrink-0 ${renkBul(portfoy.renk ?? 'blue').dot}`} />
+                <h2 className="text-lg font-bold text-slate-800">{portfoy.ad}</h2>
+              </div>
               {pislemler.length > 0 && (
                 <div className="flex items-center gap-3 text-sm">
                   <span className="text-slate-400 text-xs">{fmt(ptMaliyet)} ₺ maliyet</span>

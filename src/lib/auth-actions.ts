@@ -41,7 +41,7 @@ export async function favoriKaldir(fonKodu: string, fonTipi: string) {
   return error ? { hata: error.message } : { ok: true }
 }
 
-export async function portfoyOlustur(ad: string) {
+export async function portfoyOlustur(ad: string, renk: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { hata: 'Giriş gerekli' }
@@ -49,7 +49,7 @@ export async function portfoyOlustur(ad: string) {
     .select('*', { count: 'exact', head: true }).eq('user_id', user.id)
   if ((count ?? 0) >= 3) return { hata: 'En fazla 3 portföy oluşturabilirsiniz' }
   const { data, error } = await supabase.from('tefas_portfoy')
-    .insert({ user_id: user.id, ad }).select('id').single()
+    .insert({ user_id: user.id, ad, renk }).select('id').single()
   return error ? { hata: error.message } : { ok: true, id: data.id }
 }
 

@@ -13,7 +13,7 @@ export default async function PortfoyPage() {
 
   const { data: portfoyler } = await supabase
     .from('tefas_portfoy')
-    .select('id, ad')
+    .select('id, ad, renk')
     .eq('user_id', user.id)
     .order('created_at', { ascending: true })
 
@@ -27,9 +27,18 @@ export default async function PortfoyPage() {
 
   if (!portfoyListesi.length && !islemler?.length) {
     return (
-      <div className="w-full px-4 sm:px-6 py-8 flex flex-col items-center justify-center min-h-[50vh] gap-4">
-        <p className="text-slate-400 text-sm">Henüz portföy oluşturmadınız.</p>
-        <PortfoyEkleForm portfoyler={[]} />
+      <div className="w-full flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center mb-1">
+          <svg className="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M3 7h18M3 12h18M3 17h7" />
+          </svg>
+        </div>
+        <p className="text-slate-700 font-semibold text-base">Portföyünü oluştur</p>
+        <p className="text-slate-400 text-sm text-center max-w-xs">Fonlarını grupla, getirini takip et.</p>
+        <div className="mt-2">
+          <PortfoyEkleForm portfoyler={[]} bosEkran />
+        </div>
       </div>
     )
   }
