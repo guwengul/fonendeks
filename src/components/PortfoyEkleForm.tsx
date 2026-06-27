@@ -49,6 +49,8 @@ export function FonEkleForm({
   const [yukleniyor, setYukleniyor] = useState(false)
   const [eklendi, setEklendi] = useState(false)
   const [hata, setHata] = useState<string | null>(null)
+  // İlk fon eklenince oluşturulan portföy ID'si buraya kaydedilir
+  const [cozulmusPortfoyId, setCozulmusPortfoyId] = useState(portfoy.id)
   const aramaRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -97,12 +99,13 @@ export function FonEkleForm({
     setHata(null)
 
     // Portföy henüz DB'de yoksa (yeni portföy akışı), önce oluştur
-    let portfoyId = portfoy.id
+    let portfoyId = cozulmusPortfoyId
     if (!portfoyId && yeniPortfoy) {
       const ySonuc = await portfoyOlustur(yeniPortfoy.ad, yeniPortfoy.renk)
       if (ySonuc?.hata) { setHata(ySonuc.hata); setYukleniyor(false); return }
       if (!ySonuc?.id) { setHata('Portföy oluşturulamadı'); setYukleniyor(false); return }
       portfoyId = ySonuc.id
+      setCozulmusPortfoyId(ySonuc.id) // sonraki eklemelerde tekrar oluşturulmaz
     }
 
     const sonuc = await portfoyIslemEkle({
