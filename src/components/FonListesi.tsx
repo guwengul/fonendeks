@@ -489,6 +489,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
                     </button>
                     <div className="min-w-0">
                       <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
+                        title={!basit ? (f.fonUnvan ?? undefined) : undefined}
                         className="font-semibold text-indigo-600 hover:text-indigo-800 transition-colors text-sm">
                         {f.fonKodu}
                       </Link>
