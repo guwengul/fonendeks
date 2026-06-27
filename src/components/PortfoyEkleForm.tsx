@@ -37,6 +37,7 @@ export function PortfoyEkleForm({ portfoyler }: { portfoyler: Portfoy[] }) {
   const [fiyat, setFiyat] = useState('')
   const [fiyatYukleniyor, setFiyatYukleniyor] = useState(false)
   const [yukleniyor, setYukleniyor] = useState(false)
+  const [eklendi, setEklendi] = useState(false)
   const [hata, setHata] = useState<string | null>(null)
   const aramaRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -100,10 +101,13 @@ export function PortfoyEkleForm({ portfoyler }: { portfoyler: Portfoy[] }) {
       tarih, portfoy_id: seciliPortfoyId, varlik_grubu: varlikGrubu,
     })
     if (sonuc?.hata) { setHata(sonuc.hata); setYukleniyor(false); return }
-    setAcik(false)
     setSeciliFon(null)
+    setAramaQ('')
     setAdet('')
+    setFiyat('')
     setYukleniyor(false)
+    setEklendi(true)
+    setTimeout(() => setEklendi(false), 2000)
     router.refresh()
   }
 
@@ -236,20 +240,27 @@ export function PortfoyEkleForm({ portfoyler }: { portfoyler: Portfoy[] }) {
 
           <div>
             <label className="text-xs text-slate-500 font-medium block mb-1.5">
-              Alış Fiyatı
+              Birim Fiyat
               {fiyatYukleniyor && <span className="text-slate-400 font-normal ml-1">yükleniyor...</span>}
             </label>
             <input type="number" step="0.000001" min="0" required
               value={fiyat} onChange={e => setFiyat(e.target.value)} placeholder="otomatik"
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+            {fiyat && adet && Number(fiyat) > 0 && Number(adet) > 0 && (
+              <p className="text-xs text-slate-500 mt-1.5">
+                Toplam: <span className="font-semibold text-slate-700">
+                  {(Number(fiyat) * Number(adet)).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+                </span>
+              </p>
+            )}
           </div>
 
           {hata && <p className="text-sm text-red-600">{hata}</p>}
 
           <div className="flex gap-2 pt-1">
             <button type="submit" disabled={yukleniyor || !seciliFon}
-              className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
-              {yukleniyor ? 'Ekleniyor...' : 'Ekle'}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${eklendi ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+              {yukleniyor ? 'Ekleniyor...' : eklendi ? '✓ Eklendi' : 'Ekle'}
             </button>
             <button type="button" onClick={reset}
               className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">

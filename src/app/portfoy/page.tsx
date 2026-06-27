@@ -27,12 +27,9 @@ export default async function PortfoyPage() {
 
   if (!portfoyListesi.length && !islemler?.length) {
     return (
-      <div className="w-full px-4 sm:px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">Portföyüm</h1>
-          <PortfoyEkleForm portfoyler={[]} />
-        </div>
-        <p className="text-slate-400">Henüz portföy oluşturmadınız.</p>
+      <div className="w-full px-4 sm:px-6 py-8 flex flex-col items-center justify-center min-h-[50vh] gap-4">
+        <p className="text-slate-400 text-sm">Henüz portföy oluşturmadınız.</p>
+        <PortfoyEkleForm portfoyler={[]} />
       </div>
     )
   }
