@@ -161,8 +161,8 @@ function toggle(set: Set<string>, val: string): Set<string> {
 
 type SiraKey = 'portfoyBuyukluk' | 'kisiSayisi' | 'fiyat' | string
 
-export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi = false }: {
-  fonlar: Fon[]; kurucular: string[]; fonTurleri: string[]; girisYapildi?: boolean
+export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi = false, basit = false }: {
+  fonlar: Fon[]; kurucular: string[]; fonTurleri: string[]; girisYapildi?: boolean; basit?: boolean
 }) {
   const [arama, setArama] = useState('')
   const [favoriler, setFavoriler] = useState<Set<string>>(new Set())
@@ -341,9 +341,11 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
   return (
     <div>
       <div className="flex gap-2 mb-4">
-        <input type="text" placeholder="Fon kodu, kurucu şirket veya fon adı ile arayın..."
-          value={arama} onChange={e => setArama(e.target.value)}
-          className="flex-1 border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 bg-white shadow-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        {!basit && (
+          <input type="text" placeholder="Fon kodu, kurucu şirket veya fon adı ile arayın..."
+            value={arama} onChange={e => setArama(e.target.value)}
+            className="flex-1 border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 bg-white shadow-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        )}
         <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white text-sm shrink-0">
           {(['TL', 'USD'] as const).map(pb => (
             <button key={pb} onClick={() => setParaBirimi(pb)}
@@ -354,7 +356,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
         </div>
       </div>
 
-      <div className="mb-4">
+      {!basit && <div className="mb-4">
         <button onClick={() => setFiltrePaneli(v => !v)}
           className={`flex items-center gap-2 text-sm font-medium transition-colors ${filtrePaneli ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}>
           <svg className={`w-4 h-4 transition-transform ${filtrePaneli ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -451,7 +453,7 @@ export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       <p className="text-slate-400 text-sm mb-3">{filtrelenmis.length.toLocaleString('tr-TR')} fon listeleniyor</p>
 

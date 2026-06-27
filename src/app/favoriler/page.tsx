@@ -31,7 +31,7 @@ export default async function FavorilerPage() {
   return (
     <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
       <h1 className="text-2xl font-bold text-slate-900 mb-6">Favorilerim</h1>
-      <FonListesi fonlar={fonlar} kurucular={kurucular} fonTurleri={fonTurleri} girisYapildi={true} />
+      <FonListesi fonlar={fonlar} kurucular={kurucular} fonTurleri={fonTurleri} girisYapildi={true} basit={true} />
     </div>
   )
 }
