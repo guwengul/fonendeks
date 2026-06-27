@@ -82,7 +82,7 @@ function FavoriKart({ k }: { k: Kart }) {
                 Risk {k.riskDegeri}
               </span>
             )}
-            {k.yonetimUcreti != null && (
+            {k.yonetimUcreti != null && k.yonetimUcreti > 0 && (
               <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">
                 %{k.yonetimUcreti}
               </span>
