@@ -786,7 +786,14 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
             {pislemler.length > 0 && !acik && (
               <span className="flex items-center gap-2 ml-1 min-w-0">
                 <span className="hidden sm:inline text-slate-400 text-xs truncate">{fmt(ptMaliyet)} ₺ → {fmt(ptGuncel)} ₺</span>
-                <span className={`text-sm font-bold shrink-0 ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</span>
+                <span className={`text-sm font-bold shrink-0 ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {ptKazanc >= 0 ? '+' : ''}{fmt(ptKazanc)} ₺ ({pct(ptPct)})
+                </span>
+                {ptUsdKazanc != null && ptUsdPct != null && (
+                  <span className={`hidden md:inline text-xs font-medium shrink-0 ${ptUsdKazanc >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                    {ptUsdKazanc >= 0 ? '+' : ''}{Math.abs(ptUsdKazanc) >= 1000 ? (ptUsdKazanc / 1000).toFixed(1) + 'K' : ptUsdKazanc.toFixed(0)} $ ({ptUsdKazanc >= 0 ? '+' : ''}{ptUsdPct.toFixed(1)}%)
+                  </span>
+                )}
               </span>
             )}
           </button>
