@@ -18,6 +18,7 @@ type Islem = {
   adet: number
   guncelFiyat: number | null
   getiri1g: number | null
+  usdKuruAlim: number | null
 }
 
 type Portfoy = { id: string; ad: string; renk?: string }
@@ -811,6 +812,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
               const fonAgg = new Map<string, {
                 fonKodu: string; fonTipi: string; fonUnvan: string | null
                 grupRengi: string; toplamMaliyet: number; toplamAdet: number
+                usdMaliyet: number  // alış tarihlerindeki kur ile hesaplanan USD maliyet
                 guncelFiyat: number | null; getiri1g: number | null
               }>()
               for (const i of pislemler) {
@@ -818,12 +820,14 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                 if (!fonAgg.has(key)) fonAgg.set(key, {
                   fonKodu: i.fonKodu, fonTipi: i.fonTipi, fonUnvan: i.fonUnvan,
                   grupRengi: grupRenk(i.varlik_grubu),
-                  toplamMaliyet: 0, toplamAdet: 0,
+                  toplamMaliyet: 0, toplamAdet: 0, usdMaliyet: 0,
                   guncelFiyat: i.guncelFiyat, getiri1g: i.getiri1g,
                 })
                 const e = fonAgg.get(key)!
-                e.toplamMaliyet += i.fiyat * i.adet
+                const tlMaliyet = i.fiyat * i.adet
+                e.toplamMaliyet += tlMaliyet
                 e.toplamAdet += i.adet
+                if (i.usdKuruAlim) e.usdMaliyet += tlMaliyet / i.usdKuruAlim
               }
               const fonlar = [...fonAgg.values()].map(f => {
                 const guncelDeger = f.guncelFiyat ? f.guncelFiyat * f.toplamAdet : null
@@ -934,11 +938,17 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                                     {pct(f.kazancPct)}
                                   </p>
                                 )}
-                                {f.kazanc != null && usdKuru && (
-                                  <p className={`text-xs font-medium ${f.kazanc >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                                    {f.kazanc >= 0 ? '+' : ''}{fmtUsd(f.kazanc, usdKuru)}
-                                  </p>
-                                )}
+                                {(() => {
+                                  if (!usdKuru || !f.guncelDeger || !f.usdMaliyet) return null
+                                  const usdGuncel = f.guncelDeger / usdKuru
+                                  const usdKazanc = usdGuncel - f.usdMaliyet
+                                  const usdPct = (usdKazanc / f.usdMaliyet) * 100
+                                  return (
+                                    <p className={`text-xs font-medium ${usdKazanc >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                      {usdKazanc >= 0 ? '+' : ''}{usdPct.toFixed(2)}% $
+                                    </p>
+                                  )
+                                })()}
                               </td>
                               {/* Port. Payı */}
                               <td className="hidden sm:table-cell px-4 py-3 text-right whitespace-nowrap">
