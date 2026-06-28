@@ -62,14 +62,22 @@ export async function fetchFonlar(filtre?: { fonKodlari: string[] }) {
   const usdFiyatlar: Record<string, number | null> = { [sonTarih]: null }
   if (sonTarih) {
     const tarihler = [sonTarih, ...DONEM_KEYS.map(k => donemBasTarih(sonTarih, k))]
-    const benzersiz = [...new Set(tarihler)]
-    const results = await Promise.all(benzersiz.map(async t => {
-      const { data } = await supabase.from('tefas_benchmark_fiyatlari')
-        .select('deger').eq('gosterge', 'USD').lte('tarih', t)
-        .order('tarih', { ascending: false }).limit(1).maybeSingle()
-      return { t, deger: data ? Number(data.deger) : null }
-    }))
-    for (const { t, deger } of results) usdFiyatlar[t] = deger
+    const benzersiz = [...new Set(tarihler)].sort()
+    const enEski = benzersiz[0]
+    // Tek sorguda tüm USD tarihlerini çek, her dönem için en yakın önceki kuru bul
+    const { data: usdRows } = await supabase.from('tefas_benchmark_fiyatlari')
+      .select('tarih, deger').eq('gosterge', 'USD')
+      .gte('tarih', enEski).lte('tarih', sonTarih)
+      .order('tarih', { ascending: true })
+    const usdSirali = (usdRows ?? []).map(r => ({ tarih: r.tarih, deger: Number(r.deger) }))
+    for (const hedef of benzersiz) {
+      let best: number | null = null
+      for (const u of usdSirali) {
+        if (u.tarih <= hedef) best = u.deger
+        else break
+      }
+      usdFiyatlar[hedef] = best
+    }
   }
 
   const usdSon = usdFiyatlar[sonTarih]

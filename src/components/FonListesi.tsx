@@ -163,24 +163,25 @@ type SiraKey = 'portfoyBuyukluk' | 'kisiSayisi' | 'fiyat' | string
 
 type FavoriMeta = Record<string, { eklemeFiyati: number | null; eklemeTarihi: string | null }>
 
-export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi = false, basit = false, favoriMeta }: {
-  fonlar: Fon[]; kurucular: string[]; fonTurleri: string[]; girisYapildi?: boolean; basit?: boolean; favoriMeta?: FavoriMeta
+export default function FonListesi({ fonlar, kurucular, fonTurleri, girisYapildi = false, basit = false, favoriMeta, initialFavoriler }: {
+  fonlar: Fon[]; kurucular: string[]; fonTurleri: string[]; girisYapildi?: boolean; basit?: boolean; favoriMeta?: FavoriMeta; initialFavoriler?: Set<string>
 }) {
   const [arama, setArama] = useState('')
-  const [favoriler, setFavoriler] = useState<Set<string>>(new Set())
+  const [favoriler, setFavoriler] = useState<Set<string>>(initialFavoriler ?? new Set())
   const [favoriHata, setFavoriHata] = useState<string | null>(null)
   const [, startTransition] = useTransition()
   const router = useRouter()
 
   useEffect(() => {
-    if (!girisYapildi) return
+    // initialFavoriler server'dan geldiyse client fetch'e gerek yok
+    if (!girisYapildi || initialFavoriler) return
     fetch('/api/kullanici/favoriler')
       .then(r => r.json())
       .then((d: { fonKodu: string; fonTipi: string }[]) => {
         if (Array.isArray(d)) setFavoriler(new Set(d.map(f => `${f.fonKodu}::${f.fonTipi}`)))
       })
       .catch(() => {})
-  }, [girisYapildi])
+  }, [girisYapildi, initialFavoriler])
 
   function toggleFavori(fon: Fon) {
     if (!girisYapildi) { router.push('/giris'); return }
