@@ -746,6 +746,15 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
   const ptKazanc = ptGuncel - ptMaliyet
   const ptPct = ptMaliyet > 0 ? (ptKazanc / ptMaliyet) * 100 : 0
 
+  // USD bazlı kazanç
+  const ptUsdMaliyet = pislemler.reduce((s, i) => {
+    if (!i.usdKuruAlim) return s
+    return s + (i.fiyat * i.adet) / i.usdKuruAlim
+  }, 0)
+  const ptUsdGuncel = usdKuru && ptGuncel ? ptGuncel / usdKuru : null
+  const ptUsdKazanc = ptUsdMaliyet > 0 && ptUsdGuncel != null ? ptUsdGuncel - ptUsdMaliyet : null
+  const ptUsdPct = ptUsdKazanc != null && ptUsdMaliyet > 0 ? (ptUsdKazanc / ptUsdMaliyet) * 100 : null
+
   const ptGunlukKazanc = pislemler.reduce((s, i) => {
     if (i.guncelFiyat == null || i.getiri1g == null) return s
     const gd = i.guncelFiyat * i.adet
@@ -854,8 +863,16 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                     </div>
                     <div className={`rounded-xl border px-4 py-3 ${ptKazanc >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
                       <p className="text-xs text-slate-400 mb-0.5">Toplam Kazanç</p>
-                      <p className={`text-base font-bold ${ptKazanc >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{fmt(ptKazanc)} ₺</p>
-                      <p className={`text-xs ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</p>
+                      <p className={`text-base font-bold ${ptKazanc >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                        {ptKazanc >= 0 ? '+' : ''}{fmt(ptKazanc)} ₺
+                        <span className="text-xs font-normal opacity-75 ml-1">({pct(ptPct)})</span>
+                      </p>
+                      {ptUsdKazanc != null && ptUsdPct != null && (
+                        <p className={`text-xs font-medium mt-0.5 ${ptUsdKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {ptUsdKazanc >= 0 ? '+' : ''}{Math.abs(ptUsdKazanc) >= 1000 ? (ptUsdKazanc / 1000).toFixed(1) + 'K' : ptUsdKazanc.toFixed(0)} $
+                          <span className="opacity-75 ml-1">({ptUsdKazanc >= 0 ? '+' : ''}{ptUsdPct.toFixed(2)}%)</span>
+                        </p>
+                      )}
                     </div>
                     <div className={`rounded-xl border px-4 py-3 ${ptGunlukKazanc >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
                       <p className="text-xs text-slate-400 mb-0.5">Günlük Getiri</p>
