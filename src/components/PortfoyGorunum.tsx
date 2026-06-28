@@ -320,28 +320,42 @@ function VarlikGrubuSection({ ad, islemler, ptMaliyet, ptGuncel }: {
   return (
     <div>
       <button onClick={() => setAcik(v => !v)}
-        className="w-full flex flex-wrap items-center gap-x-3 gap-y-1 mb-2 px-1 text-left hover:opacity-80 transition-opacity">
-        <div className="flex items-center gap-2 shrink-0">
-          <svg className={`w-3 h-3 text-slate-400 transition-transform ${acik ? 'rotate-90' : ''}`}
+        className="w-full grid items-center gap-x-4 mb-2 px-1 text-left hover:opacity-80 transition-opacity"
+        style={{ gridTemplateColumns: '1fr 100px 100px 56px 80px 64px' }}>
+        {/* Grup adı */}
+        <div className="flex items-center gap-2 min-w-0">
+          <svg className={`w-3 h-3 text-slate-400 shrink-0 transition-transform ${acik ? 'rotate-90' : ''}`}
             fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: renk }} />
-          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{ad}</span>
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: renk }} />
+          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide truncate">{ad}</span>
         </div>
-        <span className="text-xs text-slate-400">{fmt(maliyet)} ₺</span>
-        <span className="text-slate-300 text-xs">→</span>
-        <span className="text-xs font-medium text-slate-700">{fmt(guncel)} ₺</span>
-        <span className={`text-xs font-bold ${kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-          {pct(kazancPct)}
-        </span>
-        <span className="text-xs text-slate-400">·</span>
-        <span className="text-xs text-slate-500">%{guncelP.toFixed(1)} portföy</span>
-        {Math.abs(diff) >= 0.5 && (
-          <span className={`text-xs ${diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-            ({diff > 0 ? '+' : ''}{diff.toFixed(1)}pp kayma)
-          </span>
-        )}
+        {/* Yatırım */}
+        <div className="text-right">
+          <p className="text-xs text-slate-400">{fmt(maliyet)} ₺</p>
+        </div>
+        {/* Güncel */}
+        <div className="text-right">
+          <p className="text-xs font-medium text-slate-700">{fmt(guncel)} ₺</p>
+        </div>
+        {/* Getiri */}
+        <div className="text-right">
+          <p className={`text-xs font-bold ${kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+            {pct(kazancPct)}
+          </p>
+        </div>
+        {/* Port. payı */}
+        <div className="text-right">
+          <p className="text-xs text-slate-400">{alisP.toFixed(1)}% <span className="text-slate-300">→</span> <span className="text-slate-600 font-medium">{guncelP.toFixed(1)}%</span></p>
+        </div>
+        {/* Δpp */}
+        <div className="text-right">
+          {Math.abs(diff) >= 0.5
+            ? <p className={`text-xs font-semibold ${diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>{diff > 0 ? '+' : ''}{diff.toFixed(1)}pp</p>
+            : <p className="text-xs text-slate-200">—</p>
+          }
+        </div>
       </button>
       {acik && (
         <div className="flex flex-col gap-2">
