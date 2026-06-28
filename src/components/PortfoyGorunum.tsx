@@ -935,7 +935,9 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                                   </p>
                                 )}
                                 {f.kazanc != null && usdKuru && (
-                                  <p className="text-xs text-slate-400">{fmtUsd(f.kazanc, usdKuru)}</p>
+                                  <p className={`text-xs font-medium ${f.kazanc >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                    {f.kazanc >= 0 ? '+' : ''}{fmtUsd(f.kazanc, usdKuru)}
+                                  </p>
                                 )}
                               </td>
                               {/* Port. Payı */}
