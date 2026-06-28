@@ -874,7 +874,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Ort. Alış</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Bugünkü Fiyat</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Adet</th>
-                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Yatırım</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Maliyet</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Bugünkü Değer</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Getiri</th>
                           <th className="hidden sm:table-cell text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Port. Payı</th>
@@ -924,8 +924,13 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                               </td>
                               {/* Getiri */}
                               <td className="px-4 py-3 text-right whitespace-nowrap">
+                                {f.kazanc != null && (
+                                  <p className={`text-sm font-bold ${f.kazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                    {f.kazanc >= 0 ? '+' : ''}{fmt(f.kazanc)} ₺
+                                  </p>
+                                )}
                                 {f.kazancPct != null && (
-                                  <p className={`text-sm font-bold ${f.kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                  <p className={`text-xs font-semibold ${f.kazancPct >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
                                     {pct(f.kazancPct)}
                                   </p>
                                 )}
