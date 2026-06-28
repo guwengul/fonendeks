@@ -778,17 +778,22 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
         style={{ borderLeftColor: hex, borderLeftWidth: 4 }}>
 
         {/* Accordion başlık */}
-        <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 bg-white">
-          <button onClick={() => setAcik(v => !v)} className="flex items-center gap-3 flex-1 text-left min-w-0">
-            <svg className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${acik ? 'rotate-90' : ''}`}
-              fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="font-semibold text-slate-800">{portfoy.ad}</span>
+        <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 bg-white hover:bg-slate-50 transition-colors">
+          {/* Tıklanabilir alan: chevron + isim + özet */}
+          <button onClick={() => setAcik(v => !v)} className="flex items-center gap-2 sm:gap-3 flex-1 text-left min-w-0 cursor-pointer">
+            <span className="flex items-center justify-center w-6 h-6 rounded-full shrink-0 transition-colors"
+              style={{ backgroundColor: hex + '22' }}>
+              <svg className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${acik ? 'rotate-90' : ''}`}
+                style={{ color: hex }}
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </span>
+            <span className="font-semibold text-slate-800 truncate shrink-0 max-w-[120px] sm:max-w-none">{portfoy.ad}</span>
             {pislemler.length > 0 && !acik && (
-              <span className="flex items-center gap-2 ml-1 min-w-0">
+              <span className="flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-hidden">
                 <span className="hidden sm:inline text-slate-400 text-xs truncate">{fmt(ptMaliyet)} ₺ → {fmt(ptGuncel)} ₺</span>
-                <span className={`text-sm font-bold shrink-0 ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                <span className={`text-xs sm:text-sm font-bold shrink-0 ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                   {ptKazanc >= 0 ? '+' : ''}{fmt(ptKazanc)} ₺ ({pct(ptPct)})
                 </span>
                 {ptUsdKazanc != null && ptUsdPct != null && (
@@ -809,11 +814,11 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
             </svg>
           </button>
           <button onClick={() => { setFonEkleAcik(v => !v); if (!acik) setAcik(true) }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors shrink-0">
+            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors shrink-0">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Fon Ekle
+            <span className="hidden sm:inline">Fon Ekle</span>
           </button>
         </div>
 
@@ -884,7 +889,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                       )}
                     </div>
                     <div className={`rounded-xl border px-4 py-3 ${ptGunlukKazanc >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
-                      <p className="text-xs text-slate-400 mb-0.5">Günlük Getiri</p>
+                      <p className="text-xs text-slate-400 mb-0.5">Günlük Kazanç</p>
                       <p className={`text-base font-bold ${ptGunlukKazanc >= 0 ? 'text-blue-700' : 'text-orange-600'}`}>
                         {ptGunlukKazanc >= 0 ? '+' : ''}{fmt(ptGunlukKazanc)} ₺
                       </p>
@@ -903,7 +908,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Adet</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Maliyet</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Güncel Değer</th>
-                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Getiri</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Kazanç</th>
                           <th className="hidden sm:table-cell text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Port. Payı</th>
                         </tr>
                       </thead>
