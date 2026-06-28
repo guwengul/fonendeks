@@ -174,9 +174,6 @@ function IslemSatir({ islem }: { islem: Islem }) {
 
   const maliyet = islem.fiyat * islem.adet
   const guncel = islem.guncelFiyat ? islem.guncelFiyat * islem.adet : null
-  const kazanc = guncel != null ? guncel - maliyet : null
-  const kazancPct = kazanc != null && maliyet > 0 ? (kazanc / maliyet) * 100 : null
-
   function kaydet() {
     const a = Number(yeniAdet)
     if (!a || a <= 0) return
@@ -194,35 +191,45 @@ function IslemSatir({ islem }: { islem: Islem }) {
     })
   }
 
+  const kazanc = guncel != null ? guncel - maliyet : null
+  const kazancPct = kazanc != null && maliyet > 0 ? (kazanc / maliyet) * 100 : null
+
   return (
     <tr className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors text-sm">
-      <td className="px-4 py-2.5 text-slate-400 text-xs">{islem.tarih}</td>
-      <td className="px-4 py-2.5 text-right text-slate-500 text-xs">{islem.fiyat.toFixed(6)}</td>
-      <td className="px-4 py-2.5 text-right">
+      <td className="px-4 py-2.5 text-slate-500 text-xs whitespace-nowrap">{islem.tarih}</td>
+      <td className="px-4 py-2.5 text-right text-slate-500 text-xs whitespace-nowrap">{islem.fiyat.toFixed(6)}</td>
+      <td className="px-4 py-2.5 text-right text-xs whitespace-nowrap">
         {duzenle ? (
           <div className="flex items-center justify-end gap-1">
             <input type="number" step="1" min="1" value={yeniAdet}
               onChange={e => setYeniAdet(e.target.value)}
-              className="w-24 border border-indigo-300 rounded px-2 py-0.5 text-xs focus:outline-none" />
+              className="w-20 border border-indigo-300 rounded px-2 py-0.5 text-xs focus:outline-none" />
             <button onClick={kaydet} className="text-xs text-indigo-600 font-medium hover:text-indigo-800">✓</button>
             <button onClick={() => { setDuzenle(false); setYeniAdet(String(islem.adet)) }}
               className="text-xs text-slate-400 hover:text-slate-600">✕</button>
           </div>
         ) : (
-          <button onClick={() => setDuzenle(true)}
-            className="text-slate-700 hover:text-indigo-600 transition-colors">
+          <button onClick={() => setDuzenle(true)} className="text-slate-700 hover:text-indigo-600 transition-colors">
             {islem.adet.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
           </button>
         )}
       </td>
-      <td className="px-4 py-2.5 text-right text-slate-500 text-xs">{fmt(maliyet)} ₺</td>
-      <td className="px-4 py-2.5 text-right text-slate-600 text-xs">{guncel ? fmt(guncel) + ' ₺' : '—'}</td>
-      <td className="px-4 py-2.5 text-right">
-        {kazancPct != null && (
-          <span className={`text-xs font-semibold ${kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {pct(kazancPct)}
-          </span>
-        )}
+      <td className="px-4 py-2.5 text-right text-slate-600 text-xs whitespace-nowrap">{fmt(maliyet)} ₺</td>
+      <td className="px-4 py-2.5 text-right text-slate-400 text-xs whitespace-nowrap">
+        {islem.guncelFiyat != null ? islem.guncelFiyat.toFixed(6) : '—'}
+      </td>
+      <td className="px-4 py-2.5 text-right text-xs font-medium whitespace-nowrap">
+        {guncel != null ? <span className="text-slate-700">{fmt(guncel)} ₺</span> : '—'}
+      </td>
+      <td className="px-4 py-2.5 text-right text-xs font-medium whitespace-nowrap">
+        {kazanc != null
+          ? <span className={kazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}>{kazanc >= 0 ? '+' : ''}{fmt(kazanc)} ₺</span>
+          : '—'}
+      </td>
+      <td className="px-4 py-2.5 text-right text-xs font-semibold whitespace-nowrap">
+        {kazancPct != null
+          ? <span className={kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}>{pct(kazancPct)}</span>
+          : '—'}
       </td>
       <td className="px-4 py-2.5 text-center">
         <button onClick={sil} className="text-slate-200 hover:text-red-400 transition-colors text-base leading-none">×</button>
@@ -235,68 +242,47 @@ function FonGrubu({ fonKodu, fonTipi, fonUnvan, islemler }: {
   fonKodu: string; fonTipi: string; fonUnvan: string | null; islemler: Islem[]
 }) {
   const [acik, setAcik] = useState(false)
-
-  const toplamAdet = islemler.reduce((s, i) => s + i.adet, 0)
-  const toplamMaliyet = islemler.reduce((s, i) => s + i.fiyat * i.adet, 0)
-  const ortFiyat = toplamAdet > 0 ? toplamMaliyet / toplamAdet : 0
   const guncelFiyat = islemler[0]?.guncelFiyat
-  const guncelDeger = guncelFiyat ? toplamAdet * guncelFiyat : null
-  const kazanc = guncelDeger != null ? guncelDeger - toplamMaliyet : null
-  const kazancPct = kazanc != null && toplamMaliyet > 0 ? (kazanc / toplamMaliyet) * 100 : null
-
-  // günlük kazanç
-  const getiri1g = islemler[0]?.getiri1g
-  const gunlukKazanc = guncelDeger != null && getiri1g != null
-    ? guncelDeger * getiri1g / 100 / (1 + getiri1g / 100)
-    : null
 
   return (
     <div className="border border-slate-100 rounded-xl overflow-hidden">
       <button onClick={() => setAcik(v => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-left">
-        <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform shrink-0 ${acik ? 'rotate-90' : ''}`}
+        className="w-full flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 transition-colors text-left">
+        <svg className={`w-3 h-3 text-slate-300 transition-transform shrink-0 ${acik ? 'rotate-90' : ''}`}
           fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
         <Link href={`/fon/${fonKodu}?tip=${fonTipi}`} onClick={e => e.stopPropagation()}
-          className="font-mono font-bold text-indigo-600 hover:underline text-sm shrink-0">
+          className="font-mono font-semibold text-indigo-600 hover:underline text-sm shrink-0">
           {fonKodu}
         </Link>
         {fonUnvan && <span className="text-xs text-slate-400 truncate">{fonUnvan}</span>}
-        <div className="ml-auto flex items-center gap-4 shrink-0 text-sm">
-          <span className="text-slate-500 text-xs">{toplamAdet.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} adet</span>
-          <span className="text-slate-400 text-xs">ort. {ortFiyat.toFixed(6)}</span>
-          {guncelDeger != null && <span className="text-slate-700 font-medium text-xs">{fmt(guncelDeger)} ₺</span>}
-          {gunlukKazanc != null && (
-            <span className={`text-xs ${gunlukKazanc >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-              {gunlukKazanc >= 0 ? '+' : ''}{fmt(gunlukKazanc)} ₺ bugün
-            </span>
-          )}
-          {kazancPct != null && (
-            <span className={`font-bold text-sm ${kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-              {pct(kazancPct)}
-            </span>
-          )}
-        </div>
+        {guncelFiyat != null && (
+          <span className="text-xs text-slate-400 ml-auto shrink-0">bugün {guncelFiyat.toFixed(6)}</span>
+        )}
       </button>
 
       {acik && (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-xs text-slate-400 border-b border-slate-100">
-              <th className="text-left px-4 py-2">Tarih</th>
-              <th className="text-right px-4 py-2">Alış Fiyatı</th>
-              <th className="text-right px-4 py-2">Adet</th>
-              <th className="text-right px-4 py-2">Maliyet</th>
-              <th className="text-right px-4 py-2">Güncel</th>
-              <th className="text-right px-4 py-2">Kazanç</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {islemler.map(i => <IslemSatir key={i.id} islem={i} />)}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-slate-400 border-b border-slate-100 bg-white">
+                <th className="text-left px-4 py-2">Tarih</th>
+                <th className="text-right px-4 py-2">Alış Fiyatı</th>
+                <th className="text-right px-4 py-2">Adet</th>
+                <th className="text-right px-4 py-2">Tutar</th>
+                <th className="text-right px-4 py-2">Bug. Fiyat</th>
+                <th className="text-right px-4 py-2">Bug. Toplam</th>
+                <th className="text-right px-4 py-2">Kazanç</th>
+                <th className="text-right px-4 py-2">Getiri</th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {islemler.map(i => <IslemSatir key={i.id} islem={i} />)}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
@@ -334,31 +320,28 @@ function VarlikGrubuSection({ ad, islemler, ptMaliyet, ptGuncel }: {
   return (
     <div>
       <button onClick={() => setAcik(v => !v)}
-        className="w-full flex items-center gap-3 mb-2 px-1 text-left hover:opacity-80 transition-opacity">
-        <svg className={`w-3 h-3 text-slate-400 shrink-0 transition-transform ${acik ? 'rotate-90' : ''}`}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: renk }} />
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{ad}</span>
-        <div className="flex-1 h-px bg-slate-100" />
-        <span className="text-xs text-slate-400">{alisP.toFixed(1)}%</span>
-        <span className="text-slate-200 text-xs">→</span>
-        <span className="text-xs text-slate-600 font-medium">{guncelP.toFixed(1)}%</span>
-        {Math.abs(diff) >= 0.5 && (
-          <span className={`text-xs font-semibold ${diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-            {diff > 0 ? '+' : ''}{diff.toFixed(1)}pp
-          </span>
-        )}
-        <div className="w-px h-3 bg-slate-200 mx-1" />
-        {gunlukKazanc !== 0 && (
-          <span className={`text-xs ${gunlukKazanc >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-            {gunlukKazanc >= 0 ? '+' : ''}{fmt(gunlukKazanc)} bugün
-          </span>
-        )}
-        <span className={`text-xs font-semibold ${kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+        className="w-full flex flex-wrap items-center gap-x-3 gap-y-1 mb-2 px-1 text-left hover:opacity-80 transition-opacity">
+        <div className="flex items-center gap-2 shrink-0">
+          <svg className={`w-3 h-3 text-slate-400 transition-transform ${acik ? 'rotate-90' : ''}`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: renk }} />
+          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{ad}</span>
+        </div>
+        <span className="text-xs text-slate-400">{fmt(maliyet)} ₺</span>
+        <span className="text-slate-300 text-xs">→</span>
+        <span className="text-xs font-medium text-slate-700">{fmt(guncel)} ₺</span>
+        <span className={`text-xs font-bold ${kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
           {pct(kazancPct)}
         </span>
+        <span className="text-xs text-slate-400">·</span>
+        <span className="text-xs text-slate-500">%{guncelP.toFixed(1)} portföy</span>
+        {Math.abs(diff) >= 0.5 && (
+          <span className={`text-xs ${diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+            ({diff > 0 ? '+' : ''}{diff.toFixed(1)}pp kayma)
+          </span>
+        )}
       </button>
       {acik && (
         <div className="flex flex-col gap-2">
