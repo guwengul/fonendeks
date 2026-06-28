@@ -337,7 +337,7 @@ function VarlikGrubuSection({ ad, islemler, ptMaliyet, ptGuncel }: {
         </div>
         {/* Güncel */}
         <div className="text-right">
-          <p className="text-xs font-medium text-slate-700">{fmt(guncel)} ₺</p>
+          <p className="text-xs font-semibold text-slate-800">{fmt(guncel)} ₺</p>
         </div>
         {/* Getiri */}
         <div className="text-right">
@@ -948,13 +948,6 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                   {/* 4. Fon ekle formu */}
                   {fonEkleAcik && <FonEkleForm portfoy={portfoy} onKapat={() => setFonEkleAcik(false)} />}
 
-                  {/* 5. Grup accordion'ları — detay */}
-                  <div className="flex flex-col gap-4">
-                    {[...grupMap.entries()].map(([grupAd, gislemler]) => (
-                      <VarlikGrubuSection key={grupAd} ad={grupAd} islemler={gislemler}
-                        ptMaliyet={ptMaliyet} ptGuncel={ptGuncel} />
-                    ))}
-                  </div>
                 </>
               )
             })()}
