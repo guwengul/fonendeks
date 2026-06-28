@@ -321,7 +321,7 @@ function VarlikGrubuSection({ ad, islemler, ptMaliyet, ptGuncel }: {
     <div>
       <button onClick={() => setAcik(v => !v)}
         className="w-full grid items-center gap-x-4 mb-2 px-1 text-left hover:opacity-80 transition-opacity"
-        style={{ gridTemplateColumns: '1fr 100px 100px 56px 80px 64px' }}>
+        style={{ gridTemplateColumns: '1fr 100px 20px 100px 56px 80px 64px' }}>
         {/* Grup adı */}
         <div className="flex items-center gap-2 min-w-0">
           <svg className={`w-3 h-3 text-slate-400 shrink-0 transition-transform ${acik ? 'rotate-90' : ''}`}
@@ -334,6 +334,10 @@ function VarlikGrubuSection({ ad, islemler, ptMaliyet, ptGuncel }: {
         {/* Yatırım */}
         <div className="text-right">
           <p className="text-xs text-slate-400">{fmt(maliyet)} ₺</p>
+        </div>
+        {/* Ok */}
+        <div className="flex items-center justify-center">
+          <span className="text-slate-300 text-xs">→</span>
         </div>
         {/* Güncel */}
         <div className="text-right">
@@ -947,6 +951,14 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
 
                   {/* 4. Fon ekle formu */}
                   {fonEkleAcik && <FonEkleForm portfoy={portfoy} onKapat={() => setFonEkleAcik(false)} />}
+
+                  {/* 5. Grup accordion'ları — detay */}
+                  <div className="flex flex-col gap-4">
+                    {[...grupMap.entries()].map(([grupAd, gislemler]) => (
+                      <VarlikGrubuSection key={grupAd} ad={grupAd} islemler={gislemler}
+                        ptMaliyet={ptMaliyet} ptGuncel={ptGuncel} />
+                    ))}
+                  </div>
 
                 </>
               )
