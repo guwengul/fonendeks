@@ -12,7 +12,6 @@ export async function GET(req: NextRequest) {
   const gun = Math.min(Number(searchParams.get('gun') ?? '90'), 365)
   if (!portfoyId) return NextResponse.json({ error: 'portfoy_id required' }, { status: 400 })
 
-  // Kullanıcının bu portföye sahip olduğunu doğrula
   const { data: portfoy } = await supabase
     .from('tefas_portfoy')
     .select('id')
@@ -21,19 +20,17 @@ export async function GET(req: NextRequest) {
     .single()
   if (!portfoy) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // İşlemleri çek
   const { data: islemler } = await supabase
     .from('tefas_portfoy_islem')
-    .select('fonKodu, fonTipi, adet, tarih')
+    .select('fonKodu, fonTipi, adet, fiyat, tarih')
     .eq('portfoy_id', portfoyId)
     .eq('user_id', user.id)
     .order('tarih', { ascending: true })
 
-  if (!islemler?.length) return NextResponse.json({ tarihce: [], usd: [] })
+  if (!islemler?.length) return NextResponse.json({ tarihce: [], usdKarsilastirma: [], bist30: [] })
 
   const admin = createAdminClient()
 
-  // Başlangıç tarihi: ilk işlem veya gun kadar geri, hangisi daha yeniyse
   const bugun = new Date()
   const gunlerOnce = new Date(bugun)
   gunlerOnce.setDate(gunlerOnce.getDate() - gun)
@@ -44,7 +41,7 @@ export async function GET(req: NextRequest) {
 
   const fonKodlari = [...new Set(islemler.map(i => i.fonKodu))]
 
-  // Tüm fon fiyatlarını başlangıçtan bugüne çek
+  // Fon fiyatları (grafik dönemi)
   const { data: fiyatlar } = await admin
     .from('tefas_fon_verileri')
     .select('fonKodu, fonTipi, tarih, fiyat')
@@ -52,20 +49,57 @@ export async function GET(req: NextRequest) {
     .gte('tarih', baslangic)
     .order('tarih', { ascending: true })
 
-  // Benchmark'lar (USD + BIST30)
-  const { data: benchmarklar } = await admin
-    .from('tefas_benchmark_fiyatlari')
-    .select('tarih, gosterge, deger')
-    .in('gosterge', ['USD', 'BIST30'])
-    .gte('tarih', baslangic)
-    .order('tarih', { ascending: true })
+  if (!fiyatlar?.length) return NextResponse.json({ tarihce: [], usdKarsilastirma: [], bist30: [] })
 
-  const usdFiyatlar = (benchmarklar ?? []).filter(b => b.gosterge === 'USD')
-  const bist30Fiyatlar = (benchmarklar ?? []).filter(b => b.gosterge === 'BIST30')
+  // USD: ilk işlem tarihinden itibaren (alış kurlarına bakmak için)
+  // BIST30: grafik döneminden itibaren
+  const [usdResult, bist30Result] = await Promise.all([
+    admin
+      .from('tefas_benchmark_fiyatlari')
+      .select('tarih, deger')
+      .eq('gosterge', 'USD')
+      .gte('tarih', ilkIslemTarih)
+      .order('tarih', { ascending: true }),
+    admin
+      .from('tefas_benchmark_fiyatlari')
+      .select('tarih, deger')
+      .eq('gosterge', 'BIST30')
+      .gte('tarih', baslangic)
+      .order('tarih', { ascending: true }),
+  ])
 
-  if (!fiyatlar?.length) return NextResponse.json({ tarihce: [], usd: [], bist30: [] })
+  // USD map: tarih → kur
+  const usdMap = new Map((usdResult.data ?? []).map(u => [u.tarih, Number(u.deger)]))
 
-  // Tarih bazlı fiyat map: fonKodu::fonTipi → tarih → fiyat
+  // Her işlem için o günkü USD kurunu bul (yoksa en yakın önceki)
+  // Önce sıralı tarih listesi oluştur
+  const usdTarihler = [...usdMap.keys()].sort()
+  function kurBul(tarih: string): number | null {
+    // Tam eşleşme
+    if (usdMap.has(tarih)) return usdMap.get(tarih)!
+    // En yakın önceki iş günü
+    let best: string | null = null
+    for (const t of usdTarihler) {
+      if (t <= tarih) best = t
+      else break
+    }
+    return best ? usdMap.get(best)! : null
+  }
+
+  // Her işlemin TL maliyetini o günkü kura bölerek "kaç USD" alınırdı hesapla
+  // Kümülatif USD miktarını tut
+  let kumulatifUsd = 0
+  const islemUsdMap = new Map<string, number>() // tarih → o güne kadar birikmiş USD
+  for (const i of islemler) {
+    const kur = kurBul(i.tarih)
+    if (kur && kur > 0) {
+      const tlMaliyet = Number(i.fiyat) * Number(i.adet)
+      kumulatifUsd += tlMaliyet / kur
+    }
+    islemUsdMap.set(i.tarih, kumulatifUsd)
+  }
+
+  // Fon fiyat map
   const fiyatMap = new Map<string, Map<string, number>>()
   for (const f of fiyatlar) {
     const key = `${f.fonKodu}::${f.fonTipi}`
@@ -73,25 +107,22 @@ export async function GET(req: NextRequest) {
     fiyatMap.get(key)!.set(f.tarih, Number(f.fiyat))
   }
 
-  // Tüm benzersiz tarihleri bul
   const tarihler = [...new Set(fiyatlar.map(f => f.tarih))].sort()
 
-  // Her tarih için portföy değeri hesapla
+  // Portföy değeri ve USD karşılaştırması
   const tarihce: { tarih: string; deger: number }[] = []
+  const usdKarsilastirma: { tarih: string; deger: number }[] = []
 
   for (const tarih of tarihler) {
-    // Bu tarihe kadar yapılmış işlemler
     const gecerliIslemler = islemler.filter(i => i.tarih <= tarih)
     if (!gecerliIslemler.length) continue
 
-    // Fon bazında toplam adet
     const adetMap = new Map<string, number>()
     for (const i of gecerliIslemler) {
       const key = `${i.fonKodu}::${i.fonTipi}`
       adetMap.set(key, (adetMap.get(key) ?? 0) + Number(i.adet))
     }
 
-    // Portföy değeri: her fon için adet × güncel fiyat
     let toplamDeger = 0
     let eksikFon = false
     for (const [key, adet] of adetMap.entries()) {
@@ -100,14 +131,25 @@ export async function GET(req: NextRequest) {
       toplamDeger += adet * fiyat
     }
 
-    if (!eksikFon && toplamDeger > 0) {
-      tarihce.push({ tarih, deger: Math.round(toplamDeger * 100) / 100 })
+    if (eksikFon || toplamDeger <= 0) continue
+
+    tarihce.push({ tarih, deger: Math.round(toplamDeger * 100) / 100 })
+
+    // USD karşılaştırması: o tarihe kadar birikmiş USD × o günün kuru
+    // Birikmiş USD: son işlemden önce gelen kümülatif değer
+    let usdMiktar = 0
+    for (const [isTarih, usd] of islemUsdMap.entries()) {
+      if (isTarih <= tarih) usdMiktar = usd
+    }
+    const gunKur = kurBul(tarih)
+    if (usdMiktar > 0 && gunKur) {
+      usdKarsilastirma.push({ tarih, deger: Math.round(usdMiktar * gunKur * 100) / 100 })
     }
   }
 
   return NextResponse.json({
     tarihce,
-    usd: usdFiyatlar.map(u => ({ tarih: u.tarih, deger: Number(u.deger) })),
-    bist30: bist30Fiyatlar.map(b => ({ tarih: b.tarih, deger: Number(b.deger) })),
+    usdKarsilastirma,
+    bist30: (bist30Result.data ?? []).map(b => ({ tarih: b.tarih, deger: Number(b.deger) })),
   })
 }

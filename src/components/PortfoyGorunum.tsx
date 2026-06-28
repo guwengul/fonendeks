@@ -384,7 +384,7 @@ const GUN_SECENEKLERI = [
 function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyRenk: string }) {
   const [gun, setGun] = useState(90)
   const [tarihce, setTarihce] = useState<{ tarih: string; deger: number }[]>([])
-  const [usdSeri, setUsdSeri] = useState<{ tarih: string; deger: number }[]>([])
+  const [usdSeri, setUsdSeri] = useState<{ tarih: string; deger: number }[]>([])  // hazır TL karşılaştırma serisi
   const [bist30Seri, setBist30Seri] = useState<{ tarih: string; deger: number }[]>([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [hoverIx, setHoverIx] = useState<number | null>(null)
@@ -408,7 +408,7 @@ function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyR
       .then(r => r.json())
       .then(d => {
         setTarihce(d.tarihce ?? [])
-        setUsdSeri(d.usd ?? [])
+        setUsdSeri(d.usdKarsilastirma ?? [])
         setBist30Seri(d.bist30 ?? [])
         setYukleniyor(false)
       })
@@ -420,22 +420,28 @@ function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyR
 
   const inner = { w: svgW - PAD.left - PAD.right, h: H - PAD.top - PAD.bottom }
 
+  // USD: hazır TL karşılaştırma serisi (alış tarihlerindeki kur bazlı)
   const usdMap = new Map(usdSeri.map(u => [u.tarih, u.deger]))
+
+  // BIST30: endeks bazlı, portföy başlangıcına normalize
   const bist30Map = new Map(bist30Seri.map(b => [b.tarih, b.deger]))
   const ptBaslangic = tarihce[0]?.deger ?? 0
-  const usdBaslangic = tarihce[0] ? (usdMap.get(tarihce[0].tarih) ?? usdSeri[0]?.deger ?? null) : null
   const bist30Baslangic = tarihce[0] ? (bist30Map.get(tarihce[0].tarih) ?? bist30Seri[0]?.deger ?? null) : null
 
-  function normalizePoints(getVal: (tarih: string) => number | undefined, baslangic: number | null): (number | null)[] {
+  function buildAlignedPoints(getVal: (tarih: string) => number | undefined): (number | null)[] {
+    return tarihce.map(pt => getVal(pt.tarih) ?? null)
+  }
+
+  const usdPoints = buildAlignedPoints(t => usdMap.get(t))
+
+  function normalizeBist30(getVal: (tarih: string) => number | undefined, baslangic: number | null): (number | null)[] {
     return tarihce.map(pt => {
       const v = getVal(pt.tarih)
       if (!v || !baslangic || ptBaslangic === 0) return null
       return ptBaslangic * (v / baslangic)
     })
   }
-
-  const usdPoints = normalizePoints(t => usdMap.get(t), usdBaslangic)
-  const bist30Points = normalizePoints(t => bist30Map.get(t), bist30Baslangic)
+  const bist30Points = normalizeBist30(t => bist30Map.get(t), bist30Baslangic)
 
   const allValues = tarihce.length
     ? [
@@ -619,7 +625,7 @@ function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyR
                       {hUsdV !== null && (
                         <text x={bx + 8} y={by + 46} fontSize={10} fill="#64748b"
                           fontFamily="system-ui, sans-serif">
-                          {`USD ref: ${fmtV(hUsdV)} ₺`}
+                          {`USD olsaydı: ${fmtV(hUsdV)} ₺`}
                         </text>
                       )}
                     </g>
