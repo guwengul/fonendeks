@@ -302,7 +302,9 @@ function FonGrubu({ fonKodu, fonTipi, fonUnvan, islemler }: {
   )
 }
 
-function VarlikGrubuSection({ ad, islemler }: { ad: string; islemler: Islem[] }) {
+function VarlikGrubuSection({ ad, islemler, ptMaliyet, ptGuncel }: {
+  ad: string; islemler: Islem[]; ptMaliyet: number; ptGuncel: number
+}) {
   const [acik, setAcik] = useState(true)
 
   const maliyet = islemler.reduce((s, i) => s + i.fiyat * i.adet, 0)
@@ -315,6 +317,10 @@ function VarlikGrubuSection({ ad, islemler }: { ad: string; islemler: Islem[] })
     const gd = i.guncelFiyat * i.adet
     return s + gd * i.getiri1g / 100 / (1 + i.getiri1g / 100)
   }, 0)
+
+  const alisP = ptMaliyet > 0 ? maliyet / ptMaliyet * 100 : 0
+  const guncelP = ptGuncel > 0 ? guncel / ptGuncel * 100 : 0
+  const diff = guncelP - alisP
 
   const renk = grupRenk(ad)
 
@@ -336,7 +342,15 @@ function VarlikGrubuSection({ ad, islemler }: { ad: string; islemler: Islem[] })
         <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: renk }} />
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{ad}</span>
         <div className="flex-1 h-px bg-slate-100" />
-        <span className="text-xs text-slate-400">{fmt(maliyet)} ₺</span>
+        <span className="text-xs text-slate-400">{alisP.toFixed(1)}%</span>
+        <span className="text-slate-200 text-xs">→</span>
+        <span className="text-xs text-slate-600 font-medium">{guncelP.toFixed(1)}%</span>
+        {Math.abs(diff) >= 0.5 && (
+          <span className={`text-xs font-semibold ${diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+            {diff > 0 ? '+' : ''}{diff.toFixed(1)}pp
+          </span>
+        )}
+        <div className="w-px h-3 bg-slate-200 mx-1" />
         {gunlukKazanc !== 0 && (
           <span className={`text-xs ${gunlukKazanc >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
             {gunlukKazanc >= 0 ? '+' : ''}{fmt(gunlukKazanc)} bugün
@@ -844,9 +858,8 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                   {/* 2. Performans grafiği */}
                   <PortfoyGrafik portfoyId={portfoy.id} portfoyRenk={hex} />
 
-                  {/* 3. Fon performans + Dağılım yan yana */}
-                  <div className="flex flex-col lg:flex-row gap-4 items-start">
-                    <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto w-full lg:w-auto lg:shrink-0">
+                  {/* 3. Fon performans tablosu */}
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto w-full">
                       <table className="w-full">
                         <thead>
                           <tr className="border-b border-slate-100">
@@ -856,6 +869,9 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                             <th className="hidden sm:table-cell text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Δ₺</th>
                             <th className="text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Δ%</th>
                             <th className="hidden md:table-cell text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Günlük</th>
+                            <th className="hidden sm:table-cell text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Alış%</th>
+                            <th className="hidden sm:table-cell text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Güncel%</th>
+                            <th className="hidden sm:table-cell text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Δpp</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -907,16 +923,27 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                                   <p className="text-xs text-slate-400">{fmtUsd(f.gunluk, usdKuru)}</p>
                                 )}
                               </td>
+                              {(() => {
+                                const fAlis = ptMaliyet > 0 ? f.toplamMaliyet / ptMaliyet * 100 : 0
+                                const fGuncel = ptGuncel > 0 ? (f.guncelDeger ?? f.toplamMaliyet) / ptGuncel * 100 : 0
+                                const fDiff = fGuncel - fAlis
+                                return (
+                                  <>
+                                    <td className="hidden sm:table-cell px-3 sm:px-4 py-2.5 text-right text-xs text-slate-400 whitespace-nowrap">{fAlis.toFixed(1)}%</td>
+                                    <td className="hidden sm:table-cell px-3 sm:px-4 py-2.5 text-right text-xs font-medium text-slate-700 whitespace-nowrap">{fGuncel.toFixed(1)}%</td>
+                                    <td className="hidden sm:table-cell px-3 sm:px-4 py-2.5 text-right text-xs font-semibold whitespace-nowrap">
+                                      {Math.abs(fDiff) < 0.5
+                                        ? <span className="text-slate-300">—</span>
+                                        : <span className={fDiff > 0 ? 'text-emerald-500' : 'text-red-400'}>{fDiff > 0 ? '+' : ''}{fDiff.toFixed(1)}pp</span>
+                                      }
+                                    </td>
+                                  </>
+                                )
+                              })()}
                             </tr>
                           ))}
                         </tbody>
                       </table>
-                    </div>
-                    {grupMap.size > 1 && (
-                      <div className="w-full lg:flex-1 lg:min-w-0">
-                        <DagilimPanel grupMap={grupMap} />
-                      </div>
-                    )}
                   </div>
 
                   {/* 4. Fon ekle formu */}
@@ -925,7 +952,8 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                   {/* 5. Grup accordion'ları — detay */}
                   <div className="flex flex-col gap-4">
                     {[...grupMap.entries()].map(([grupAd, gislemler]) => (
-                      <VarlikGrubuSection key={grupAd} ad={grupAd} islemler={gislemler} />
+                      <VarlikGrubuSection key={grupAd} ad={grupAd} islemler={gislemler}
+                        ptMaliyet={ptMaliyet} ptGuncel={ptGuncel} />
                     ))}
                   </div>
                 </>
