@@ -32,9 +32,11 @@ function fmt(n: number | null) {
 
 function fmtUsd(n: number | null, kur: number | null) {
   if (n == null || !kur) return null
-  const usd = n / kur
+  return fmtUsdVal(n / kur)
+}
+
+function fmtUsdVal(usd: number) {
   if (Math.abs(usd) >= 1_000_000) return (usd / 1_000_000).toFixed(2) + ' M$'
-  if (Math.abs(usd) >= 1_000) return (usd / 1_000).toFixed(1) + ' K$'
   return usd.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $'
 }
 
@@ -791,7 +793,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                 </span>
                 {ptUsdKazanc != null && ptUsdPct != null && (
                   <span className={`hidden md:inline text-xs font-medium shrink-0 ${ptUsdKazanc >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                    {ptUsdKazanc >= 0 ? '+' : ''}{Math.abs(ptUsdKazanc) >= 1000 ? (ptUsdKazanc / 1000).toFixed(1) + 'K' : ptUsdKazanc.toFixed(0)} $ ({ptUsdKazanc >= 0 ? '+' : ''}{ptUsdPct.toFixed(1)}%)
+                    {ptUsdKazanc >= 0 ? '+' : ''}{fmtUsdVal(ptUsdKazanc)} ({ptUsdKazanc >= 0 ? '+' : ''}{ptUsdPct.toFixed(1)}%)
                   </span>
                 )}
               </span>
@@ -876,7 +878,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                       </p>
                       {ptUsdKazanc != null && ptUsdPct != null && (
                         <p className={`text-xs font-medium mt-0.5 ${ptUsdKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                          {ptUsdKazanc >= 0 ? '+' : ''}{Math.abs(ptUsdKazanc) >= 1000 ? (ptUsdKazanc / 1000).toFixed(1) + 'K' : ptUsdKazanc.toFixed(0)} $
+                          {ptUsdKazanc >= 0 ? '+' : ''}{fmtUsdVal(ptUsdKazanc)}
                           <span className="opacity-75 ml-1">({ptUsdKazanc >= 0 ? '+' : ''}{ptUsdPct.toFixed(2)}%)</span>
                         </p>
                       )}
@@ -897,10 +899,10 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                         <tr className="border-b border-slate-100">
                           <th className="text-left px-4 py-2.5 text-xs text-slate-400 font-medium">Fon</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Ort. Alış</th>
-                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Bugünkü Fiyat</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Güncel Fiyat</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Adet</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Maliyet</th>
-                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Bugünkü Değer</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Güncel Değer</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Getiri</th>
                           <th className="hidden sm:table-cell text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Port. Payı</th>
                         </tr>
@@ -960,10 +962,9 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                                   const usdGuncel = f.guncelDeger / usdKuru
                                   const usdKazanc = usdGuncel - f.usdMaliyet
                                   const usdPct = (usdKazanc / f.usdMaliyet) * 100
-                                  const usdKazancFmt = fmtUsd(usdKazanc * usdKuru, usdKuru)
                                   return (
                                     <p className={`text-xs font-medium ${usdKazanc >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                                      {usdKazanc >= 0 ? '+' : ''}{usdKazancFmt}
+                                      {usdKazanc >= 0 ? '+' : ''}{fmtUsdVal(usdKazanc)}
                                       <span className="opacity-75 ml-1">({usdKazanc >= 0 ? '+' : ''}{usdPct.toFixed(2)}%)</span>
                                     </p>
                                   )
