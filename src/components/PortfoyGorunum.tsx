@@ -849,90 +849,86 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
 
                   {/* 3. Fon performans tablosu */}
                   <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto w-full">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-slate-100">
-                            <th className="text-left px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Fon</th>
-                            <th className="text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">İlk</th>
-                            <th className="text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Son</th>
-                            <th className="hidden sm:table-cell text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Δ₺</th>
-                            <th className="text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Δ%</th>
-                            <th className="hidden md:table-cell text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Günlük</th>
-                            <th className="hidden sm:table-cell text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Alış%</th>
-                            <th className="hidden sm:table-cell text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Güncel%</th>
-                            <th className="hidden sm:table-cell text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Δpp</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {fonlar.map(f => (
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-100">
+                          <th className="text-left px-4 py-2.5 text-xs text-slate-400 font-medium">Fon</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Ort. Fiyat</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Bug. Fiyat</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Adet</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Yatırım</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Bug. Değer</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Getiri</th>
+                          <th className="hidden sm:table-cell text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Port. Payı</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fonlar.map(f => {
+                          const ortFiyat = f.toplamAdet > 0 ? f.toplamMaliyet / f.toplamAdet : 0
+                          const fAlis = ptMaliyet > 0 ? f.toplamMaliyet / ptMaliyet * 100 : 0
+                          const fGuncel = ptGuncel > 0 ? (f.guncelDeger ?? f.toplamMaliyet) / ptGuncel * 100 : 0
+                          const fDiff = fGuncel - fAlis
+                          return (
                             <tr key={`${f.fonKodu}::${f.fonTipi}`}
                               className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors">
-                              <td className="px-3 sm:px-4 py-2.5">
+                              {/* Fon */}
+                              <td className="px-4 py-3">
                                 <div className="flex items-center gap-2">
                                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: f.grupRengi }} />
                                   <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
                                     title={f.fonUnvan ?? undefined}
-                                    className="font-mono font-bold text-indigo-600 hover:underline text-sm">
+                                    className="font-mono font-semibold text-indigo-600 hover:underline text-sm">
                                     {f.fonKodu}
                                   </Link>
                                 </div>
                               </td>
-                              <td className="px-3 sm:px-4 py-2.5 text-right whitespace-nowrap">
+                              {/* Ort. Fiyat */}
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <p className="text-xs text-slate-500">{ortFiyat.toFixed(6)}</p>
+                              </td>
+                              {/* Bug. Fiyat */}
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <p className="text-xs text-slate-600">{f.guncelFiyat != null ? f.guncelFiyat.toFixed(6) : '—'}</p>
+                              </td>
+                              {/* Adet */}
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <p className="text-xs text-slate-600">{f.toplamAdet.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}</p>
+                              </td>
+                              {/* Yatırım */}
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
                                 <p className="text-sm text-slate-600">{fmt(f.toplamMaliyet)} ₺</p>
                                 {usdKuru && <p className="text-xs text-slate-400">{fmtUsd(f.toplamMaliyet, usdKuru)}</p>}
                               </td>
-                              <td className="px-3 sm:px-4 py-2.5 text-right whitespace-nowrap">
+                              {/* Bug. Değer */}
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
                                 <p className="text-sm font-semibold text-slate-800">{f.guncelDeger != null ? fmt(f.guncelDeger) + ' ₺' : '—'}</p>
                                 {usdKuru && f.guncelDeger != null && <p className="text-xs text-slate-400">{fmtUsd(f.guncelDeger, usdKuru)}</p>}
                               </td>
-                              <td className="hidden sm:table-cell px-3 sm:px-4 py-2.5 text-right whitespace-nowrap">
-                                {f.kazanc != null && (
-                                  <p className={`text-sm font-medium ${f.kazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                                    {f.kazanc >= 0 ? '+' : ''}{fmt(f.kazanc)} ₺
+                              {/* Getiri */}
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                {f.kazancPct != null && (
+                                  <p className={`text-sm font-bold ${f.kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                    {pct(f.kazancPct)}
                                   </p>
                                 )}
-                                {usdKuru && f.kazanc != null && (
+                                {f.kazanc != null && usdKuru && (
                                   <p className="text-xs text-slate-400">{fmtUsd(f.kazanc, usdKuru)}</p>
                                 )}
                               </td>
-                              <td className="px-3 sm:px-4 py-2.5 text-right whitespace-nowrap">
-                                {f.kazancPct != null && (
-                                  <span className={`text-sm font-bold ${f.kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                                    {pct(f.kazancPct)}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="hidden md:table-cell px-3 sm:px-4 py-2.5 text-right whitespace-nowrap">
-                                {f.gunluk != null && (
-                                  <p className={`text-sm font-medium ${f.gunluk >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
-                                    {f.gunluk >= 0 ? '+' : ''}{fmt(f.gunluk)} ₺
+                              {/* Port. Payı */}
+                              <td className="hidden sm:table-cell px-4 py-3 text-right whitespace-nowrap">
+                                <p className="text-xs text-slate-400">{fAlis.toFixed(1)}% <span className="text-slate-300">→</span> <span className="text-slate-700 font-medium">{fGuncel.toFixed(1)}%</span></p>
+                                {Math.abs(fDiff) >= 0.5 && (
+                                  <p className={`text-xs font-semibold ${fDiff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                    {fDiff > 0 ? '+' : ''}{fDiff.toFixed(1)}pp
                                   </p>
                                 )}
-                                {usdKuru && f.gunluk != null && (
-                                  <p className="text-xs text-slate-400">{fmtUsd(f.gunluk, usdKuru)}</p>
-                                )}
                               </td>
-                              {(() => {
-                                const fAlis = ptMaliyet > 0 ? f.toplamMaliyet / ptMaliyet * 100 : 0
-                                const fGuncel = ptGuncel > 0 ? (f.guncelDeger ?? f.toplamMaliyet) / ptGuncel * 100 : 0
-                                const fDiff = fGuncel - fAlis
-                                return (
-                                  <>
-                                    <td className="hidden sm:table-cell px-3 sm:px-4 py-2.5 text-right text-xs text-slate-400 whitespace-nowrap">{fAlis.toFixed(1)}%</td>
-                                    <td className="hidden sm:table-cell px-3 sm:px-4 py-2.5 text-right text-xs font-medium text-slate-700 whitespace-nowrap">{fGuncel.toFixed(1)}%</td>
-                                    <td className="hidden sm:table-cell px-3 sm:px-4 py-2.5 text-right text-xs font-semibold whitespace-nowrap">
-                                      {Math.abs(fDiff) < 0.5
-                                        ? <span className="text-slate-300">—</span>
-                                        : <span className={fDiff > 0 ? 'text-emerald-500' : 'text-red-400'}>{fDiff > 0 ? '+' : ''}{fDiff.toFixed(1)}pp</span>
-                                      }
-                                    </td>
-                                  </>
-                                )
-                              })()}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
 
                   {/* 4. Fon ekle formu */}
