@@ -853,11 +853,11 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                       <thead>
                         <tr className="border-b border-slate-100">
                           <th className="text-left px-4 py-2.5 text-xs text-slate-400 font-medium">Fon</th>
-                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Ort. Fiyat</th>
-                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Bug. Fiyat</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Ort. Alış</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Bugünkü Fiyat</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Adet</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Yatırım</th>
-                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Bug. Değer</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Bugünkü Değer</th>
                           <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Getiri</th>
                           <th className="hidden sm:table-cell text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Port. Payı</th>
                         </tr>
