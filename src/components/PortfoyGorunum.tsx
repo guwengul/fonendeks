@@ -292,7 +292,7 @@ function FonGrubu({ fonKodu, fonTipi, fonUnvan, islemler }: {
 function VarlikGrubuSection({ ad, islemler, ptMaliyet, ptGuncel }: {
   ad: string; islemler: Islem[]; ptMaliyet: number; ptGuncel: number
 }) {
-  const [acik, setAcik] = useState(true)
+  const [acik, setAcik] = useState(false)
 
   const maliyet = islemler.reduce((s, i) => s + i.fiyat * i.adet, 0)
   const guncel = islemler.reduce((s, i) => s + (i.guncelFiyat ? i.guncelFiyat * i.adet : i.fiyat * i.adet), 0)
@@ -322,7 +322,7 @@ function VarlikGrubuSection({ ad, islemler, ptMaliyet, ptGuncel }: {
     <div>
       <button onClick={() => setAcik(v => !v)}
         className="w-full grid items-center gap-x-4 mb-2 px-1 text-left hover:opacity-80 transition-opacity"
-        style={{ gridTemplateColumns: '1fr 100px 20px 100px 56px 80px 64px' }}>
+        style={{ gridTemplateColumns: '1fr 90px 16px 90px 52px 90px 52px' }}>
         {/* Grup adı */}
         <div className="flex items-center gap-2 min-w-0">
           <svg className={`w-3 h-3 text-slate-400 shrink-0 transition-transform ${acik ? 'rotate-90' : ''}`}
@@ -351,11 +351,11 @@ function VarlikGrubuSection({ ad, islemler, ptMaliyet, ptGuncel }: {
           </p>
         </div>
         {/* Port. payı */}
-        <div className="text-right">
-          <p className="text-xs text-slate-400">{alisP.toFixed(1)}% <span className="text-slate-300">→</span> <span className="text-slate-600 font-medium">{guncelP.toFixed(1)}%</span></p>
+        <div className="text-right whitespace-nowrap">
+          <p className="text-xs text-slate-400">{alisP.toFixed(1)}<span className="text-slate-300">→</span><span className="text-slate-600 font-medium">{guncelP.toFixed(1)}%</span></p>
         </div>
         {/* Δpp */}
-        <div className="text-right">
+        <div className="text-right whitespace-nowrap">
           {Math.abs(diff) >= 0.5
             ? <p className={`text-xs font-semibold ${diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>{diff > 0 ? '+' : ''}{diff.toFixed(1)}pp</p>
             : <p className="text-xs text-slate-200">—</p>
@@ -866,10 +866,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                     </div>
                   </div>
 
-                  {/* 2. Performans grafiği */}
-                  <PortfoyGrafik portfoyId={portfoy.id} portfoyRenk={hex} />
-
-                  {/* 3. Fon performans tablosu */}
+                  {/* 2. Fon performans tablosu */}
                   <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto w-full">
                     <table className="w-full">
                       <thead>
