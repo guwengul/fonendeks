@@ -54,17 +54,27 @@ export default async function PortfoyPage() {
   const usdKuru = usdResult.data ? Number(usdResult.data.deger) : null
 
   const fonKodlari = [...new Set((islemler ?? []).map((i: any) => i.fonKodu))]
-  const islemTarihleri = [...new Set((islemler ?? []).map((i: any) => i.tarih))]
+  const ilkIslemTarih = (islemler ?? []).reduce((min: string, i: any) => i.tarih < min ? i.tarih : min, (islemler?.[0]?.tarih ?? ''))
 
   const [guncelFiyatlarResult, ozetResult, usdTarihResult] = fonKodlari.length ? await Promise.all([
     admin.from('tefas_fon_verileri').select('fonKodu, fonTipi, fonUnvan, fiyat').eq('tarih', sonTarih).in('fonKodu', fonKodlari),
     admin.from('tefas_fon_ozet').select('fonKodu, fonTipi, getiri1g').in('fonKodu', fonKodlari),
-    admin.from('tefas_benchmark_fiyatlari').select('tarih, deger').eq('gosterge', 'USD').in('tarih', islemTarihleri),
+    admin.from('tefas_benchmark_fiyatlari').select('tarih, deger').eq('gosterge', 'USD').gte('tarih', ilkIslemTarih).order('tarih', { ascending: true }),
   ]) : [{ data: [] }, { data: [] }, { data: [] }]
 
   const fiyatMap = new Map((guncelFiyatlarResult.data ?? []).map((r: any) => [`${r.fonKodu}::${r.fonTipi}`, r]))
   const ozetMap = new Map((ozetResult.data ?? []).map((r: any) => [`${r.fonKodu}::${r.fonTipi}`, r]))
-  const usdTarihMap = new Map((usdTarihResult.data ?? []).map((r: any) => [r.tarih, Number(r.deger)]))
+
+  // Tarih → USD kur map; hafta sonu/tatil için en yakın önceki kuru bul
+  const usdSirali = (usdTarihResult.data ?? []).map((r: any) => ({ tarih: r.tarih, deger: Number(r.deger) }))
+  function kurBul(tarih: string): number | null {
+    let best: number | null = null
+    for (const u of usdSirali) {
+      if (u.tarih <= tarih) best = u.deger
+      else break
+    }
+    return best
+  }
 
   const islemlerZengin = (islemler ?? []).map((i: any) => {
     const g = fiyatMap.get(`${i.fonKodu}::${i.fonTipi}`) as any
@@ -81,7 +91,7 @@ export default async function PortfoyPage() {
       adet: Number(i.adet),
       guncelFiyat: g?.fiyat ? Number(g.fiyat) : null,
       getiri1g: oz?.getiri1g != null ? Number(oz.getiri1g) : null,
-      usdKuruAlim: usdTarihMap.get(i.tarih) ?? null,
+      usdKuruAlim: kurBul(i.tarih),
     }
   })
 
