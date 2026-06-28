@@ -52,15 +52,18 @@ export async function GET(req: NextRequest) {
     .gte('tarih', baslangic)
     .order('tarih', { ascending: true })
 
-  // USD benchmark
-  const { data: usdFiyatlar } = await admin
+  // Benchmark'lar (USD + BIST30)
+  const { data: benchmarklar } = await admin
     .from('tefas_benchmark_fiyatlari')
-    .select('tarih, deger')
-    .eq('gosterge', 'USD')
+    .select('tarih, gosterge, deger')
+    .in('gosterge', ['USD', 'BIST30'])
     .gte('tarih', baslangic)
     .order('tarih', { ascending: true })
 
-  if (!fiyatlar?.length) return NextResponse.json({ tarihce: [], usd: [] })
+  const usdFiyatlar = (benchmarklar ?? []).filter(b => b.gosterge === 'USD')
+  const bist30Fiyatlar = (benchmarklar ?? []).filter(b => b.gosterge === 'BIST30')
+
+  if (!fiyatlar?.length) return NextResponse.json({ tarihce: [], usd: [], bist30: [] })
 
   // Tarih bazlı fiyat map: fonKodu::fonTipi → tarih → fiyat
   const fiyatMap = new Map<string, Map<string, number>>()
@@ -104,6 +107,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     tarihce,
-    usd: (usdFiyatlar ?? []).map(u => ({ tarih: u.tarih, deger: Number(u.deger) })),
+    usd: usdFiyatlar.map(u => ({ tarih: u.tarih, deger: Number(u.deger) })),
+    bist30: bist30Fiyatlar.map(b => ({ tarih: b.tarih, deger: Number(b.deger) })),
   })
 }

@@ -371,6 +371,7 @@ function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyR
   const [gun, setGun] = useState(90)
   const [tarihce, setTarihce] = useState<{ tarih: string; deger: number }[]>([])
   const [usdSeri, setUsdSeri] = useState<{ tarih: string; deger: number }[]>([])
+  const [bist30Seri, setBist30Seri] = useState<{ tarih: string; deger: number }[]>([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [hoverIx, setHoverIx] = useState<number | null>(null)
   const [svgW, setSvgW] = useState(600)
@@ -394,6 +395,7 @@ function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyR
       .then(d => {
         setTarihce(d.tarihce ?? [])
         setUsdSeri(d.usd ?? [])
+        setBist30Seri(d.bist30 ?? [])
         setYukleniyor(false)
       })
       .catch(() => setYukleniyor(false))
@@ -405,17 +407,28 @@ function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyR
   const inner = { w: svgW - PAD.left - PAD.right, h: H - PAD.top - PAD.bottom }
 
   const usdMap = new Map(usdSeri.map(u => [u.tarih, u.deger]))
+  const bist30Map = new Map(bist30Seri.map(b => [b.tarih, b.deger]))
   const ptBaslangic = tarihce[0]?.deger ?? 0
   const usdBaslangic = tarihce[0] ? (usdMap.get(tarihce[0].tarih) ?? usdSeri[0]?.deger ?? null) : null
+  const bist30Baslangic = tarihce[0] ? (bist30Map.get(tarihce[0].tarih) ?? bist30Seri[0]?.deger ?? null) : null
 
-  const usdPoints: (number | null)[] = tarihce.map(pt => {
-    const u = usdMap.get(pt.tarih)
-    if (!u || !usdBaslangic || ptBaslangic === 0) return null
-    return ptBaslangic * (u / usdBaslangic)
-  })
+  function normalizePoints(getVal: (tarih: string) => number | undefined, baslangic: number | null): (number | null)[] {
+    return tarihce.map(pt => {
+      const v = getVal(pt.tarih)
+      if (!v || !baslangic || ptBaslangic === 0) return null
+      return ptBaslangic * (v / baslangic)
+    })
+  }
+
+  const usdPoints = normalizePoints(t => usdMap.get(t), usdBaslangic)
+  const bist30Points = normalizePoints(t => bist30Map.get(t), bist30Baslangic)
 
   const allValues = tarihce.length
-    ? [...tarihce.map(p => p.deger), ...usdPoints.filter((v): v is number => v !== null)]
+    ? [
+        ...tarihce.map(p => p.deger),
+        ...usdPoints.filter((v): v is number => v !== null),
+        ...bist30Points.filter((v): v is number => v !== null),
+      ]
     : [0]
   const minVal = Math.min(...allValues)
   const maxVal = Math.max(...allValues)
@@ -430,17 +443,22 @@ function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyR
 
   const tlPts = tarihce.map((p, i) => `${xOf(i).toFixed(1)},${yOf(p.deger).toFixed(1)}`).join(' ')
 
-  // Build USD segments (skip nulls)
-  const usdSegs: string[][] = []
-  let curSeg: string[] = []
-  usdPoints.forEach((v, i) => {
-    if (v !== null) {
-      curSeg.push(`${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`)
-    } else if (curSeg.length) {
-      usdSegs.push(curSeg); curSeg = []
-    }
-  })
-  if (curSeg.length) usdSegs.push(curSeg)
+  function buildSegs(points: (number | null)[]) {
+    const segs: string[][] = []
+    let cur: string[] = []
+    points.forEach((v, i) => {
+      if (v !== null) {
+        cur.push(`${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`)
+      } else if (cur.length) {
+        segs.push(cur); cur = []
+      }
+    })
+    if (cur.length) segs.push(cur)
+    return segs
+  }
+
+  const usdSegs = buildSegs(usdPoints)
+  const bist30Segs = buildSegs(bist30Points)
 
   const yTicks = [minVal, minVal + range / 2, maxVal].map(v => {
     const label = Math.abs(v) >= 1_000_000 ? (v / 1_000_000).toFixed(1) + 'M'
@@ -467,18 +485,24 @@ function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyR
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Performans</span>
           {!yukleniyor && tarihce.length > 0 && (
             <span className={`text-xs font-bold ${toplamDegisim >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
               {toplamDegisim >= 0 ? '+' : ''}{toplamDegisim.toFixed(2)}%
             </span>
           )}
+          {bist30Seri.length > 0 && (
+            <span className="flex items-center gap-1.5 text-xs text-slate-400">
+              <svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#f97316" strokeWidth="1.5" strokeDasharray="4 3" /></svg>
+              BIST30
+            </span>
+          )}
           {usdSeri.length > 0 && (
             <span className="flex items-center gap-1.5 text-xs text-slate-400">
               <svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 2" /></svg>
-              USD karşılaştırma
+              USD
             </span>
           )}
         </div>
@@ -511,6 +535,12 @@ function PortfoyGrafik({ portfoyId, portfoyRenk }: { portfoyId: string; portfoyR
             {yTicks.map((t, i) => (
               <line key={i} x1={PAD.left} y1={t.y} x2={svgW - PAD.right} y2={t.y}
                 stroke="#f1f5f9" strokeWidth={1} />
+            ))}
+
+            {/* BIST30 dashed overlay */}
+            {bist30Segs.map((seg, i) => (
+              <polyline key={i} points={seg.join(' ')} fill="none" stroke="#f97316"
+                strokeWidth={1.5} strokeDasharray="4 3" />
             ))}
 
             {/* USD dashed overlay */}
@@ -715,7 +745,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
         style={{ borderLeftColor: hex, borderLeftWidth: 4 }}>
 
         {/* Accordion başlık */}
-        <div className="flex items-center gap-3 px-5 py-4 bg-white">
+        <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 bg-white">
           <button onClick={() => setAcik(v => !v)} className="flex items-center gap-3 flex-1 text-left min-w-0">
             <svg className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${acik ? 'rotate-90' : ''}`}
               fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -723,11 +753,9 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
             </svg>
             <span className="font-semibold text-slate-800">{portfoy.ad}</span>
             {pislemler.length > 0 && !acik && (
-              <span className="flex items-center gap-3 ml-1">
-                <span className="text-slate-400 text-xs">{fmt(ptMaliyet)} ₺</span>
-                <span className="text-slate-300 text-xs">→</span>
-                <span className="text-slate-600 text-xs font-medium">{fmt(ptGuncel)} ₺</span>
-                <span className={`text-sm font-bold ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</span>
+              <span className="flex items-center gap-2 ml-1 min-w-0">
+                <span className="hidden sm:inline text-slate-400 text-xs truncate">{fmt(ptMaliyet)} ₺ → {fmt(ptGuncel)} ₺</span>
+                <span className={`text-sm font-bold shrink-0 ${ptKazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(ptPct)}</span>
               </span>
             )}
           </button>
@@ -751,7 +779,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
 
         {/* Accordion içerik */}
         {acik && (
-          <div className="border-t border-slate-100 px-5 py-5 flex flex-col gap-5 bg-slate-50/40">
+          <div className="border-t border-slate-100 px-3 sm:px-5 py-4 sm:py-5 flex flex-col gap-4 sm:gap-5 bg-slate-50/40">
 
             {pislemler.length === 0 && !fonEkleAcik && (
               <p className="text-slate-400 text-sm">Henüz fon eklenmedi.</p>
@@ -788,7 +816,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
               return (
                 <>
                   {/* 1. Özet kartlar — tek satır */}
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
                       <p className="text-xs text-slate-400 mb-0.5">Maliyet</p>
                       <p className="text-base font-bold text-slate-900">{fmt(ptMaliyet)} ₺</p>
@@ -817,24 +845,24 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                   <PortfoyGrafik portfoyId={portfoy.id} portfoyRenk={hex} />
 
                   {/* 3. Fon performans + Dağılım yan yana */}
-                  <div className="flex gap-4 items-start">
-                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shrink-0">
-                      <table>
+                  <div className="flex flex-col lg:flex-row gap-4 items-start">
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto w-full lg:w-auto lg:shrink-0">
+                      <table className="w-full">
                         <thead>
                           <tr className="border-b border-slate-100">
-                            <th className="text-left px-4 py-2.5 text-xs text-slate-400 font-medium">Fon</th>
-                            <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">İlk</th>
-                            <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Son</th>
-                            <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Δ₺</th>
-                            <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Δ%</th>
-                            <th className="text-right px-4 py-2.5 text-xs text-slate-400 font-medium">Günlük</th>
+                            <th className="text-left px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Fon</th>
+                            <th className="text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">İlk</th>
+                            <th className="text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Son</th>
+                            <th className="hidden sm:table-cell text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Δ₺</th>
+                            <th className="text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Δ%</th>
+                            <th className="hidden md:table-cell text-right px-3 sm:px-4 py-2.5 text-xs text-slate-400 font-medium">Günlük</th>
                           </tr>
                         </thead>
                         <tbody>
                           {fonlar.map(f => (
                             <tr key={`${f.fonKodu}::${f.fonTipi}`}
                               className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors">
-                              <td className="px-4 py-2.5">
+                              <td className="px-3 sm:px-4 py-2.5">
                                 <div className="flex items-center gap-2">
                                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: f.grupRengi }} />
                                   <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
@@ -844,15 +872,15 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                                   </Link>
                                 </div>
                               </td>
-                              <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                              <td className="px-3 sm:px-4 py-2.5 text-right whitespace-nowrap">
                                 <p className="text-sm text-slate-600">{fmt(f.toplamMaliyet)} ₺</p>
                                 {usdKuru && <p className="text-xs text-slate-400">{fmtUsd(f.toplamMaliyet, usdKuru)}</p>}
                               </td>
-                              <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                              <td className="px-3 sm:px-4 py-2.5 text-right whitespace-nowrap">
                                 <p className="text-sm font-semibold text-slate-800">{f.guncelDeger != null ? fmt(f.guncelDeger) + ' ₺' : '—'}</p>
                                 {usdKuru && f.guncelDeger != null && <p className="text-xs text-slate-400">{fmtUsd(f.guncelDeger, usdKuru)}</p>}
                               </td>
-                              <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                              <td className="hidden sm:table-cell px-3 sm:px-4 py-2.5 text-right whitespace-nowrap">
                                 {f.kazanc != null && (
                                   <p className={`text-sm font-medium ${f.kazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                                     {f.kazanc >= 0 ? '+' : ''}{fmt(f.kazanc)} ₺
@@ -862,14 +890,14 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                                   <p className="text-xs text-slate-400">{fmtUsd(f.kazanc, usdKuru)}</p>
                                 )}
                               </td>
-                              <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                              <td className="px-3 sm:px-4 py-2.5 text-right whitespace-nowrap">
                                 {f.kazancPct != null && (
                                   <span className={`text-sm font-bold ${f.kazancPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                                     {pct(f.kazancPct)}
                                   </span>
                                 )}
                               </td>
-                              <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                              <td className="hidden md:table-cell px-3 sm:px-4 py-2.5 text-right whitespace-nowrap">
                                 {f.gunluk != null && (
                                   <p className={`text-sm font-medium ${f.gunluk >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
                                     {f.gunluk >= 0 ? '+' : ''}{fmt(f.gunluk)} ₺
@@ -885,7 +913,7 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                       </table>
                     </div>
                     {grupMap.size > 1 && (
-                      <div className="flex-1 min-w-0">
+                      <div className="w-full lg:flex-1 lg:min-w-0">
                         <DagilimPanel grupMap={grupMap} />
                       </div>
                     )}
