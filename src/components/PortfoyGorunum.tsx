@@ -928,14 +928,10 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                               </td>
                               {/* Getiri */}
                               <td className="px-4 py-3 text-right whitespace-nowrap">
-                                {f.kazanc != null && (
-                                  <p className={`text-sm font-bold ${f.kazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                {f.kazanc != null && f.kazancPct != null && (
+                                  <p className={`text-sm font-semibold ${f.kazanc >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                                     {f.kazanc >= 0 ? '+' : ''}{fmt(f.kazanc)} ₺
-                                  </p>
-                                )}
-                                {f.kazancPct != null && (
-                                  <p className={`text-xs font-semibold ${f.kazancPct >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                                    {pct(f.kazancPct)}
+                                    <span className="text-xs font-normal opacity-75 ml-1">({pct(f.kazancPct)})</span>
                                   </p>
                                 )}
                                 {(() => {
@@ -943,9 +939,11 @@ function PortfoySection({ portfoy, pislemler, usdKuru }: {
                                   const usdGuncel = f.guncelDeger / usdKuru
                                   const usdKazanc = usdGuncel - f.usdMaliyet
                                   const usdPct = (usdKazanc / f.usdMaliyet) * 100
+                                  const usdKazancFmt = fmtUsd(usdKazanc * usdKuru, usdKuru)
                                   return (
                                     <p className={`text-xs font-medium ${usdKazanc >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                                      {usdKazanc >= 0 ? '+' : ''}{usdPct.toFixed(2)}% $
+                                      {usdKazanc >= 0 ? '+' : ''}{usdKazancFmt}
+                                      <span className="opacity-75 ml-1">({usdKazanc >= 0 ? '+' : ''}{usdPct.toFixed(2)}%)</span>
                                     </p>
                                   )
                                 })()}
