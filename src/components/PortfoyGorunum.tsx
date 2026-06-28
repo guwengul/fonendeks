@@ -739,7 +739,7 @@ function PortfoyEditModal({ portfoy, onKapat }: { portfoy: Portfoy; onKapat: () 
 function PortfoySection({ portfoy, pislemler, usdKuru }: {
   portfoy: Portfoy; pislemler: Islem[]; usdKuru: number | null
 }) {
-  const [acik, setAcik] = useState(true)
+  const [acik, setAcik] = useState(false)
   const [fonEkleAcik, setFonEkleAcik] = useState(false)
   const [editAcik, setEditAcik] = useState(false)
 
