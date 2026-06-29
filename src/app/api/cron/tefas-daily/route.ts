@@ -109,11 +109,13 @@ export async function GET(req: Request) {
           borsaBultenFiyat: r.borsaBultenFiyat ?? null,
         }))
 
-      const { error: insertError } = await supabase
-        .from('tefas_fon_verileri')
-        .insert(rows)
-
-      if (insertError) throw new Error(`${fonTipi} insert hatası: ${insertError.message}`)
+      const CHUNK = 500
+      for (let c = 0; c < rows.length; c += CHUNK) {
+        const { error: insertError } = await supabase
+          .from('tefas_fon_verileri')
+          .insert(rows.slice(c, c + CHUNK))
+        if (insertError) throw new Error(`${fonTipi} insert hatası: ${insertError.message}`)
+      }
 
       toplamEklenen += rows.length
       log.push(`${fonTipi}: ${rows.length} kayıt eklendi`)
