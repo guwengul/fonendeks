@@ -85,6 +85,18 @@ export async function GET(req: Request) {
     if (data.length < 1000) break
   }
 
+  // Bugün için özeti zaten olan fonları atla
+  const mevcutOzetler = new Set<string>()
+  for (let from = 0; ; from += 1000) {
+    const { data } = await supabase.from('tefas_fon_ozet')
+      .select('fonKodu, fonTipi').eq('tarih', sonTarih).range(from, from + 999)
+    if (!data || !data.length) break
+    for (const r of data) mevcutOzetler.add(`${r.fonKodu}-${r.fonTipi}`)
+    if (data.length < 1000) break
+  }
+  const eksikSon = son.filter(f => !mevcutOzetler.has(`${f.fonKodu}-${f.fonTipi}`))
+  const islenecek = eksikSon.length > 0 ? eksikSon : son
+
   const tarihFiyatMap: Record<string, Record<string, number>> = {}
   await Promise.all(benzersizTarihler.map(async t => {
     const rows = await fetchAllForDate(t)
@@ -92,7 +104,7 @@ export async function GET(req: Request) {
     for (const r of rows) tarihFiyatMap[t][`${r.fonKodu}-${r.fonTipi}`] = r.fiyat
   }))
 
-  const rows = son.map(f => {
+  const rows = islenecek.map(f => {
     const g: Record<string, number | null> = {}
     for (const d of donemTarihler) {
       const eski = d.tarih ? tarihFiyatMap[d.tarih]?.[`${f.fonKodu}-${f.fonTipi}`] : null
