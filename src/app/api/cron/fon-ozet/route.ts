@@ -94,8 +94,7 @@ export async function GET(req: Request) {
     for (const r of data) mevcutOzetler.add(`${r.fonKodu}-${r.fonTipi}`)
     if (data.length < 1000) break
   }
-  const eksikSon = son.filter(f => !mevcutOzetler.has(`${f.fonKodu}-${f.fonTipi}`))
-  const islenecek = eksikSon.length > 0 ? eksikSon : son
+  const islenecek = son.filter(f => !mevcutOzetler.has(`${f.fonKodu}-${f.fonTipi}`))
 
   const tarihFiyatMap: Record<string, Record<string, number>> = {}
   await Promise.all(benzersizTarihler.map(async t => {
