@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import AnalizListesi from '@/components/AnalizListesi'
 
 export const dynamic = 'force-dynamic'
@@ -14,7 +15,6 @@ function hedefTarihHesapla(sonTarih: string, ay: number): string {
 }
 
 function enYakinTarih(tarihler: string[], hedef: string): string | null {
-  // Önce >= hedef (sonraki), bulamazsa <= hedef (önceki)
   let sonraki: string | null = null
   for (const t of tarihler) {
     if (t >= hedef) sonraki = t
@@ -29,6 +29,8 @@ function enYakinTarih(tarihler: string[], hedef: string): string | null {
 
 export default async function AnalizPage() {
   const supabase = createAdminClient()
+  const authClient = await createClient()
+  const { data: { user } } = await authClient.auth.getUser()
 
   const { data: sonTarihRow } = await supabase
     .from('tefas_fon_verileri')
@@ -40,7 +42,7 @@ export default async function AnalizPage() {
   const sonTarih = sonTarihRow?.tarih
   if (!sonTarih) return null
 
-  // AAL tarihleri paginated (1250+ kayıt, 1000 limit aşıyor)
+  // AAL tarihleri paginated
   const tarihlerRaw: string[] = []
   {
     let from = 0
@@ -60,14 +62,24 @@ export default async function AnalizPage() {
   }
   const tarihler = tarihlerRaw
 
-  // 6 aylık checkpoint'ler: 0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60
+  // 6 aylık checkpoint'ler: 0..60 ay
   const AYLAR = [0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60]
   const checkpointler = AYLAR.map(ay => ({
     ay,
     tarih: ay === 0 ? sonTarih : (enYakinTarih(tarihler, hedefTarihHesapla(sonTarih, ay)) ?? null),
   }))
 
-  const benzersizTarihler = [...new Set(checkpointler.map(c => c.tarih).filter(Boolean) as string[])]
+  // 3 aylık checkpoint'ler: 0..12 ay
+  const AYLAR_CEYREK = [0, 3, 6, 9, 12]
+  const ceyrekCheckpointler = AYLAR_CEYREK.map(ay => ({
+    ay,
+    tarih: ay === 0 ? sonTarih : (enYakinTarih(tarihler, hedefTarihHesapla(sonTarih, ay)) ?? null),
+  }))
+
+  const benzersizTarihler = [...new Set([
+    ...checkpointler.map(c => c.tarih),
+    ...ceyrekCheckpointler.map(c => c.tarih),
+  ].filter(Boolean) as string[])]
 
   async function fetchAllForDate(tarih: string) {
     const rows: { fonKodu: string; fonTipi: string; fonUnvan: string; fiyat: number }[] = []
@@ -86,7 +98,6 @@ export default async function AnalizPage() {
     return rows
   }
 
-  // Meta verisi (risk, stopaj, şirket vs)
   const metaRows: any[] = []
   {
     let from = 0
@@ -103,50 +114,43 @@ export default async function AnalizPage() {
   }
   const metaMap = new Map(metaRows.map((m: any) => [m.fonKodu, m]))
 
-  const [tarihVerileri, usdFiyatRows] = await Promise.all([
-    Promise.all(
-      benzersizTarihler.map(async tarih => ({
-        tarih,
-        data: await fetchAllForDate(tarih),
-      }))
-    ),
-    // Her checkpoint için USD/TL fiyatı
-    Promise.all(
-      benzersizTarihler.map(async tarih => {
-        const { data } = await supabase
-          .from('tefas_benchmark_fiyatlari')
-          .select('deger')
-          .eq('gosterge', 'USD')
-          .lte('tarih', tarih)
-          .order('tarih', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        return { tarih, deger: data ? Number(data.deger) : null }
-      })
-    ),
-  ])
+  // USD tek sorguda
+  const enEskiTarih = benzersizTarihler.slice().sort()[0]
+  const { data: usdRows } = await supabase
+    .from('tefas_benchmark_fiyatlari')
+    .select('tarih, deger')
+    .eq('gosterge', 'USD')
+    .gte('tarih', enEskiTarih)
+    .lte('tarih', sonTarih)
+    .order('tarih', { ascending: true })
 
-  const usdMap: Record<string, number | null> = {}
-  for (const { tarih, deger } of usdFiyatRows) usdMap[tarih] = deger
+  const usdSirali = (usdRows ?? []).map(r => ({ tarih: r.tarih, deger: Number(r.deger) }))
+  function usdKurBul(hedef: string): number | null {
+    let best: number | null = null
+    for (const u of usdSirali) {
+      if (u.tarih <= hedef) best = u.deger
+      else break
+    }
+    return best
+  }
+
+  const [tarihVerileri, favoriSatirlar] = await Promise.all([
+    Promise.all(benzersizTarihler.map(async tarih => ({ tarih, data: await fetchAllForDate(tarih) }))),
+    user
+      ? authClient.from('tefas_favoriler').select('fonKodu, fonTipi').eq('user_id', user.id).then(r => r.data ?? [])
+      : Promise.resolve([]),
+  ])
 
   const fiyatMap: Record<string, Record<string, number>> = {}
   for (const { tarih, data } of tarihVerileri) {
     fiyatMap[tarih] = {}
-    for (const r of data) {
-      fiyatMap[tarih][`${r.fonKodu}-${r.fonTipi}`] = r.fiyat
-    }
+    for (const r of data) fiyatMap[tarih][`${r.fonKodu}-${r.fonTipi}`] = r.fiyat
   }
 
   const sonTarihData = tarihVerileri.find(t => t.tarih === sonTarih)?.data ?? []
-  const unvanMap: Record<string, string> = {}
-  for (const r of sonTarihData) {
-    unvanMap[`${r.fonKodu}-${r.fonTipi}`] = r.fonUnvan
-  }
 
-  // Checkpoint tarihlerini sıralı tut (desc)
   const cpTarihler = checkpointler.map(c => c.tarih)
-
-  const usdFiyatlar = cpTarihler.map(t => (t ? usdMap[t] ?? null : null))
+  const cqTarihler = ceyrekCheckpointler.map(c => c.tarih)
 
   function usdAyarli(tlGetiri: number | null, usdYeni: number | null, usdEski: number | null): number | null {
     if (tlGetiri == null || !usdYeni || !usdEski || usdEski === 0) return null
@@ -157,72 +161,61 @@ export default async function AnalizPage() {
   const fonAnalizler = sonTarihData.map(r => {
     const key = `${r.fonKodu}-${r.fonTipi}`
 
-    // Her checkpoint için fiyat (desc: cp[0]=bugün, cp[1]=-6ay, ...)
     const fiyatlar = cpTarihler.map(t => (t ? fiyatMap[t]?.[key] ?? null : null))
+    const usdFiyatlar = cpTarihler.map(t => (t ? usdKurBul(t) : null))
 
-    // 6 aylık periyotlar
+    // 6 aylık periyotlar (10 dönem, 5 yıl)
     const altiAylik: (number | null)[] = []
     const altiAylikUsd: (number | null)[] = []
     for (let i = 0; i < cpTarihler.length - 1; i++) {
-      const t0 = cpTarihler[i]
-      const t1 = cpTarihler[i + 1]
+      const t0 = cpTarihler[i]; const t1 = cpTarihler[i + 1]
       if (!t0 || !t1 || t0 === t1) { altiAylik.push(null); altiAylikUsd.push(null); continue }
-      const yeni = fiyatlar[i]
-      const eski = fiyatlar[i + 1]
+      const yeni = fiyatlar[i]; const eski = fiyatlar[i + 1]
       const tl = yeni != null && eski != null && eski !== 0 ? ((yeni - eski) / eski) * 100 : null
       altiAylik.push(tl)
       altiAylikUsd.push(usdAyarli(tl, usdFiyatlar[i], usdFiyatlar[i + 1]))
     }
 
-    // Yıllık periyotlar
+    // Yıllık periyotlar (5 dönem)
     const yillik: (number | null)[] = []
     const yillikUsd: (number | null)[] = []
     for (let i = 0; i < cpTarihler.length - 2; i += 2) {
-      const t0 = cpTarihler[i]
-      const t2 = cpTarihler[i + 2]
-      if (!t0 || !t2 || t0 === t2) { yillik.push(null); yillikUsd.push(null); continue }
-      const yeni = fiyatlar[i]
-      const eski = fiyatlar[i + 2]
+      const yeni = fiyatlar[i]; const eski = fiyatlar[i + 2]
       const tl = yeni != null && eski != null && eski !== 0 ? ((yeni - eski) / eski) * 100 : null
       yillik.push(tl)
       yillikUsd.push(usdAyarli(tl, usdFiyatlar[i], usdFiyatlar[i + 2]))
     }
 
-    const altiAyPozitif = altiAylik.filter(p => p !== null && p > 0).length
-    const altiAyToplam = altiAylik.filter(p => p !== null).length
-    const yillikPozitif = yillik.filter(p => p !== null && p > 0).length
-    const yillikToplam = yillik.filter(p => p !== null).length
+    // 3 aylık periyotlar (4 dönem, son 1 yıl)
+    const cqFiyatlar = cqTarihler.map(t => (t ? fiyatMap[t]?.[key] ?? null : null))
+    const cqUsdFiyatlar = cqTarihler.map(t => (t ? usdKurBul(t) : null))
+    const ceyreklik: (number | null)[] = []
+    const ceyreklikUsd: (number | null)[] = []
+    for (let i = 0; i < cqTarihler.length - 1; i++) {
+      const yeni = cqFiyatlar[i]; const eski = cqFiyatlar[i + 1]
+      const tl = yeni != null && eski != null && eski !== 0 ? ((yeni - eski) / eski) * 100 : null
+      ceyreklik.push(tl)
+      ceyreklikUsd.push(usdAyarli(tl, cqUsdFiyatlar[i], cqUsdFiyatlar[i + 1]))
+    }
 
-    // 3 ve 5 yıllık toplam getiri
     const fiyatBugün = fiyatlar[0]
-    const fiyat3y = fiyatlar[6] // AYLAR[6] = 36 ay
+    const fiyat3y = fiyatlar[6]
     const fiyat5y = fiyatlar[fiyatlar.length - 1]
     const toplamGetiri3y = fiyatBugün != null && fiyat3y != null && fiyat3y !== 0
-      ? ((fiyatBugün - fiyat3y) / fiyat3y) * 100
-      : null
+      ? ((fiyatBugün - fiyat3y) / fiyat3y) * 100 : null
     const toplamGetiri3yUsd = usdAyarli(toplamGetiri3y, usdFiyatlar[0], usdFiyatlar[6])
     const toplamGetiri5y = fiyatBugün != null && fiyat5y != null && fiyat5y !== 0
-      ? ((fiyatBugün - fiyat5y) / fiyat5y) * 100
-      : null
+      ? ((fiyatBugün - fiyat5y) / fiyat5y) * 100 : null
     const toplamGetiri5yUsd = usdAyarli(toplamGetiri5y, usdFiyatlar[0], usdFiyatlar[usdFiyatlar.length - 1])
 
     const meta = metaMap.get(r.fonKodu)
     return {
-      fonKodu: r.fonKodu,
-      fonTipi: r.fonTipi,
-      fonUnvan: r.fonUnvan,
-      altiAylik,
-      altiAylikUsd,
-      yillik,
-      yillikUsd,
-      altiAyPozitif,
-      altiAyToplam,
-      yillikPozitif,
-      yillikToplam,
-      toplamGetiri3y,
-      toplamGetiri3yUsd,
-      toplamGetiri5y,
-      toplamGetiri5yUsd,
+      fonKodu: r.fonKodu, fonTipi: r.fonTipi, fonUnvan: r.fonUnvan,
+      altiAylik, altiAylikUsd,
+      yillik, yillikUsd,
+      ceyreklik, ceyreklikUsd,
+      toplamGetiri3y, toplamGetiri3yUsd,
+      toplamGetiri5y, toplamGetiri5yUsd,
       riskDegeri: meta?.riskDegeri ?? null,
       kurucuKod: meta?.kurucuKod ?? null,
       fonTurAciklama: meta?.fonTurAciklama ?? null,
@@ -230,28 +223,28 @@ export default async function AnalizPage() {
       yonetimUcreti: meta?.yonetimUcreti ?? null,
       tefasAcik: meta?.tefasDurum?.includes('işlem görüyor') ?? null,
     }
-  }).filter(f => f.altiAyToplam >= 2)
+  }).filter(f => f.yillik.filter(p => p !== null).length >= 1)
 
-  // Etiketler: "Ara'25→Haz'26" formatında
   function ayEtiketi(tarih: string | null) {
     if (!tarih) return '?'
-    const d = new Date(tarih)
-    return d.toLocaleDateString('tr-TR', { month: 'short', year: '2-digit' })
+    return new Date(tarih).toLocaleDateString('tr-TR', { month: 'short', year: '2-digit' })
   }
 
   const altiAyEtiketler = checkpointler.slice(0, -1).map((c, i) => {
     const t0 = checkpointler[i + 1]?.tarih
-    const t1 = c.tarih
-    return `${ayEtiketi(t0)}→${ayEtiketi(t1)}`
+    return `${ayEtiketi(t0)}→${ayEtiketi(c.tarih)}`
   })
-
   const yillikEtiketler = checkpointler.filter((_, i) => i % 2 === 0).slice(0, -1).map((c, i) => {
     const t0 = checkpointler[(i + 1) * 2]?.tarih
-    const t1 = c.tarih
-    return `${ayEtiketi(t0)}→${ayEtiketi(t1)}`
+    return `${ayEtiketi(t0)}→${ayEtiketi(c.tarih)}`
+  })
+  const ceyreklikEtiketler = ceyrekCheckpointler.slice(0, -1).map((c, i) => {
+    const t0 = ceyrekCheckpointler[i + 1]?.tarih
+    return `${ayEtiketi(t0)}→${ayEtiketi(c.tarih)}`
   })
 
   const kurucular = [...new Set(fonAnalizler.map(f => f.kurucuKod).filter(Boolean))].sort() as string[]
+  const initialFavoriler = new Set((favoriSatirlar as { fonKodu: string; fonTipi: string }[]).map(f => `${f.fonKodu}::${f.fonTipi}`))
 
   return (
     <div className="w-full px-4 sm:px-6 py-8">
@@ -265,7 +258,10 @@ export default async function AnalizPage() {
         fonlar={fonAnalizler}
         altiAyEtiketler={altiAyEtiketler}
         yillikEtiketler={yillikEtiketler}
+        ceyreklikEtiketler={ceyreklikEtiketler}
         kurucular={kurucular}
+        girisYapildi={!!user}
+        initialFavoriler={initialFavoriler}
       />
     </div>
   )
