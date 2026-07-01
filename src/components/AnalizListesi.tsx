@@ -515,13 +515,13 @@ export default function AnalizListesi({
               return (
                 <tr key={`${f.fonKodu}-${f.fonTipi}`}
                   className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${idx % 2 === 0 ? '' : 'bg-slate-50/30'}`}>
-                  <td className="sticky left-0 z-10 bg-white px-2 py-2.5">
+                  <td className="sticky left-0 z-10 bg-white px-2 py-2.5 min-w-[200px] max-w-[260px]">
                     <div className="flex items-center gap-1">
                       <YildizButon fav={favori} onClick={() => toggleFavori(f)} />
                       <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
-                        className="font-mono font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
-                        title={f.fonUnvan}>
-                        {f.fonKodu}
+                        className="hover:text-indigo-800 transition-colors min-w-0">
+                        <span className="block font-mono font-semibold text-indigo-600 text-xs">{f.fonKodu}</span>
+                        <span className="block text-xs text-slate-500 truncate">{f.fonUnvan}</span>
                       </Link>
                     </div>
                   </td>
