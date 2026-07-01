@@ -511,7 +511,8 @@ export default function AnalizListesi({
                 : mod === '3y'
                   ? (doviz === 'USD' ? f.toplamGetiri3yUsd : f.toplamGetiri3y)
                   : (() => {
-                      const vals = per.filter(p => p !== null) as number[]
+                      const src = doviz === 'USD' ? f.ceyreklikUsd : f.ceyreklik
+                      const vals = src.filter((p): p is number => p !== null)
                       if (vals.length === 0) return null
                       return vals.reduce((acc, p) => (1 + acc / 100) * (1 + p / 100) * 100 - 100, 0)
                     })()
