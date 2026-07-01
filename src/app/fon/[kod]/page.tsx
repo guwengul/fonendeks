@@ -69,15 +69,15 @@ export default async function FonDetay({
   const authClient = await createClient()
   const { data: { user } } = await authClient.auth.getUser()
 
-  // Özet + meta paralel çek
-  const [gecmisRes, ozetRes, metaRes] = await Promise.all([
+  // Tüm sorgular paralel
+  const [gecmisRes, ozetRes, metaRes, dagilimRes, holdingsRes, benchGetiriRes, favoriRes] = await Promise.all([
     supabase
       .from('tefas_fon_verileri')
       .select('tarih, fiyat, portfoyBuyukluk, kisiSayisi, tedPaySayisi')
       .eq('fonKodu', fonKodu)
       .eq('fonTipi', tip)
       .order('tarih', { ascending: false })
-      .limit(2000),
+      .limit(1000),
     supabase
       .from('tefas_fon_ozet')
       .select('fonUnvan, fonTipi, fiyat, portfoyBuyukluk, kisiSayisi, tarih, getiri1g, getiri1h, getiri1a, getiri3a, getiri6a, getiriYb, getiri1y, getiri3y, getiri5y')
@@ -89,49 +89,48 @@ export default async function FonDetay({
       .select('*')
       .eq('fonKodu', fonKodu)
       .maybeSingle(),
+    supabase
+      .from('tefas_fon_dagilim')
+      .select('dagilim, tarih')
+      .eq('fonKodu', fonKodu)
+      .maybeSingle(),
+    supabase
+      .from('tefas_fon_holdings')
+      .select('hisseler, tarih, kapBildirimLink, pdfLink, yayinTarihi')
+      .eq('fonKodu', fonKodu)
+      .maybeSingle(),
+    supabase
+      .from('tefas_benchmark_getiri')
+      .select('gosterge, getiri1h, getiri1a, getiri3a, getiri6a, getiriyb, getiri1y, getiri3y, getiri5y'),
+    user
+      ? authClient.from('tefas_favoriler')
+          .select('id').eq('user_id', user.id).eq('fonKodu', fonKodu).eq('fonTipi', tip).maybeSingle()
+      : Promise.resolve({ data: null }),
   ])
 
   const gecmis = (gecmisRes.data ?? []).slice().reverse()
   const ozet = ozetRes.data
   const meta = metaRes.data
+  const dagilimRow = dagilimRes.data
+  const holdingsRow = holdingsRes.data
+  const hisseler: { ticker: string; isin: string; agirlik: number }[] = holdingsRow?.hisseler ?? []
+  const favoriMi = !!favoriRes.data
 
   if (!gecmis || gecmis.length === 0) notFound()
 
   const son = gecmis[gecmis.length - 1]
   const ilk = gecmis[0]
 
-  // info artık ozet'ten geliyor
   const info = ozet ? { fonUnvan: ozet.fonUnvan, fonTipi: ozet.fonTipi } : null
-
-  // Varlık dağılımı kendi DB tablomuzdan
-  const { data: dagilimRow } = await supabase
-    .from('tefas_fon_dagilim')
-    .select('dagilim, tarih')
-    .eq('fonKodu', fonKodu)
-    .maybeSingle()
 
   const dagilim: [string, number][] = dagilimRow?.dagilim
     ? Object.entries(dagilimRow.dagilim as Record<string, number>).sort((a, b) => b[1] - a[1])
     : []
 
-  // Portföydeki hisseler (menkul-kıymet seviyesi, KAP raporundan)
-  const { data: holdingsRow } = await supabase
-    .from('tefas_fon_holdings')
-    .select('hisseler, tarih, kapBildirimLink, pdfLink, yayinTarihi')
-    .eq('fonKodu', fonKodu)
-    .maybeSingle()
-  const hisseler: { ticker: string; isin: string; agirlik: number }[] = holdingsRow?.hisseler ?? []
-
-  // Benchmark getirileri önceden hesaplanmış tablodan
-  const { data: benchGetiriRows } = await supabase
-    .from('tefas_benchmark_getiri')
-    .select('gosterge, getiri1h, getiri1a, getiri3a, getiri6a, getiriyb, getiri1y, getiri3y, getiri5y')
-
-  // { '1H': { USD: x, EUR: y, ... }, '1A': { ... }, ... }
   const benchGetiriler: Record<string, Record<string, number | null>> = {
     '1H': {}, '1A': {}, '3A': {}, '6A': {}, 'YBB': {}, '1Y': {}, '3Y': {}, '5Y': {},
   }
-  for (const r of benchGetiriRows ?? []) {
+  for (const r of benchGetiriRes.data ?? []) {
     benchGetiriler['1H'][r.gosterge]  = r.getiri1h
     benchGetiriler['1A'][r.gosterge]  = r.getiri1a
     benchGetiriler['3A'][r.gosterge]  = r.getiri3a
@@ -142,30 +141,17 @@ export default async function FonDetay({
     benchGetiriler['5Y'][r.gosterge]  = r.getiri5y
   }
 
-  // Fon getirilerini ozet'ten al (TEFAS önceden hesaplar, daha güvenilir)
   const ozetFonGetiri: Record<string, number | null> = {
-    '1H': ozet?.getiri1h ?? null,
-    '1A': ozet?.getiri1a ?? null,
-    '3A': ozet?.getiri3a ?? null,
-    '6A': ozet?.getiri6a ?? null,
-    'YBB': ozet?.getiriYb ?? null,
-    '1Y': ozet?.getiri1y ?? null,
-    '3Y': ozet?.getiri3y ?? null,
-    '5Y': ozet?.getiri5y ?? null,
+    '1H': ozet?.getiri1h ?? null, '1A': ozet?.getiri1a ?? null,
+    '3A': ozet?.getiri3a ?? null, '6A': ozet?.getiri6a ?? null,
+    'YBB': ozet?.getiriYb ?? null, '1Y': ozet?.getiri1y ?? null,
+    '3Y': ozet?.getiri3y ?? null, '5Y': ozet?.getiri5y ?? null,
   }
   for (const [label, val] of Object.entries(ozetFonGetiri)) {
     benchGetiriler[label]['fiyat'] = val
   }
 
   const benchmarkData: { tarih: string; fiyat: number | null }[] = gecmis.map(r => ({ tarih: r.tarih, fiyat: r.fiyat }))
-
-  // Favori durumu
-  let favoriMi = false
-  if (user) {
-    const { data: fav } = await authClient.from('tefas_favoriler')
-      .select('id').eq('user_id', user.id).eq('fonKodu', fonKodu).eq('fonTipi', tip).maybeSingle()
-    favoriMi = !!fav
-  }
 
   // Getiriler özet tablosundan gelir (önceden hesaplanmış)
   const gunlukGetiri = ozet?.getiri1g ?? null
