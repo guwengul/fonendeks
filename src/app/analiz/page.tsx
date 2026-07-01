@@ -208,6 +208,12 @@ export default async function AnalizPage() {
       ? ((fiyatBugün - fiyat5y) / fiyat5y) * 100 : null
     const toplamGetiri5yUsd = usdAyarli(toplamGetiri5y, usdFiyatlar[0], usdFiyatlar[usdFiyatlar.length - 1])
 
+    const fiyat1y = cqFiyatlar[cqFiyatlar.length - 1]
+    const usd1y = cqUsdFiyatlar[cqUsdFiyatlar.length - 1]
+    const toplamGetiri1y = cqFiyatlar[0] != null && fiyat1y != null && fiyat1y !== 0
+      ? ((cqFiyatlar[0]! - fiyat1y) / fiyat1y) * 100 : null
+    const toplamGetiri1yUsd = usdAyarli(toplamGetiri1y, cqUsdFiyatlar[0], usd1y)
+
     const meta = metaMap.get(r.fonKodu)
     return {
       fonKodu: r.fonKodu, fonTipi: r.fonTipi, fonUnvan: r.fonUnvan,
@@ -216,6 +222,7 @@ export default async function AnalizPage() {
       ceyreklik, ceyreklikUsd,
       toplamGetiri3y, toplamGetiri3yUsd,
       toplamGetiri5y, toplamGetiri5yUsd,
+      toplamGetiri1y, toplamGetiri1yUsd,
       riskDegeri: meta?.riskDegeri ?? null,
       kurucuKod: meta?.kurucuKod ?? null,
       fonTurAciklama: meta?.fonTurAciklama ?? null,

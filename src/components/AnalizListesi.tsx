@@ -15,6 +15,8 @@ type FonAnaliz = {
   yillikUsd: (number | null)[]
   ceyreklik: (number | null)[]
   ceyreklikUsd: (number | null)[]
+  toplamGetiri1y: number | null
+  toplamGetiri1yUsd: number | null
   toplamGetiri3y: number | null
   toplamGetiri3yUsd: number | null
   toplamGetiri5y: number | null
@@ -300,12 +302,9 @@ export default function AnalizListesi({
           return (bV ?? -Infinity) - (aV ?? -Infinity)
         }
         if (siralama === 'total') {
-          function ceyrekToplam(f: FonAnaliz) {
-            const vals = (doviz === 'USD' ? f.ceyreklikUsd : f.ceyreklik).filter(p => p !== null) as number[]
-            if (vals.length === 0) return -Infinity
-            return vals.reduce((acc, p) => (1 + acc / 100) * (1 + p / 100) * 100 - 100, 0)
-          }
-          return ceyrekToplam(b) - ceyrekToplam(a)
+          const aV = doviz === 'USD' ? a.toplamGetiri1yUsd : a.toplamGetiri1y
+          const bV = doviz === 'USD' ? b.toplamGetiri1yUsd : b.toplamGetiri1y
+          return (bV ?? -Infinity) - (aV ?? -Infinity)
         }
         if (siralama === '5y') {
           const aV = doviz === 'USD' ? a.toplamGetiri5yUsd : a.toplamGetiri5y
@@ -510,12 +509,7 @@ export default function AnalizListesi({
                 ? (doviz === 'USD' ? f.toplamGetiri5yUsd : f.toplamGetiri5y)
                 : mod === '3y'
                   ? (doviz === 'USD' ? f.toplamGetiri3yUsd : f.toplamGetiri3y)
-                  : (() => {
-                      const src = doviz === 'USD' ? f.ceyreklikUsd : f.ceyreklik
-                      const vals = src.filter((p): p is number => p !== null)
-                      if (vals.length === 0) return null
-                      return vals.reduce((acc, p) => (1 + acc / 100) * (1 + p / 100) * 100 - 100, 0)
-                    })()
+                  : (doviz === 'USD' ? f.toplamGetiri1yUsd : f.toplamGetiri1y)
               const toplamSirKey: SiralamaKey = mod === '5y' ? '5y' : mod === '3y' ? '3y' : 'total'
               const favori = favoriler.has(`${f.fonKodu}::${f.fonTipi}`)
               return (
