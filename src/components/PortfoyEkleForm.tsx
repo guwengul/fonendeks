@@ -369,7 +369,7 @@ export function PortfoyEkleForm({
         </div>
         {hata && <p className="text-sm text-red-600">{hata}</p>}
         <button type="submit" disabled={yukleniyor || !ad.trim()}
-          className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+          className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors">
           {yukleniyor ? 'Oluşturuluyor...' : 'Oluştur →'}
         </button>
       </form>
@@ -409,7 +409,7 @@ export function PortfoyEkleForm({
           {hata && <p className="text-sm text-red-600">{hata}</p>}
           <div className="flex gap-2">
             <button type="submit" disabled={yukleniyor || !ad.trim()}
-              className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400">
               {yukleniyor ? 'Oluşturuluyor...' : 'Oluştur →'}
             </button>
             <button type="button" onClick={() => { setAcik(false); setAd(''); setHata(null) }}
