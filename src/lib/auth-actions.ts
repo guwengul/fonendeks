@@ -19,7 +19,7 @@ export async function cikisYap() {
   redirect('/')
 }
 
-export async function favoriEkle(fonKodu: string, fonTipi: string, fiyat: number, tarih: string) {
+export async function favoriEkle(fonKodu: string, fonTipi: string, fiyat?: number | null, tarih?: string | null) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { hata: 'Giriş gerekli' }
@@ -27,7 +27,9 @@ export async function favoriEkle(fonKodu: string, fonTipi: string, fiyat: number
     .select('*', { count: 'exact', head: true }).eq('user_id', user.id)
   if ((count ?? 0) >= 16) return { hata: 'Maksimum 16 favori ekleyebilirsiniz' }
   const { error } = await supabase.from('tefas_favoriler').upsert({
-    user_id: user.id, fonKodu, fonTipi, ekleme_fiyati: fiyat, ekleme_tarihi: tarih,
+    user_id: user.id, fonKodu, fonTipi,
+    ...(fiyat != null && { ekleme_fiyati: fiyat }),
+    ...(tarih ? { ekleme_tarihi: tarih } : {}),
   }, { onConflict: 'user_id,fonKodu,fonTipi', ignoreDuplicates: true })
   return error ? { hata: error.message } : { ok: true }
 }
