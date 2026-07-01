@@ -78,7 +78,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </main>
 
         <footer className="mt-auto border-t border-slate-200 bg-white">
-          <div className="mx-auto w-full max-w-5xl px-6 py-8">
+          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-8">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <Link href="/" className="flex items-center gap-1.5 font-semibold text-slate-900 w-fit">

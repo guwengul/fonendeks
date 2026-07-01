@@ -183,7 +183,7 @@ export default async function FonDetay({
   }
 
   return (
-    <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
+    <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
       <Link href="/" className="text-slate-400 hover:text-indigo-600 text-sm mb-6 inline-block transition-colors">
         ← Tüm fonlar
       </Link>

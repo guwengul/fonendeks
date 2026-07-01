@@ -96,7 +96,7 @@ export default async function PortfoyPage() {
   })
 
   return (
-    <div className="w-full px-3 sm:px-6 py-6 sm:py-8">
+    <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
       <h1 className="text-2xl font-bold text-slate-900 mb-8">Portföyüm</h1>
       <PortfoyGorunum portfoyler={portfoyListesi} islemler={islemlerZengin} usdKuru={usdKuru} />
       {portfoyListesi.length < 3 && (
