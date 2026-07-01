@@ -28,7 +28,7 @@ type FonAnaliz = {
 }
 
 type Mod = '5y' | '3y' | '1y'
-type SiralamaKey = 'tutarlilik' | '3y' | '5y' | `donem_${number}`
+type SiralamaKey = 'tutarlilik' | '3y' | '5y' | 'total' | `donem_${number}`
 
 const RISK_OPTIONS = ['1-2', '3-4', '5-6', '7-7']
 const RISK_LABELS: Record<string, string> = { '1-2': '1–2', '3-4': '3–4', '5-6': '5–6', '7-7': '7' }
@@ -299,6 +299,14 @@ export default function AnalizListesi({
           const bV = doviz === 'USD' ? b.toplamGetiri3yUsd : b.toplamGetiri3y
           return (bV ?? -Infinity) - (aV ?? -Infinity)
         }
+        if (siralama === 'total') {
+          function ceyrekToplam(f: FonAnaliz) {
+            const vals = (doviz === 'USD' ? f.ceyreklikUsd : f.ceyreklik).filter(p => p !== null) as number[]
+            if (vals.length === 0) return -Infinity
+            return vals.reduce((acc, p) => (1 + acc / 100) * (1 + p / 100) * 100 - 100, 0)
+          }
+          return ceyrekToplam(b) - ceyrekToplam(a)
+        }
         if (siralama === '5y') {
           const aV = doviz === 'USD' ? a.toplamGetiri5yUsd : a.toplamGetiri5y
           const bV = doviz === 'USD' ? b.toplamGetiri5yUsd : b.toplamGetiri5y
@@ -484,8 +492,9 @@ export default function AnalizListesi({
               {etiketListesi.map((e, i) => (
                 <ThSort key={i} label={e} aktif={siralama === `donem_${i}`} onClick={() => setSiralama(`donem_${i}`)} />
               ))}
-              <ThSort label="3Y Toplam" aktif={siralama === '3y'} onClick={() => setSiralama('3y')} />
-              <ThSort label="5Y Toplam" aktif={siralama === '5y'} onClick={() => setSiralama('5y')} />
+              {mod === '5y' && <ThSort label="5Y Toplam" aktif={siralama === '5y'} onClick={() => setSiralama('5y')} />}
+              {mod === '3y' && <ThSort label="3Y Toplam" aktif={siralama === '3y'} onClick={() => setSiralama('3y')} />}
+              {mod === '1y' && <ThSort label="1Y Toplam" aktif={siralama === 'total'} onClick={() => setSiralama('total')} />}
               <th onClick={() => setSiralama('tutarlilik')}
                 className={`px-4 py-3 font-semibold min-w-36 cursor-pointer select-none transition-colors ${siralama === 'tutarlilik' ? 'text-indigo-600 bg-indigo-50' : 'text-slate-600 hover:text-indigo-500 hover:bg-slate-100'}`}>
                 Tutarlılık {siralama === 'tutarlilik' ? '↓' : ''}
@@ -497,7 +506,16 @@ export default function AnalizListesi({
               const per = periyotlar(f)
               const pozitif = per.filter(p => p !== null && p > 0).length
               const toplam = per.filter(p => p !== null).length
-              const getiri5y = doviz === 'USD' ? f.toplamGetiri5yUsd : f.toplamGetiri5y
+              const toplamV = mod === '5y'
+                ? (doviz === 'USD' ? f.toplamGetiri5yUsd : f.toplamGetiri5y)
+                : mod === '3y'
+                  ? (doviz === 'USD' ? f.toplamGetiri3yUsd : f.toplamGetiri3y)
+                  : (() => {
+                      const vals = per.filter(p => p !== null) as number[]
+                      if (vals.length === 0) return null
+                      return vals.reduce((acc, p) => (1 + acc / 100) * (1 + p / 100) * 100 - 100, 0)
+                    })()
+              const toplamSirKey: SiralamaKey = mod === '5y' ? '5y' : mod === '3y' ? '3y' : 'total'
               const favori = favoriler.has(`${f.fonKodu}::${f.fonTipi}`)
               return (
                 <tr key={`${f.fonKodu}-${f.fonTipi}`}
@@ -519,16 +537,9 @@ export default function AnalizListesi({
                       </span>
                     </td>
                   ))}
-                  <td className={`px-3 py-2.5 text-center ${siralama === '3y' ? 'bg-indigo-50/50' : ''}`}>
-                    {(() => { const v = doviz === 'USD' ? f.toplamGetiri3yUsd : f.toplamGetiri3y; return (
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-medium ${hucreRenk(v)}`}>
-                        {v !== null ? `${v >= 0 ? '+' : ''}${v.toFixed(0)}%` : '—'}
-                      </span>
-                    )})()}
-                  </td>
-                  <td className={`px-3 py-2.5 text-center ${siralama === '5y' ? 'bg-indigo-50/50' : ''}`}>
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-medium ${hucreRenk(getiri5y)}`}>
-                      {getiri5y !== null ? `${getiri5y >= 0 ? '+' : ''}${getiri5y.toFixed(0)}%` : '—'}
+                  <td className={`px-3 py-2.5 text-center ${siralama === toplamSirKey ? 'bg-indigo-50/50' : ''}`}>
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-medium ${hucreRenk(toplamV)}`}>
+                      {toplamV !== null ? `${toplamV >= 0 ? '+' : ''}${toplamV.toFixed(0)}%` : '—'}
                     </span>
                   </td>
                   <td className="px-4 py-2.5">
