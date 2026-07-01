@@ -37,6 +37,31 @@ export default function FonBuyumeGrafik({ data }: { data: Veri[] }) {
   const baslangicTarih = sonTarih ? secilenAralik.bas(sonTarih) : ''
   const filtrelenmis = baslangicTarih === '' ? data : data.filter(d => d.tarih >= baslangicTarih)
 
+  const ilk = filtrelenmis[0]
+  const son2 = filtrelenmis[filtrelenmis.length - 1]
+
+  function deltaKart(label: string, renk: string, ilkVal: number | null, sonVal: number | null, fmt: (v: number) => string) {
+    if (ilkVal == null || sonVal == null || ilkVal === 0) return null
+    const delta = sonVal - ilkVal
+    const pct = (delta / ilkVal) * 100
+    const pos = delta >= 0
+    return (
+      <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <p className="text-slate-400 text-xs mb-1">{label}</p>
+        <p className="text-slate-800 text-sm font-medium mb-1">{fmt(sonVal)}</p>
+        <p className={`text-base font-bold ${pos ? 'text-emerald-600' : 'text-red-500'}`}>
+          {pos ? '+' : ''}{fmt(delta)} ({pos ? '+' : ''}{pct.toFixed(1)}%)
+        </p>
+      </div>
+    )
+  }
+
+  const kartlar = [
+    deltaKart('Portföy Büyüklüğü', 'emerald', ilk?.portfoyBuyukluk ?? null, son2?.portfoyBuyukluk ?? null, formatMn),
+    deltaKart('Yatırımcı Sayısı', 'purple', ilk?.kisiSayisi ?? null, son2?.kisiSayisi ?? null, v => v.toLocaleString('tr-TR')),
+    deltaKart('Pay Sayısı', 'amber', ilk?.tedPaySayisi ?? null, son2?.tedPaySayisi ?? null, formatMn),
+  ].filter(Boolean)
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
@@ -54,6 +79,12 @@ export default function FonBuyumeGrafik({ data }: { data: Veri[] }) {
           </button>
         ))}
       </div>
+
+      {kartlar.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {kartlar}
+        </div>
+      )}
 
       <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
         <p className="text-slate-500 text-sm font-medium mb-4">Portföy Büyüklüğü (₺)</p>
