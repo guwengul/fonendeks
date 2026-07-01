@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { favoriEkle, favoriKaldir } from '@/lib/auth-actions'
 
 type FonAnaliz = {
   fonKodu: string
@@ -11,10 +13,8 @@ type FonAnaliz = {
   altiAylikUsd: (number | null)[]
   yillik: (number | null)[]
   yillikUsd: (number | null)[]
-  altiAyPozitif: number
-  altiAyToplam: number
-  yillikPozitif: number
-  yillikToplam: number
+  ceyreklik: (number | null)[]
+  ceyreklikUsd: (number | null)[]
   toplamGetiri3y: number | null
   toplamGetiri3yUsd: number | null
   toplamGetiri5y: number | null
@@ -27,13 +27,8 @@ type FonAnaliz = {
   tefasAcik: boolean | null
 }
 
+type Mod = '5y' | '3y' | '1y'
 type SiralamaKey = 'tutarlilik' | '3y' | '5y' | `donem_${number}`
-
-const TIP_RENK: Record<string, string> = {
-  YAT: 'bg-indigo-50 text-indigo-600',
-  EMK: 'bg-emerald-50 text-emerald-600',
-  BYF: 'bg-purple-50 text-purple-600',
-}
 
 const RISK_OPTIONS = ['1-2', '3-4', '5-6', '7-7']
 const RISK_LABELS: Record<string, string> = { '1-2': '1–2', '3-4': '3–4', '5-6': '5–6', '7-7': '7' }
@@ -43,6 +38,11 @@ const UCRET_OPTIONS = ['DUSUK', 'ORTA', 'YUKSEK']
 const UCRET_LABELS: Record<string, string> = { DUSUK: '<%1', ORTA: '%1–2', YUKSEK: '>%2' }
 const TEFAS_OPTIONS = ['ACIK', 'KAPALI']
 const TEFAS_LABELS: Record<string, string> = { ACIK: "TEFAS'ta İşlem Görüyor", KAPALI: "TEFAS'a Kapalı" }
+const TIP_OPTIONS = [
+  { value: 'YAT', label: 'Yatırım Fonu' },
+  { value: 'EMK', label: 'Emeklilik Fonu' },
+  { value: 'BYF', label: 'Borsa Yatırım Fonu' },
+]
 
 function toggle(set: Set<string>, val: string): Set<string> {
   const next = new Set(set)
@@ -101,8 +101,7 @@ function SirketCombo({ secili, onChange, adMap, tumKodlar }: {
 
   return (
     <div ref={ref} className="relative">
-      <div
-        onClick={() => setAcik(v => !v)}
+      <div onClick={() => setAcik(v => !v)}
         className="min-h-[34px] w-full flex flex-wrap gap-1 items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:border-slate-300 transition-colors">
         {seciliListe.length === 0 ? (
           <span className="text-xs text-slate-400">Tüm şirketler</span>
@@ -172,23 +171,39 @@ function ThSort({ label, aktif, onClick }: { label: string; aktif: boolean; onCl
   )
 }
 
+function YildizButon({ fav, onClick }: { fav: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className={`p-1 transition-all ${fav ? 'opacity-100' : 'opacity-40 hover:opacity-80'}`}>
+      <svg className={`w-3.5 h-3.5 ${fav ? 'text-amber-400' : 'text-slate-400'}`}
+        fill={fav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+      </svg>
+    </button>
+  )
+}
+
 export default function AnalizListesi({
-  fonlar, altiAyEtiketler, yillikEtiketler, kurucular,
+  fonlar, altiAyEtiketler, yillikEtiketler, ceyreklikEtiketler, kurucular, girisYapildi, initialFavoriler,
 }: {
   fonlar: FonAnaliz[]
   altiAyEtiketler: string[]
   yillikEtiketler: string[]
+  ceyreklikEtiketler: string[]
   kurucular: string[]
+  girisYapildi?: boolean
+  initialFavoriler?: Set<string>
 }) {
   const [arama, setArama] = useState('')
-  const [mod, setMod] = useState<'6ay' | 'yil'>('yil')
+  const [mod, setMod] = useState<Mod>('5y')
   const [doviz, setDoviz] = useState<'TL' | 'USD'>('TL')
-  const [minPozitif, setMinPozitif] = useState(0)
-  const [tipFiltre, setTipFiltre] = useState<'HEPSI' | 'YAT' | 'EMK' | 'BYF'>('YAT')
+  const [tipler, setTipler] = useState(new Set(['YAT']))
   const [siralama, setSiralama] = useState<SiralamaKey>('tutarlilik')
   const [filtrePaneli, setFiltrePaneli] = useState(false)
+  const [favoriler, setFavoriler] = useState<Set<string>>(initialFavoriler ?? new Set())
+  const [, startTransition] = useTransition()
+  const router = useRouter()
 
-  // Ek filtreler
   const [serbest, setSerbest] = useState(true)
   const [sadecKatilim, setSadecKatilim] = useState(false)
   const [sadecHisse, setSadecHisse] = useState(false)
@@ -208,6 +223,7 @@ export default function AnalizListesi({
   }, [fonlar])
 
   const aktifFiltreCount =
+    (tipler.size < TIP_OPTIONS.length ? 1 : 0) +
     (!serbest ? 1 : 0) +
     (sadecKatilim ? 1 : 0) +
     (sadecHisse ? 1 : 0) +
@@ -218,12 +234,16 @@ export default function AnalizListesi({
     (tefas.size < TEFAS_OPTIONS.length ? 1 : 0) +
     (sirketler.size > 0 ? 1 : 0)
 
-  const etiketler = mod === '6ay' ? altiAyEtiketler : yillikEtiketler
-  const maxDonem = etiketler.length
-
   function periyotlar(f: FonAnaliz) {
-    if (mod === '6ay') return doviz === 'USD' ? f.altiAylikUsd : f.altiAylik
-    return doviz === 'USD' ? f.yillikUsd : f.yillik
+    if (mod === '5y') return doviz === 'USD' ? f.yillikUsd : f.yillik
+    if (mod === '3y') return (doviz === 'USD' ? f.altiAylikUsd : f.altiAylik).slice(0, 6)
+    return doviz === 'USD' ? f.ceyreklikUsd : f.ceyreklik
+  }
+
+  function etiketler() {
+    if (mod === '5y') return yillikEtiketler
+    if (mod === '3y') return altiAyEtiketler.slice(0, 6)
+    return ceyreklikEtiketler
   }
 
   const filtreli = useMemo(() => {
@@ -231,15 +251,13 @@ export default function AnalizListesi({
       .filter(f => {
         if (!arama) return true
         const q = arama.toLocaleLowerCase('tr-TR')
-        const qEn = arama.toLowerCase()
-        return f.fonKodu.toLowerCase().includes(qEn) ||
+        return f.fonKodu.toLowerCase().includes(arama.toLowerCase()) ||
           (f.fonUnvan ?? '').toLocaleLowerCase('tr-TR').includes(q)
       })
-      .filter(f => tipFiltre === 'HEPSI' || f.fonTipi === tipFiltre)
+      .filter(f => tipler.size >= TIP_OPTIONS.length || tipler.has(f.fonTipi))
       .filter(f => {
         if (!serbest && (f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('serbest')) return false
-        const isKatilim = (f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('katılım')
-        if (sadecKatilim && !isKatilim) return false
+        if (sadecKatilim && !(f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('katılım')) return false
         if (sadecHisse && !(f.fonTurAciklama ?? '').toLocaleLowerCase('tr-TR').includes('hisse')) return false
         if (dovizMod !== 'tumu') {
           const u = (f.fonUnvan ?? '').toLocaleLowerCase('tr-TR')
@@ -248,15 +266,12 @@ export default function AnalizListesi({
           if (dovizMod === 'sadece' && !isDoviz) return false
         }
         if (sirketler.size > 0 && f.kurucuKod && !sirketler.has(f.kurucuKod)) return false
-        if (riskler.size < RISK_OPTIONS.length) {
-          const r = f.riskDegeri
-          if (r != null) {
-            const match = [...riskler].some(band => {
-              const [min, max] = band.split('-').map(Number)
-              return r >= min && r <= max
-            })
-            if (!match) return false
-          }
+        if (riskler.size < RISK_OPTIONS.length && f.riskDegeri != null) {
+          const match = [...riskler].some(band => {
+            const [min, max] = band.split('-').map(Number)
+            return f.riskDegeri! >= min && f.riskDegeri! <= max
+          })
+          if (!match) return false
         }
         if (vergiler.size < VERGI_OPTIONS.length) {
           if (vergiler.has('YOK') && !vergiler.has('VAR') && f.stopaj !== 0) return false
@@ -276,10 +291,7 @@ export default function AnalizListesi({
           })
           if (!match) return false
         }
-        const per = periyotlar(f)
-        const pozitif = per.filter(p => p !== null && p > 0).length
-        const toplam = per.filter(p => p !== null).length
-        return toplam > 0 && pozitif >= minPozitif
+        return true
       })
       .sort((a, b) => {
         if (siralama === '3y') {
@@ -309,7 +321,35 @@ export default function AnalizListesi({
         if (bOran !== aOran) return bOran - aOran
         return bPoz - aPoz
       })
-  }, [fonlar, mod, doviz, minPozitif, tipFiltre, siralama, arama, serbest, sadecKatilim, sadecHisse, dovizMod, riskler, vergiler, ucretler, tefas, sirketler])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fonlar, mod, doviz, tipler, siralama, arama, serbest, sadecKatilim, sadecHisse, dovizMod, riskler, vergiler, ucretler, tefas, sirketler])
+
+  function toggleFavori(f: FonAnaliz) {
+    if (!girisYapildi) { router.push('/giris'); return }
+    const key = `${f.fonKodu}::${f.fonTipi}`
+    const zatenVar = favoriler.has(key)
+    setFavoriler(prev => {
+      const next = new Set(prev)
+      zatenVar ? next.delete(key) : next.add(key)
+      return next
+    })
+    startTransition(async () => {
+      if (zatenVar) {
+        await favoriKaldir(f.fonKodu, f.fonTipi)
+      } else {
+        const sonuc = await favoriEkle(f.fonKodu, f.fonTipi, 0, '')
+        if (sonuc?.hata) {
+          setFavoriler(prev => {
+            const next = new Set(prev)
+            next.delete(key)
+            return next
+          })
+        }
+      }
+    })
+  }
+
+  const etiketListesi = etiketler()
 
   return (
     <div>
@@ -317,51 +357,31 @@ export default function AnalizListesi({
         value={arama} onChange={e => setArama(e.target.value)}
         className="w-full border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 bg-white shadow-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 mb-4" />
 
-      {/* Ana kontroller */}
-      <div className="flex flex-wrap gap-3 mb-4 items-center">
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white text-sm">
-          {(['yil', '6ay'] as const).map(m => (
-            <button key={m} onClick={() => { setMod(m); setMinPozitif(0); setSiralama('tutarlilik') }}
-              className={`px-4 py-2 font-medium transition-colors ${mod === m ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
-              {m === 'yil' ? 'Yıllık' : '6 Aylık'}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white text-sm">
+      {/* Tab'lar */}
+      <div className="flex items-end gap-0 border-b border-slate-200 mb-4">
+        {([['5y', '5 Yıllık', 'yıl yıl'], ['3y', '3 Yıllık', '6ay 6ay'], ['1y', 'Yıllık', '3ay 3ay']] as [Mod, string, string][]).map(([m, label, alt]) => (
+          <button key={m} onClick={() => { setMod(m); setSiralama('tutarlilik') }}
+            className={`relative px-5 py-3 text-sm font-medium transition-colors focus:outline-none ${
+              mod === m
+                ? 'text-indigo-600 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-600'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}>
+            {label}
+            <span className={`ml-1.5 text-xs font-normal ${mod === m ? 'text-indigo-400' : 'text-slate-400'}`}>{alt}</span>
+          </button>
+        ))}
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white text-sm ml-auto mb-2">
           {(['TL', 'USD'] as const).map(d => (
             <button key={d} onClick={() => setDoviz(d)}
-              className={`px-4 py-2 font-medium transition-colors ${doviz === d ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+              className={`px-3 py-1.5 font-medium transition-colors ${doviz === d ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
               {d}
             </button>
           ))}
         </div>
-
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white text-sm">
-          {(['HEPSI', 'YAT', 'EMK', 'BYF'] as const).map(tip => (
-            <button key={tip} onClick={() => setTipFiltre(tip)}
-              className={`px-3 py-2 font-medium transition-colors ${tipFiltre === tip ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
-              {tip === 'HEPSI' ? 'Tümü' : tip}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-slate-500">Min pozitif dönem:</span>
-          <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white">
-            {Array.from({ length: maxDonem + 1 }, (_, i) => i).map(n => (
-              <button key={n} onClick={() => setMinPozitif(n)}
-                className={`px-2.5 py-2 font-medium transition-colors ${minPozitif === n ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
-                {n === 0 ? 'Hepsi' : n}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <span className="text-sm text-slate-400 ml-auto">{filtreli.length} fon</span>
       </div>
+      <div className="text-right text-sm text-slate-400 -mt-2 mb-3">{filtreli.length} fon</div>
 
-      {/* Ek filtreler paneli */}
+      {/* Filtreler */}
       <div className="mb-4">
         <button onClick={() => setFiltrePaneli(v => !v)}
           className={`flex items-center gap-2 text-sm font-medium transition-colors ${filtrePaneli ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}>
@@ -377,6 +397,15 @@ export default function AnalizListesi({
         {filtrePaneli && (
           <div className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col gap-4">
             <div className="flex flex-wrap gap-x-8 gap-y-3">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-500 font-medium">Fon Türü</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {TIP_OPTIONS.map(o => (
+                    <Chip key={o.value} label={o.label} active={tipler.has(o.value)}
+                      onClick={() => setTipler(s => toggle(s, o.value))} />
+                  ))}
+                </div>
+              </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs text-slate-500 font-medium">Serbest Fonlar</span>
                 <div className="flex flex-wrap gap-1.5">
@@ -451,8 +480,8 @@ export default function AnalizListesi({
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-left">
-              <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-semibold text-slate-600 w-24">Kod</th>
-              {etiketler.map((e, i) => (
+              <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-semibold text-slate-600 w-28">Kod</th>
+              {etiketListesi.map((e, i) => (
                 <ThSort key={i} label={e} aktif={siralama === `donem_${i}`} onClick={() => setSiralama(`donem_${i}`)} />
               ))}
               <ThSort label="3Y Toplam" aktif={siralama === '3y'} onClick={() => setSiralama('3y')} />
@@ -469,15 +498,19 @@ export default function AnalizListesi({
               const pozitif = per.filter(p => p !== null && p > 0).length
               const toplam = per.filter(p => p !== null).length
               const getiri5y = doviz === 'USD' ? f.toplamGetiri5yUsd : f.toplamGetiri5y
+              const favori = favoriler.has(`${f.fonKodu}::${f.fonTipi}`)
               return (
                 <tr key={`${f.fonKodu}-${f.fonTipi}`}
                   className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${idx % 2 === 0 ? '' : 'bg-slate-50/30'}`}>
-                  <td className="sticky left-0 z-10 bg-white px-4 py-2.5">
-                    <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
-                      className="font-mono font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
-                      title={f.fonUnvan}>
-                      {f.fonKodu}
-                    </Link>
+                  <td className="sticky left-0 z-10 bg-white px-2 py-2.5">
+                    <div className="flex items-center gap-1">
+                      <YildizButon fav={favori} onClick={() => toggleFavori(f)} />
+                      <Link href={`/fon/${f.fonKodu}?tip=${f.fonTipi}`}
+                        className="font-mono font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                        title={f.fonUnvan}>
+                        {f.fonKodu}
+                      </Link>
+                    </div>
                   </td>
                   {per.map((p, i) => (
                     <td key={i} className={`px-2 py-2.5 text-center ${siralama === `donem_${i}` ? 'bg-indigo-50/50' : ''}`}>
