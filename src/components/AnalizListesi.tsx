@@ -30,7 +30,7 @@ type FonAnaliz = {
 }
 
 type Mod = '5y' | '3y' | '1y'
-type SiralamaKey = 'tutarlilik' | '3y' | '5y' | 'total' | `donem_${number}`
+type SiralamaKey = 'tutarlilik' | '3y' | '5y' | 'total' | 'oynaklik' | `donem_${number}`
 
 const RISK_OPTIONS = ['1-2', '3-4', '5-6', '7-7']
 const RISK_LABELS: Record<string, string> = { '1-2': '1–2', '3-4': '3–4', '5-6': '5–6', '7-7': '7' }
@@ -306,6 +306,15 @@ export default function AnalizListesi({
           const bV = doviz === 'USD' ? b.toplamGetiri1yUsd : b.toplamGetiri1y
           return (bV ?? -Infinity) - (aV ?? -Infinity)
         }
+        if (siralama === 'oynaklik') {
+          const std = (f: FonAnaliz) => {
+            const vals = periyotlar(f).filter((p): p is number => p !== null)
+            if (vals.length < 2) return Infinity
+            const ort = vals.reduce((s, v) => s + v, 0) / vals.length
+            return Math.sqrt(vals.reduce((s, v) => s + (v - ort) ** 2, 0) / vals.length)
+          }
+          return std(a) - std(b)
+        }
         if (siralama === '5y') {
           const aV = doviz === 'USD' ? a.toplamGetiri5yUsd : a.toplamGetiri5y
           const bV = doviz === 'USD' ? b.toplamGetiri5yUsd : b.toplamGetiri5y
@@ -495,9 +504,10 @@ export default function AnalizListesi({
               {mod === '3y' && <ThSort label="3Y Toplam" aktif={siralama === '3y'} onClick={() => setSiralama('3y')} />}
               {mod === '1y' && <ThSort label="1Y Toplam" aktif={siralama === 'total'} onClick={() => setSiralama('total')} />}
               <th onClick={() => setSiralama('tutarlilik')}
-                className={`px-4 py-3 font-semibold min-w-36 cursor-pointer select-none transition-colors ${siralama === 'tutarlilik' ? 'text-indigo-600 bg-indigo-50' : 'text-slate-600 hover:text-indigo-500 hover:bg-slate-100'}`}>
+                className={`px-3 py-3 text-center text-xs font-semibold cursor-pointer select-none transition-colors whitespace-nowrap ${siralama === 'tutarlilik' ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:text-indigo-500 hover:bg-slate-100'}`}>
                 Tutarlılık {siralama === 'tutarlilik' ? '↓' : ''}
               </th>
+              <ThSort label="Oynaklık" aktif={siralama === 'oynaklik'} onClick={() => setSiralama('oynaklik')} />
             </tr>
           </thead>
           <tbody>
@@ -511,6 +521,10 @@ export default function AnalizListesi({
                   ? (doviz === 'USD' ? f.toplamGetiri3yUsd : f.toplamGetiri3y)
                   : (doviz === 'USD' ? f.toplamGetiri1yUsd : f.toplamGetiri1y)
               const toplamSirKey: SiralamaKey = mod === '5y' ? '5y' : mod === '3y' ? '3y' : 'total'
+              const vals = per.filter((p): p is number => p !== null)
+              const oynaklik = vals.length >= 2
+                ? (() => { const ort = vals.reduce((s, v) => s + v, 0) / vals.length; return Math.sqrt(vals.reduce((s, v) => s + (v - ort) ** 2, 0) / vals.length) })()
+                : null
               const favori = favoriler.has(`${f.fonKodu}::${f.fonTipi}`)
               return (
                 <tr key={`${f.fonKodu}-${f.fonTipi}`}
@@ -537,8 +551,15 @@ export default function AnalizListesi({
                       {toplamV !== null ? `${toplamV >= 0 ? '+' : ''}${toplamV.toFixed(0)}%` : '—'}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-3 py-2.5 text-center">
                     {skorCubugu(pozitif, toplam)}
+                  </td>
+                  <td className={`px-3 py-2.5 text-center ${siralama === 'oynaklik' ? 'bg-indigo-50/50' : ''}`}>
+                    {oynaklik !== null ? (
+                      <span className={`text-xs font-mono font-medium ${oynaklik < 10 ? 'text-emerald-600' : oynaklik < 25 ? 'text-amber-600' : 'text-red-500'}`}>
+                        {oynaklik.toFixed(1)}%
+                      </span>
+                    ) : <span className="text-slate-300 text-xs">—</span>}
                   </td>
                 </tr>
               )
